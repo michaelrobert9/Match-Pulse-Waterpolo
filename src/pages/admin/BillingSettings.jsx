@@ -834,7 +834,7 @@ export default function BillingSettings() {
             <TextInput
               value={form.notifyUrl}
               onChange={set('notifyUrl')}
-              placeholder="https://europe-west1-match-pulse-waterpolo.cloudfunctions.net/payfastITN"
+              placeholder="https://europe-west1-match-pulse-4560e.cloudfunctions.net/payfastITN"
               mono
             />
           </Field>

@@ -632,7 +632,7 @@ function injectBody(html, body) {
 //   a) there is zero chance of routing back through the ** rewrite (different domain)
 //   b) the URL is stable even if the custom domain has any transient DNS/TLS issue
 
-const SHELL_URL = process.env.SHELL_URL || 'https://match-pulse-waterpolo.web.app/index.html'
+const SHELL_URL = process.env.SHELL_URL || 'https://match-pulse-4560e.web.app/index.html'
 const SHELL_TTL_MS = 60 * 1000   // re-check the shell at most once a minute
 let shellCache = null
 let shellCachedAt = 0
