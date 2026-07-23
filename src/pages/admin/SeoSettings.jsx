@@ -742,14 +742,14 @@ export default function SeoSettings() {
           <Field label="Site name" hint="Shown as the bold heading in Google results and the browser tab.">
             <Input value={form.siteTitle} onChange={set('siteTitle')} placeholder="MatchPulse" maxLength={60} />
           </Field>
-          <Field label="Tagline" hint='Appended to the site name with an em-dash: "MatchPulse — School & Club Hockey".'>
-            <Input value={form.siteTagline} onChange={set('siteTagline')} placeholder="School & Club Hockey" maxLength={60} />
+          <Field label="Tagline" hint='Appended to the site name with an em-dash: "MatchPulse — School & Club Water Polo".'>
+            <Input value={form.siteTagline} onChange={set('siteTagline')} placeholder="School & Club Water Polo" maxLength={60} />
           </Field>
           <Field label="Meta description" hint="The snippet shown under the title in Google results. Aim for 120–160 characters.">
             <Textarea
               value={form.siteDescription}
               onChange={set('siteDescription')}
-              placeholder="Live scores, fixtures, results and player records for school and club hockey in South Africa."
+              placeholder="Live scores, fixtures, results and player records for school and club water polo in South Africa."
               maxLength={160}
               rows={3}
             />
@@ -758,7 +758,7 @@ export default function SeoSettings() {
             <Textarea
               value={form.keywords}
               onChange={set('keywords')}
-              placeholder="hockey, school hockey, club hockey, live scores, South Africa"
+              placeholder="water polo, school water polo, club water polo, live scores, South Africa"
               maxLength={500}
               rows={2}
             />

@@ -59,7 +59,7 @@ Match Pulse is a **professional sports data platform for school sport** — not 
 | Secondary | `text-slate-400` to `text-slate-500` | Descriptions, subtitles, labels |
 | Muted / structural | `text-slate-600` | Dividers, deeply de-emphasised text |
 
-### Semantic / Hockey Event Colours
+### Semantic / Water Polo Event Colours
 
 | Event | Tailwind | Suspension |
 |-------|----------|------------|
@@ -214,7 +214,7 @@ Used in hero sections for lifetime achievements.
 
 **Team identifiers are always `w-3 h-3 rounded-sm` colour blocks** in the team's primary colour — never empty circles. This is a platform-wide rule.
 
-### Hockey Event Timeline Items
+### Water Polo Event Timeline Items
 
 Map event type to visual treatment consistently across all views:
 

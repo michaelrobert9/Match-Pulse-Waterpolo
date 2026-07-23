@@ -1,4 +1,4 @@
-// Realistic SA hockey sample data matching the Firestore schema.
+// Realistic SA water polo sample data matching the Firestore schema.
 // Used as fallback when Firebase is not yet configured.
 
 export const organizations = {
@@ -47,7 +47,7 @@ export const organizations = {
 export const competitions = {
   'comp-sahlm-2526': {
     id: 'comp-sahlm-2526',
-    name: 'SA Hockey League',
+    name: 'SA Water Polo League',
     season: '2025-26',
     gender: 'men',
     ageGroup: 'senior',
@@ -69,7 +69,7 @@ export const competitions = {
   },
   'comp-sahlm-2425': {
     id: 'comp-sahlm-2425',
-    name: 'SA Hockey League',
+    name: 'SA Water Polo League',
     season: '2024-25',
     gender: 'men',
     ageGroup: 'senior',
@@ -91,7 +91,7 @@ export const competitions = {
   },
   'comp-sahlm-2324': {
     id: 'comp-sahlm-2324',
-    name: 'SA Hockey League',
+    name: 'SA Water Polo League',
     season: '2023-24',
     gender: 'men',
     ageGroup: 'senior',
@@ -284,78 +284,78 @@ export const people = {
 // ── Players ──────────────────────────────────────────────────────────────────
 
 export const players = {
-  // ── SA Hockey League 2025-26 — WP ────────────────────────────────────────
+  // ── SA Water Polo League 2025-26 — WP ────────────────────────────────────────
   'player-wp-1': {
     id: 'player-wp-1', personId: 'p-smith', teamId: 'team-wp-sahlm-2526', competitionId: 'comp-sahlm-2526',
     personName: 'J. Smith', shirtNumber: 1, position: 'GK', isCaptain: false,
     caps: 7, goals: 0, cards: { green: 0, yellow: 0, red: 0 },
     teamDisplayName: 'Western Province', teamShortCode: 'WP', teamPrimaryColor: '#006B3C',
-    competitionName: 'SA Hockey League', competitionSeason: '2025-26', competitionStatus: 'active',
+    competitionName: 'SA Water Polo League', competitionSeason: '2025-26', competitionStatus: 'active',
   },
   'player-wp-5': {
     id: 'player-wp-5', personId: 'p-davids', teamId: 'team-wp-sahlm-2526', competitionId: 'comp-sahlm-2526',
     personName: 'R. Davids', shirtNumber: 5, position: 'Def', isCaptain: false,
     caps: 7, goals: 0, cards: { green: 1, yellow: 0, red: 0 },
     teamDisplayName: 'Western Province', teamShortCode: 'WP', teamPrimaryColor: '#006B3C',
-    competitionName: 'SA Hockey League', competitionSeason: '2025-26', competitionStatus: 'active',
+    competitionName: 'SA Water Polo League', competitionSeason: '2025-26', competitionStatus: 'active',
   },
   'player-wp-7': {
     id: 'player-tvdm-sahlm-2526', personId: 'person-tvdm-001', teamId: 'team-wp-sahlm-2526', competitionId: 'comp-sahlm-2526',
     personName: 'T. van der Merwe', shirtNumber: 7, position: 'Fwd', isCaptain: true,
     caps: 7, goals: 5, cards: { green: 0, yellow: 1, red: 0 },
     teamDisplayName: 'Western Province', teamShortCode: 'WP', teamPrimaryColor: '#006B3C',
-    competitionName: 'SA Hockey League', competitionSeason: '2025-26', competitionStatus: 'active',
+    competitionName: 'SA Water Polo League', competitionSeason: '2025-26', competitionStatus: 'active',
   },
   'player-wp-8': {
     id: 'player-wp-8', personId: 'p-abrahams', teamId: 'team-wp-sahlm-2526', competitionId: 'comp-sahlm-2526',
     personName: 'L. Abrahams', shirtNumber: 8, position: 'Mid', isCaptain: false,
     caps: 7, goals: 3, cards: { green: 0, yellow: 0, red: 0 },
     teamDisplayName: 'Western Province', teamShortCode: 'WP', teamPrimaryColor: '#006B3C',
-    competitionName: 'SA Hockey League', competitionSeason: '2025-26', competitionStatus: 'active',
+    competitionName: 'SA Water Polo League', competitionSeason: '2025-26', competitionStatus: 'active',
   },
   'player-wp-11': {
     id: 'player-wp-11', personId: 'p-debeer', teamId: 'team-wp-sahlm-2526', competitionId: 'comp-sahlm-2526',
     personName: 'M. de Beer', shirtNumber: 11, position: 'Fwd', isCaptain: false,
     caps: 6, goals: 2, cards: { green: 0, yellow: 0, red: 0 },
     teamDisplayName: 'Western Province', teamShortCode: 'WP', teamPrimaryColor: '#006B3C',
-    competitionName: 'SA Hockey League', competitionSeason: '2025-26', competitionStatus: 'active',
+    competitionName: 'SA Water Polo League', competitionSeason: '2025-26', competitionStatus: 'active',
   },
 
-  // ── SA Hockey League 2025-26 — KZN ───────────────────────────────────────
+  // ── SA Water Polo League 2025-26 — KZN ───────────────────────────────────────
   'player-kzn-1': {
     id: 'player-kzn-1', personId: 'p-singh', teamId: 'team-kzn-sahlm-2526', competitionId: 'comp-sahlm-2526',
     personName: 'A. Singh', shirtNumber: 1, position: 'GK', isCaptain: false,
     caps: 7, goals: 0, cards: { green: 0, yellow: 0, red: 0 },
     teamDisplayName: 'KZN Raiders', teamShortCode: 'KZN', teamPrimaryColor: '#003087',
-    competitionName: 'SA Hockey League', competitionSeason: '2025-26', competitionStatus: 'active',
+    competitionName: 'SA Water Polo League', competitionSeason: '2025-26', competitionStatus: 'active',
   },
   'player-kzn-4': {
     id: 'player-kzn-4', personId: 'p-pillay', teamId: 'team-kzn-sahlm-2526', competitionId: 'comp-sahlm-2526',
     personName: 'K. Pillay', shirtNumber: 4, position: 'Def', isCaptain: false,
     caps: 7, goals: 1, cards: { green: 0, yellow: 1, red: 0 },
     teamDisplayName: 'KZN Raiders', teamShortCode: 'KZN', teamPrimaryColor: '#003087',
-    competitionName: 'SA Hockey League', competitionSeason: '2025-26', competitionStatus: 'active',
+    competitionName: 'SA Water Polo League', competitionSeason: '2025-26', competitionStatus: 'active',
   },
   'player-kzn-6': {
     id: 'player-kzn-6', personId: 'p-madlala', teamId: 'team-kzn-sahlm-2526', competitionId: 'comp-sahlm-2526',
     personName: 'N. Madlala', shirtNumber: 6, position: 'Mid', isCaptain: false,
     caps: 7, goals: 2, cards: { green: 0, yellow: 0, red: 0 },
     teamDisplayName: 'KZN Raiders', teamShortCode: 'KZN', teamPrimaryColor: '#003087',
-    competitionName: 'SA Hockey League', competitionSeason: '2025-26', competitionStatus: 'active',
+    competitionName: 'SA Water Polo League', competitionSeason: '2025-26', competitionStatus: 'active',
   },
   'player-kzn-9': {
     id: 'player-kzn-9', personId: 'person-pgovender-002', teamId: 'team-kzn-sahlm-2526', competitionId: 'comp-sahlm-2526',
     personName: 'P. Govender', shirtNumber: 9, position: 'Fwd', isCaptain: true,
     caps: 7, goals: 4, cards: { green: 0, yellow: 0, red: 0 },
     teamDisplayName: 'KZN Raiders', teamShortCode: 'KZN', teamPrimaryColor: '#003087',
-    competitionName: 'SA Hockey League', competitionSeason: '2025-26', competitionStatus: 'active',
+    competitionName: 'SA Water Polo League', competitionSeason: '2025-26', competitionStatus: 'active',
   },
   'player-kzn-10': {
     id: 'player-kzn-10', personId: 'p-ntuli', teamId: 'team-kzn-sahlm-2526', competitionId: 'comp-sahlm-2526',
     personName: 'T. Ntuli', shirtNumber: 10, position: 'Mid', isCaptain: false,
     caps: 6, goals: 1, cards: { green: 1, yellow: 0, red: 0 },
     teamDisplayName: 'KZN Raiders', teamShortCode: 'KZN', teamPrimaryColor: '#003087',
-    competitionName: 'SA Hockey League', competitionSeason: '2025-26', competitionStatus: 'active',
+    competitionName: 'SA Water Polo League', competitionSeason: '2025-26', competitionStatus: 'active',
   },
 
   // ── Tyrone's other competition records ────────────────────────────────────
@@ -371,7 +371,7 @@ export const players = {
     personName: 'Tyrone van der Merwe', shirtNumber: 7, position: 'Fwd', isCaptain: false,
     caps: 14, goals: 11, cards: { green: 1, yellow: 0, red: 0 },
     teamDisplayName: 'Western Province', teamShortCode: 'WP', teamPrimaryColor: '#006B3C',
-    competitionName: 'SA Hockey League', competitionSeason: '2024-25', competitionStatus: 'final',
+    competitionName: 'SA Water Polo League', competitionSeason: '2024-25', competitionStatus: 'final',
   },
   'player-tvdm-ipt-2024': {
     id: 'player-tvdm-ipt-2024', personId: 'person-tvdm-001', teamId: 'team-wp-ipt-2024', competitionId: 'comp-ipt-2024',
@@ -385,7 +385,7 @@ export const players = {
     personName: 'Tyrone van der Merwe', shirtNumber: 11, position: 'Fwd', isCaptain: false,
     caps: 13, goals: 8, cards: { green: 1, yellow: 0, red: 0 },
     teamDisplayName: 'Western Province', teamShortCode: 'WP', teamPrimaryColor: '#006B3C',
-    competitionName: 'SA Hockey League', competitionSeason: '2023-24', competitionStatus: 'final',
+    competitionName: 'SA Water Polo League', competitionSeason: '2023-24', competitionStatus: 'final',
   },
   'player-tvdm-u21-2023': {
     id: 'player-tvdm-u21-2023', personId: 'person-tvdm-001', teamId: 'team-wp-u21-2023', competitionId: 'comp-u21-ipt-2023',

@@ -340,9 +340,9 @@ export default function Signup() {
               </div>
             </div>
 
-            {/* Role in hockey */}
+            {/* Role in water polo */}
             <div>
-              <Label optional>Your role in hockey</Label>
+              <Label optional>Your role in water polo</Label>
               <div className="grid grid-cols-3 gap-2">
                 {ROLES.map(r => (
                   <button key={r.value} type="button"
@@ -377,14 +377,14 @@ export default function Signup() {
               </div>
             )}
 
-            {/* SAHA number */}
+            {/* WPSA number */}
             <div>
-              <Label optional>SAHA number</Label>
+              <Label optional>WPSA number</Label>
               <input type="text" value={sahaNumber} onChange={e => setSahaNumber(e.target.value)}
                 placeholder="e.g. WP-2024-00123"
                 className={`${inputClass} font-mono`} />
               <p className="text-[10px] text-slate-400 mt-1.5 leading-relaxed">
-                Your South African Hockey Association (SAHA) registration number. Once entered, it will be visible on your public profile.
+                Your Water Polo South Africa (WPSA) registration number. Once entered, it will be visible on your public profile.
               </p>
             </div>
 

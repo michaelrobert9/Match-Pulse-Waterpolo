@@ -515,7 +515,7 @@ function StatsRebuildCard({ competition }) {
     <Card title="Recalculate player stats"
       subtitle="Rebuild this competition's stats from its Final fixtures">
       <p className="text-sm text-slate-600 mb-3">
-        Rebuilds caps, goals, and cards for every player in this competition from all its Final
+        Rebuilds caps, goals, and exclusions for every player in this competition from all its Final
         fixtures, on the server. Stats are always derived from match history, so this simply
         re-derives them — safe to run multiple times, with identical results each run.
       </p>
@@ -1257,7 +1257,7 @@ function ScheduleConfigCard({ competition, onSaved }) {
   const [saving,  setSaving]  = useState(false)
   const [pools,   setPools]   = useState([])
 
-  const defaultFields = cfg.fields ?? [{ id: 'f1', name: 'Field 1' }]
+  const defaultFields = cfg.fields ?? [{ id: 'f1', name: 'Venue 1' }]
   const [fields,       setFields]       = useState(defaultFields)
   const [startDate,    setStartDate]    = useState(cfg.startDate ?? '')
   const [opStart,      setOpStart]      = useState(cfg.operatingHours?.start ?? '08:00')
@@ -1276,7 +1276,7 @@ function ScheduleConfigCard({ competition, onSaved }) {
 
   function addField() {
     const nextId = `f${Date.now()}`
-    setFields(prev => [...prev, { id: nextId, name: `Field ${prev.length + 1}` }])
+    setFields(prev => [...prev, { id: nextId, name: `Venue ${prev.length + 1}` }])
   }
   function removeField(id) {
     setFields(prev => prev.filter(f => f.id !== id))
@@ -1324,7 +1324,7 @@ function ScheduleConfigCard({ competition, onSaved }) {
         hasConfig ? (
           <dl className="grid grid-cols-2 gap-x-4 gap-y-3 text-sm">
             <div className="col-span-2">
-              <dt className="micro-label">Fields</dt>
+              <dt className="micro-label">Venues</dt>
               <dd className="text-slate-900 font-medium mt-0.5">
                 {(cfg.fields ?? []).map(f => f.name).join(', ') || '—'}
               </dd>
@@ -1362,13 +1362,13 @@ function ScheduleConfigCard({ competition, onSaved }) {
             </div>
           </dl>
         ) : (
-          <p className="text-sm text-slate-400">Not configured yet. Click Edit to set up fields and timing.</p>
+          <p className="text-sm text-slate-400">Not configured yet. Click Edit to set up venues and timing.</p>
         )
       ) : (
         <div className="space-y-4">
           {/* Fields */}
           <div>
-            <label className="micro-label block mb-1.5">Fields</label>
+            <label className="micro-label block mb-1.5">Venues</label>
             <div className="space-y-1.5 mb-2">
               {fields.map(f => (
                 <div key={f.id} className="flex items-center gap-2">
@@ -2348,7 +2348,7 @@ function FixturesTab({ competition, teams, fixtures, setFixtures }) {
           </div>
           <div>
             <label className="micro-label block mb-1.5">Venue (optional)</label>
-            <Input value={newForm.pitch} onChange={e => setNew('pitch', e.target.value)} placeholder="Field 1" />
+            <Input value={newForm.pitch} onChange={e => setNew('pitch', e.target.value)} placeholder="e.g. Main pool" />
           </div>
           <button type="submit"
             disabled={saving || !newForm.homeTeamId || !newForm.awayTeamId || newForm.homeTeamId === newForm.awayTeamId}

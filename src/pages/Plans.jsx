@@ -417,7 +417,7 @@ const FEATURE_GROUPS = [
       'Points, logs and standings update themselves',
       'Custom tie-breaker rules, applied automatically',
       'Full team and player statistics',
-      'A complete match timeline: goals, cards, and every key moment',
+      'A complete match timeline: goals, exclusions, and every key moment',
       'Every action credited to the player who made it',
       "Your organisation's logo across everything",
     ],

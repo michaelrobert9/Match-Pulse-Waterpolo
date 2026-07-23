@@ -1442,7 +1442,7 @@ function PlayoffScheduleRow({ fixture, competitionId, run, busy }) {
         <div className="space-y-1.5">
           <input type="datetime-local" value={when} onChange={e => setWhen(e.target.value)}
             className="w-full bg-white border border-slate-200 rounded-lg px-2 py-1 text-[12px]" />
-          <input value={pitch} onChange={e => setPitch(e.target.value)} placeholder="Venue / pitch (optional)"
+          <input value={pitch} onChange={e => setPitch(e.target.value)} placeholder="Venue / pool (optional)"
             className="w-full bg-white border border-slate-200 rounded-lg px-2 py-1 text-[12px] placeholder-slate-400" />
           <div className="flex gap-1.5">
             <button onClick={save} disabled={busy}

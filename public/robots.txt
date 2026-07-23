@@ -1,5 +1,5 @@
 # MatchPulse — https://matchpulse.co.za
-# Public hockey content (competitions, fixtures, results, teams, players) is
+# Public water polo content (competitions, fixtures, results, teams, players) is
 # open to crawlers. Authenticated / operational areas are disallowed.
 #
 # NOTE: robots.txt groups do NOT inherit. A crawler that matches a named

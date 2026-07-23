@@ -95,7 +95,7 @@ function CareerCard({ player }) {
                 ? (player.goals / player.caps).toFixed(2) : '—',
               label: 'Avg', cls: 'text-slate-900'
             },
-            { val: total || '—', label: 'Cards', cls: 'text-slate-900' },
+            { val: total || '—', label: 'Exclusions', cls: 'text-slate-900' },
           ].map(({ val, label, cls }, i) => (
             <div key={label} className={`flex flex-col items-center${i > 0 ? ' border-l border-slate-200' : ''}`}>
               <span className={`font-mono font-black text-xl tabular-nums ${cls}`}>{val}</span>
@@ -221,7 +221,7 @@ export default function PlayerPage() {
           </div>
           <div className="flex flex-col items-center py-3">
             <span className="font-mono font-black text-2xl tabular-nums text-slate-900 leading-none">{totalCards || 0}</span>
-            <span className="micro-label mt-0.5">Cards</span>
+            <span className="micro-label mt-0.5">Exclusions</span>
           </div>
         </div>
       </div>

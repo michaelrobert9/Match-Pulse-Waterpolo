@@ -69,9 +69,9 @@ Changes staged but not yet in production.
 
 - **`src/components/Nav.jsx`** — MatchPulse wordmark (Match white / Pulse emerald), home and search icons
 
-- **`src/lib/sampleData.js`** — Comprehensive SA hockey sample data matching the Firestore schema:
+- **`src/lib/sampleData.js`** — Comprehensive SA water polo sample data matching the Firestore schema:
   - 4 organisations (WP, KZN Raiders, Northerns, Southern Gauteng)
-  - 6 competitions across 4 seasons (SA Hockey League 2024–2026, Senior IPT 2024–2025, U21 IPT 2023)
+  - 6 competitions across 4 seasons (SA Water Polo League 2024–2026, Senior IPT 2024–2025, U21 IPT 2023)
   - 2 people (Tyrone van der Merwe, Prashant Govender)
   - 6 player records (Tyrone's full 6-season career across all competitions)
   - 3 awards (Gold Medal, Top Goal Scorer, Player of the Tournament)
@@ -109,7 +109,7 @@ Changes staged but not yet in production.
   - **Decision pivots recorded:**
     1. **Primary accent: ember red (`#FF3B22`) → emerald (`#34d399`)** — ember red too aggressive for a dense data UI where the accent appears on every screen constantly; emerald reads as "live" and "performance"
     2. **Typeface: Bricolage Grotesque → Space Grotesk + Inter + JetBrains Mono** — three-font system assigns display, body, and data each an exclusive purpose-built family
-  - Added confirmed component patterns: Data Badges, Stat Blocks, List Items, Hockey Event Timeline Items, Live Indicator
+  - Added confirmed component patterns: Data Badges, Stat Blocks, List Items, Water Polo Event Timeline Items, Live Indicator
   - Added layout rules: mobile-first `max-w-md`, tight density, square avatars, flat elevation
 
 ---
@@ -119,7 +119,7 @@ Changes staged but not yet in production.
 ### Added
 
 - **`prototypes/view-a-live-match.html`** — Live Match Detail UI prototype (WP 2–1 KZN Raiders, Q3 42'; timeline + lineups tabs; interactive)
-- **`prototypes/view-b-standings.html`** — Competition Standings prototype (8-team SA Hockey League; team colour left-borders; mono stats)
+- **`prototypes/view-b-standings.html`** — Competition Standings prototype (8-team SA Water Polo League; team colour left-borders; mono stats)
 - **`prototypes/view-c-courtside.html`** — Courtside Scoring Admin UI prototype (split-screen, large touch buttons, player number grid modal, event log)
 
 ---

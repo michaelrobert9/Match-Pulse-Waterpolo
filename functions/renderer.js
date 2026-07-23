@@ -164,7 +164,7 @@ function clamp(str, max) {
 function mkTitle(core) {
   const sfx = ` | ${SITE_NAME}`
   const c = String(core ?? '').trim()
-  if (!c) return `${SITE_NAME} — Live Hockey Scores, Fixtures & Results SA`
+  if (!c) return `${SITE_NAME} — Live Water Polo Scores, Fixtures & Results SA`
   return c.length + sfx.length <= TITLE_MAX ? c + sfx : clamp(c, TITLE_MAX)
 }
 
@@ -180,18 +180,18 @@ function buildMeta({ kind, entity = null, path = '' }) {
 
   switch (kind) {
     case 'home':
-      core = `${SITE_NAME} — Live Hockey Scores, Fixtures & Results SA`
-      desc = 'Follow live scores, fixtures, log tables and player records for South African school and club hockey. Free to follow every competition.'
-      h1   = 'Live hockey scores, fixtures & results'
+      core = `${SITE_NAME} — Live Water Polo Scores, Fixtures & Results SA`
+      desc = 'Follow live scores, fixtures, log tables and player records for South African school and club water polo. Free to follow every competition.'
+      h1   = 'Live water polo scores, fixtures & results'
       break
     case 'plans':
-      core = 'MatchPulse Pricing — Hockey League Management Software'
-      desc = 'Run your hockey competition on MatchPulse. Free for supporters, Plus from R2,000 once-off, Pro at R15,000/yr. You pay for what you host.'
+      core = 'MatchPulse Pricing — Water Polo League Management Software'
+      desc = 'Run your water polo competition on MatchPulse. Free for supporters, Plus from R2,000 once-off, Pro at R15,000/yr. You pay for what you host.'
       h1   = 'Plans & pricing'; canonical = abs('/plans')
       break
     case 'why':
-      core = `Why ${SITE_NAME}? — Hockey League Management for South Africa`
-      desc = 'MatchPulse is the live-scoring and competition-management platform built for South African school and club hockey.'
+      core = `Why ${SITE_NAME}? — Water Polo League Management for South Africa`
+      desc = 'MatchPulse is the live-scoring and competition-management platform built for South African school and club water polo.'
       h1   = `Why ${SITE_NAME}?`; canonical = abs('/why-matchpulse')
       break
     case 'contact':
@@ -219,28 +219,28 @@ function buildMeta({ kind, entity = null, path = '' }) {
       ogType = 'article'
       break
     case 'competitions':
-      core = 'Hockey Competitions, Logs & Results'
-      desc = 'Browse live South African school and club hockey competitions — log tables, fixtures, results and top scorers, updated as games finish.'
+      core = 'Water Polo Competitions, Logs & Results'
+      desc = 'Browse live South African school and club water polo competitions — log tables, fixtures, results and top scorers, updated as games finish.'
       h1   = 'Competitions'; canonical = abs('/competitions')
       break
     case 'browse':
-      core = 'Browse MatchPulse — Hockey Competitions & Schools'
-      desc = 'Search and discover South African school and club hockey competitions, schools, clubs and teams on MatchPulse.'
+      core = 'Browse MatchPulse — Water Polo Competitions & Schools'
+      desc = 'Search and discover South African school and club water polo competitions, schools, clubs and teams on MatchPulse.'
       h1   = 'Browse'; canonical = abs('/browse')
       break
     case 'players':
-      core = 'Hockey Players & Career Records'
-      desc = 'Search hockey players across South African schools and clubs. Career appearances, goals and competition history on MatchPulse.'
+      core = 'Water Polo Players & Career Records'
+      desc = 'Search water polo players across South African schools and clubs. Career appearances, goals and competition history on MatchPulse.'
       h1   = 'Players'; canonical = abs('/players')
       break
     case 'orgs':
       if (entity?.type === 'club') {
-        core = 'Club Hockey — Fixtures, Results & Teams'
-        desc = 'South African club hockey on MatchPulse: fixtures, results, log tables and squad records.'
+        core = 'Club Water Polo — Fixtures, Results & Teams'
+        desc = 'South African club water polo on MatchPulse: fixtures, results, log tables and squad records.'
         h1   = 'Clubs'; canonical = abs('/clubs')
       } else {
-        core = 'School Hockey — Fixtures, Results & Teams'
-        desc = 'South African school hockey on MatchPulse: fixtures, results, log tables and squad records.'
+        core = 'School Water Polo — Fixtures, Results & Teams'
+        desc = 'South African school water polo on MatchPulse: fixtures, results, log tables and squad records.'
         h1   = 'Schools'; canonical = abs('/schools')
       }
       break
@@ -264,10 +264,10 @@ function buildMeta({ kind, entity = null, path = '' }) {
       const away = entity?.awayTeamName ?? 'Away'
       const final = entity?.status === 'final'
       const score = final ? ` ${entity.homeScore ?? 0}-${entity.awayScore ?? 0}` : ''
-      core      = `${home} vs ${away}${score} — Hockey ${final ? 'Result' : 'Fixture'}`
+      core      = `${home} vs ${away}${score} — Water Polo ${final ? 'Result' : 'Fixture'}`
       desc      = final
-        ? `Full result: ${home} ${entity.homeScore ?? 0}-${entity.awayScore ?? 0} ${away}. Scorers, cards and timeline on MatchPulse.`
-        : `${home} vs ${away} hockey fixture — follow it live with scores and timeline on MatchPulse.`
+        ? `Full result: ${home} ${entity.homeScore ?? 0}-${entity.awayScore ?? 0} ${away}. Scorers, exclusions and timeline on MatchPulse.`
+        : `${home} vs ${away} water polo fixture — follow it live with scores and timeline on MatchPulse.`
       h1        = `${home} vs ${away}`
       canonical = entity ? matchCanonical(entity) : abs(path)
       ogType    = 'article'
@@ -276,8 +276,8 @@ function buildMeta({ kind, entity = null, path = '' }) {
     case 'player_slug':
     case 'player_id': {
       const n = entity?.fullName ?? entity?.name ?? 'Player'
-      core      = `${n} — Hockey Career Stats`
-      desc      = `Career hockey record for ${n}: appearances, goals and competition history across all teams on MatchPulse.`
+      core      = `${n} — Water Polo Career Stats`
+      desc      = `Career water polo record for ${n}: appearances, goals and competition history across all teams on MatchPulse.`
       h1        = n
       canonical = entity?.slug ? abs(`/player/${entity.slug}`) : abs(`/players/${entity?.id ?? ''}`)
       ogImage   = entity?.photoUrl || ogImage
@@ -287,8 +287,8 @@ function buildMeta({ kind, entity = null, path = '' }) {
     case 'team_slug':
     case 'nested_team': {
       const n = entity?.displayName ?? entity?.name ?? 'Team'
-      core      = `${n} Hockey Fixtures & Results`
-      desc      = `Fixtures, results, log position and squad records for ${n}. Follow every ${n} hockey match live on MatchPulse.`
+      core      = `${n} Water Polo Fixtures & Results`
+      desc      = `Fixtures, results, log position and squad records for ${n}. Follow every ${n} water polo match live on MatchPulse.`
       h1        = n
       // Prefer the nested /{orgSlug}/{teamSeg} canonical when the org slug is
       // known; fall back to the legacy /team/:slug, then the requested path.
@@ -307,8 +307,8 @@ function buildMeta({ kind, entity = null, path = '' }) {
       const kind2 = entity?.type === 'club' ? 'club' : 'school'
       const base   = kind2 === 'club' ? 'clubs' : 'schools'
       const slug2  = entity?.slug || slugify(n)
-      core      = `${n} Hockey — Fixtures & Results`
-      desc      = `${n} hockey on MatchPulse: fixtures, results, log tables and teams.`
+      core      = `${n} Water Polo — Fixtures & Results`
+      desc      = `${n} water polo on MatchPulse: fixtures, results, log tables and teams.`
       h1        = n
       canonical = abs(`/${base}/${slug2}`)
       ogImage   = entity?.logoUrl || ogImage
@@ -316,7 +316,7 @@ function buildMeta({ kind, entity = null, path = '' }) {
     }
     default:
       core = SITE_NAME
-      desc = 'Live scores, fixtures, log tables and player records for South African school and club hockey.'
+      desc = 'Live scores, fixtures, log tables and player records for South African school and club water polo.'
       h1   = SITE_NAME
   }
 
@@ -363,7 +363,7 @@ function jsonLd(kind, entity, path) {
     ld.push({
       '@context': 'https://schema.org', '@type': 'Organization',
       name: SITE_NAME, url: ORIGIN, logo: abs('/icon.svg'),
-      description: 'Live-scoring and competition-management platform for South African field hockey.',
+      description: 'Live-scoring and competition-management platform for South African water polo.',
     })
     ld.push({
       '@context': 'https://schema.org', '@type': 'WebSite',
@@ -381,7 +381,7 @@ function jsonLd(kind, entity, path) {
     ld.push({
       '@context': 'https://schema.org', '@type': 'SportsEvent',
       name: `${entity.homeTeamName} vs ${entity.awayTeamName}`,
-      sport: 'Field hockey', eventStatus: status,
+      sport: 'Water polo', eventStatus: status,
       url: matchCanonical(entity),
       ...(startDate ? { startDate } : {}),
       competitor: [
@@ -392,11 +392,11 @@ function jsonLd(kind, entity, path) {
   }
 
   if ((kind === 'player_slug' || kind === 'player_id') && entity?.fullName) {
-    ld.push({ '@context': 'https://schema.org', '@type': 'Person', name: entity.fullName, knowsAbout: 'Field hockey', ...(entity.photoUrl ? { image: entity.photoUrl } : {}) })
+    ld.push({ '@context': 'https://schema.org', '@type': 'Person', name: entity.fullName, knowsAbout: 'Water polo', ...(entity.photoUrl ? { image: entity.photoUrl } : {}) })
   }
 
   if ((kind === 'team_slug' || kind === 'nested_team') && entity?.displayName) {
-    ld.push({ '@context': 'https://schema.org', '@type': 'SportsTeam', name: entity.displayName, sport: 'Field hockey', ...(entity.logoUrl ? { logo: entity.logoUrl } : {}) })
+    ld.push({ '@context': 'https://schema.org', '@type': 'SportsTeam', name: entity.displayName, sport: 'Water polo', ...(entity.logoUrl ? { logo: entity.logoUrl } : {}) })
   }
 
   if (kind === 'support_article' && entity) {
@@ -632,7 +632,7 @@ function injectBody(html, body) {
 //   a) there is zero chance of routing back through the ** rewrite (different domain)
 //   b) the URL is stable even if the custom domain has any transient DNS/TLS issue
 
-const SHELL_URL = process.env.SHELL_URL || 'https://match-pulse-4560e.web.app/index.html'
+const SHELL_URL = process.env.SHELL_URL || 'https://match-pulse-waterpolo.web.app/index.html'
 const SHELL_TTL_MS = 60 * 1000   // re-check the shell at most once a minute
 let shellCache = null
 let shellCachedAt = 0

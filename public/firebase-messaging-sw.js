@@ -15,11 +15,11 @@ importScripts('https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js
 importScripts('https://www.gstatic.com/firebasejs/10.12.0/firebase-messaging-compat.js')
 
 firebase.initializeApp({
-  apiKey:            'TODO_PUBLIC_API_KEY',
-  authDomain:        'TODO.firebaseapp.com',
-  projectId:         'TODO',
-  messagingSenderId: 'TODO_SENDER_ID',
-  appId:             'TODO_APP_ID',
+  apiKey:            'AIzaSyAL6VNmOgAu3n1_Phkr_zMaLEeVKpSRyvo',
+  authDomain:        'match-pulse-waterpolo.firebaseapp.com',
+  projectId:         'match-pulse-waterpolo',
+  messagingSenderId: '218123532619',
+  appId:             '1:218123532619:web:b9323e88f041b2e1f590ce',
 })
 
 const messaging = firebase.messaging()

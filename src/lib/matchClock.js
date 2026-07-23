@@ -35,9 +35,11 @@ export function formatClock(ms) {
 }
 
 // ── Countdown clock ─────────────────────────────────────────────────────────
-// The scorer's clock counts DOWN from the period length to 00:00 and then
-// keeps going into negative time (-00:14) until the period is ended manually
-// — hockey periods only end at a stoppage, never on the buzzer.
+// The scorer's clock counts DOWN from the quarter length to 00:00 and then
+// keeps going into negative time (-00:14) until the quarter is ended manually
+// — a water polo quarter ends when the timekeeper signals full time, and a
+// shot already in flight is allowed to complete before the scorer taps to end
+// the quarter.
 
 // Nominal period length in ms from the fixture config.
 export function periodLengthMs(match) {
@@ -77,7 +79,7 @@ export function formatCountdown(ms) {
 // ── Game-minute labels (timeline) ───────────────────────────────────────────
 // Timeline stamps count UP in game minutes and are period-aware: completed
 // periods contribute their NOMINAL length, never their actual duration, so a
-// Q1 that ran 14 real minutes still hands Q2 a 12' baseline (for 12-minute
+// Q1 that ran 10 real minutes still hands Q2 an 8' baseline (for 8-minute
 // quarters). An event during a period's overtime is capped at the period's
 // nominal end and flagged: 12' (ET).
 export function gameMinuteLabel(match, matchTimestamp) {
@@ -145,10 +147,12 @@ export function nextPeriodAction(match) {
   return { kind: 'end_period', label: `End ${current}`, period: current, index: resolvedIdx }
 }
 
-// Default fixture format when none is set — modern hockey: four 12-minute
-// quarters with short breaks (2 min between quarters, 5 min at half-time).
+// Default fixture format when none is set — World Aquatics water polo: four
+// 8-minute quarters (played on stopped/actual time) with short breaks (2 min
+// between quarters, 5 min at half-time). School and age-group matches often run
+// shorter quarters (5–7 min); the per-fixture form can override this default.
 export const DEFAULT_PERIODS = 4
-export const DEFAULT_PERIOD_MINUTES = 12
+export const DEFAULT_PERIOD_MINUTES = 8
 // Default break between periods in minutes (one entry per gap = periods - 1).
 export const DEFAULT_BREAK_MINUTES = [2, 5, 2]
 

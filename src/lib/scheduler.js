@@ -41,7 +41,7 @@ export function schedulePoolFixtures(slotPairs, poolId, config) {
 
   if (!eligible.length || !startDate) {
     const msg = !startDate ? 'No start date configured.' : !fields.length
-      ? 'No fields configured.' : 'No fields assigned to this pool.'
+      ? 'No venues configured.' : 'No venues assigned to this pool.'
     return { assignments: [], overflow: slotPairs.length, warnings: [msg] }
   }
 

@@ -13,7 +13,8 @@ import { slugify } from './slugify'
 const ORG_STOPWORDS = new Set([
   'the', 'of', 'and', 'a', 'an',
   'school', 'college', 'high', 'primary', 'junior', 'senior', 'preparatory', 'prep',
-  'hockey', 'club', 'hc', 'sports', 'sport', 'academy', 'institution', 'institute',
+  'water', 'polo', 'waterpolo', 'wp', 'wpc', 'aquatics', 'aquatic', 'swimming',
+  'club', 'sports', 'sport', 'academy', 'institution', 'institute',
 ])
 
 // Reduce a name to its significant lowercase tokens: strip accents, punctuation

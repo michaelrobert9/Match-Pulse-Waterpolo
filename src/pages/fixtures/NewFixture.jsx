@@ -291,7 +291,7 @@ function SchoolFixtureForm({ org, canChange, onChangeOrg }) {
             </label>
             <input type="text"
               className="w-full bg-white border border-slate-200 rounded-lg px-3 py-2.5 text-slate-900 text-sm placeholder-slate-400 focus:outline-none focus:border-emerald-500 transition-colors"
-              placeholder="e.g. Main astro, Field 1"
+              placeholder="e.g. Main pool"
               value={form.pitch}
               onChange={e => setForm(f => ({ ...f, pitch: e.target.value }))} />
           </div>
@@ -518,7 +518,7 @@ function ClubFixtureForm({ org, canChange, onChangeOrg }) {
           </label>
           <input type="text"
             className="w-full bg-white border border-slate-200 rounded-lg px-3 py-2.5 text-slate-900 text-sm placeholder-slate-400 focus:outline-none focus:border-emerald-500 transition-colors"
-            placeholder="e.g. Astro 1, Club ground"
+            placeholder="e.g. Main pool, Club pool"
             value={form.pitch}
             onChange={e => setForm(f => ({ ...f, pitch: e.target.value }))} />
         </div>

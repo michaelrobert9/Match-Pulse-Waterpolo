@@ -1,7 +1,7 @@
 {
-  "name": "MatchPulse Hockey",
+  "name": "MatchPulse Water Polo",
   "short_name": "MatchPulse",
-  "description": "School and club hockey — live scores, fixtures and player records.",
+  "description": "School and club water polo — live scores, fixtures and player records.",
   "start_url": "/",
   "display": "standalone",
   "orientation": "portrait",

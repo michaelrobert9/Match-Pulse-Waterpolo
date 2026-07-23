@@ -257,11 +257,11 @@ export default function Profile() {
         </div>
       </div>
 
-      {/* Hockey profile */}
+      {/* Water Polo profile */}
       <div className="space-y-4">
         <div className="flex items-center gap-3">
           <div className="flex-1 h-px bg-slate-100" />
-          <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400 shrink-0">Hockey profile</span>
+          <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400 shrink-0">Water Polo profile</span>
           <div className="flex-1 h-px bg-slate-100" />
         </div>
 
@@ -302,17 +302,17 @@ export default function Profile() {
           </div>
         )}
 
-        {/* SAHA number */}
+        {/* WPSA number */}
         <div>
           <label className="text-[10px] font-bold uppercase tracking-widest text-slate-500 block mb-1.5">
-            SAHA number
+            WPSA number
             <span className="ml-1.5 text-slate-400 normal-case tracking-normal font-normal">· visible on public profile</span>
           </label>
           <input value={sahaNumber} onChange={e => setSahaNumber(e.target.value)}
             placeholder="e.g. WP-2024-00123"
             className="w-full bg-white border border-slate-200 rounded-lg px-4 py-3 text-slate-900 text-sm font-mono placeholder-slate-400 focus:outline-none focus:border-emerald-500 transition-colors" />
           <p className="text-[10px] text-slate-400 mt-1.5 leading-relaxed">
-            South African Hockey Association (SAHA) registration number.
+            Water Polo South Africa (WPSA) registration number.
           </p>
         </div>
       </div>

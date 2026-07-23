@@ -89,7 +89,11 @@ export const POINTS_PRESETS = [
 ]
 
 // ── Tie-breakers ──────────────────────────────────────────────────────────────
-// Default recommended hockey order. Alphabetical is intentionally absent — it
+// Default recommended water polo order, following World Aquatics ranking of
+// tied teams: points, then the head-to-head result between the level teams,
+// then goal difference and goals scored. Goals against, wins and a fair-play
+// (misconduct & brutality) count act as further separators before an
+// administrator has to decide by lot. Alphabetical is intentionally absent — it
 // may only ever be used for display stability, never to decide an outcome. If
 // the chain is exhausted, callers must surface "Manual placement required"
 // rather than inventing a winner (manualDecision is the explicit terminal step).
@@ -105,7 +109,8 @@ export const DEFAULT_TIE_BREAKERS = [
 ]
 
 // A walkover awards the opposing team a default scoreline; the conceding team
-// records a loss. Values are configurable per competition.
+// records a loss. World Aquatics records a defaulted/forfeited water polo match
+// as 5-0 to the team present. Values are configurable per competition.
 export const DEFAULT_WALKOVER_SCORE = { concedingTeam: 0, opposingTeam: 5 }
 
 // Festival informational stats — fixed canonical column order. No position
