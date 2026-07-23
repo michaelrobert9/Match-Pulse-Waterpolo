@@ -5,6 +5,7 @@
     "indexes": "firestore.indexes.json"
   },
   "hosting": {
+    "site": "match-pulse-waterpolo",
     "public": "dist",
     "ignore": [
       "firebase.json",
