@@ -1,0 +1,107 @@
+/* Support Centre — scoped styling reusing the MatchPulse marketing token
+   palette (see WhyMatchPulse.css / Plans.css). Apple-style restraint:
+   generous whitespace, clear hierarchy, calm reading measure. */
+
+.mp-support {
+  --mp-ink: #0B1220;
+  --mp-slate: #5B6472;
+  --mp-line: #E6E8EC;
+  --mp-paper: #FBFBFC;
+  --mp-card: #FFFFFF;
+  --mp-pulse: #1FB573;
+  --mp-pulse-ink: #0E7A4D;
+  --mp-radius: 16px;
+  background: var(--mp-paper);
+  color: var(--mp-ink);
+  -webkit-font-smoothing: antialiased;
+  min-height: 100%;
+}
+.mp-support .wrap { max-width: 980px; margin: 0 auto; padding: 0 24px; }
+.mp-support .wrap-narrow { max-width: 720px; margin: 0 auto; padding: 0 24px; }
+
+/* Breadcrumb */
+.mp-support .crumb { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--mp-slate); padding: 22px 0 0; flex-wrap: wrap; }
+.mp-support .crumb a { color: var(--mp-slate); text-decoration: none; }
+.mp-support .crumb a:hover { color: var(--mp-pulse-ink); }
+.mp-support .crumb .sep { opacity: .5; }
+
+/* Hero / header */
+.mp-support .head { padding: 26px 0 8px; }
+.mp-support .eyebrow { font-size: 12px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; color: var(--mp-pulse-ink); }
+.mp-support h1 { font-size: clamp(28px, 5vw, 40px); line-height: 1.08; letter-spacing: -.025em; font-weight: 800; margin: 10px 0 0; }
+.mp-support .lede { font-size: 17px; color: var(--mp-slate); margin: 14px 0 0; line-height: 1.5; max-width: 60ch; }
+
+/* Search */
+.mp-support .search { margin: 26px 0 0; position: relative; max-width: 520px; }
+.mp-support .search input {
+  width: 100%; border: 1px solid var(--mp-line); border-radius: 12px; background: var(--mp-card);
+  padding: 12px 14px 12px 40px; font-size: 15px; color: var(--mp-ink); outline: none;
+  transition: border-color .15s ease;
+}
+.mp-support .search input:focus { border-color: var(--mp-pulse); }
+.mp-support .search svg { position: absolute; left: 13px; top: 50%; transform: translateY(-50%); color: var(--mp-slate); }
+
+/* Section cards on the index */
+.mp-support .sections { display: grid; grid-template-columns: 1fr; gap: 18px; padding: 28px 0 64px; }
+@media (min-width: 720px) { .mp-support .sections { grid-template-columns: 1fr 1fr; } }
+.mp-support .sec-card {
+  background: var(--mp-card); border: 1px solid var(--mp-line); border-radius: var(--mp-radius);
+  padding: 20px 22px; transition: box-shadow .2s ease, transform .2s ease;
+}
+.mp-support .sec-card:hover { box-shadow: 0 14px 40px -24px rgba(11,18,32,.2); transform: translateY(-1px); }
+.mp-support .sec-card h2 { font-size: 16px; font-weight: 700; margin: 0 0 12px; letter-spacing: -.01em; }
+.mp-support .sec-card ul { list-style: none; margin: 0; padding: 0; }
+.mp-support .sec-card li { margin: 0; }
+.mp-support .sec-card li a {
+  display: block; padding: 7px 0; font-size: 14.5px; color: var(--mp-ink); text-decoration: none;
+  border-bottom: 1px solid transparent;
+}
+.mp-support .sec-card li a:hover { color: var(--mp-pulse-ink); }
+.mp-support .sec-empty { color: var(--mp-slate); font-size: 14px; padding: 8px 0; }
+
+/* Article layout */
+.mp-support .article-grid { display: grid; grid-template-columns: 1fr; gap: 32px; padding: 18px 0 72px; }
+@media (min-width: 900px) { .mp-support .article-grid { grid-template-columns: 220px 1fr; align-items: start; } }
+
+/* Section nav (sidebar) */
+.mp-support .sidenav { position: sticky; top: 88px; }
+.mp-support .sidenav .label { font-size: 11px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: var(--mp-slate); margin: 0 0 10px; }
+.mp-support .sidenav a {
+  display: block; padding: 7px 10px; border-radius: 9px; font-size: 14px; color: var(--mp-slate);
+  text-decoration: none; line-height: 1.35;
+}
+.mp-support .sidenav a:hover { background: #fff; color: var(--mp-ink); }
+.mp-support .sidenav a.active { background: rgba(31,181,115,.1); color: var(--mp-pulse-ink); font-weight: 600; }
+
+/* Article body — the readable column */
+.mp-support .prose { max-width: 68ch; }
+.mp-support .prose h1 { font-size: clamp(26px, 4.5vw, 36px); line-height: 1.1; letter-spacing: -.02em; font-weight: 800; margin: 0 0 6px; }
+.mp-support .prose .meta { font-size: 13px; color: var(--mp-slate); margin: 0 0 24px; }
+.mp-support .prose h2 { font-size: 20px; font-weight: 700; letter-spacing: -.01em; margin: 34px 0 10px; }
+.mp-support .prose h3 { font-size: 16px; font-weight: 700; margin: 24px 0 8px; }
+.mp-support .prose p { font-size: 16px; line-height: 1.65; color: #25303f; margin: 0 0 16px; }
+.mp-support .prose ul, .mp-support .prose ol { margin: 0 0 18px; padding-left: 22px; }
+.mp-support .prose li { font-size: 16px; line-height: 1.6; color: #25303f; margin: 6px 0; }
+.mp-support .prose a { color: var(--mp-pulse-ink); text-decoration: none; border-bottom: 1px solid rgba(14,122,77,.25); }
+.mp-support .prose a:hover { border-bottom-color: var(--mp-pulse-ink); }
+.mp-support .prose strong { font-weight: 700; color: var(--mp-ink); }
+.mp-support .prose code { background: #f1f3f5; border-radius: 6px; padding: 1px 6px; font-size: 14px; }
+.mp-support .prose blockquote { border-left: 3px solid var(--mp-pulse); margin: 18px 0; padding: 4px 0 4px 16px; color: var(--mp-slate); }
+.mp-support .prose hr { border: 0; border-top: 1px solid var(--mp-line); margin: 28px 0; }
+
+/* Reference images / placeholders */
+.mp-support figure { margin: 22px 0; }
+.mp-support figure img { width: 100%; border: 1px solid var(--mp-line); border-radius: 12px; display: block; }
+.mp-support figcaption { font-size: 13px; color: var(--mp-slate); margin-top: 8px; text-align: center; }
+.mp-support .img-ph {
+  width: 100%; aspect-ratio: 16 / 9; border: 1px dashed #c7ccd3; border-radius: 12px; background: #f6f7f9;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; text-align: center; padding: 18px;
+}
+.mp-support .img-ph .ph-tag { font-size: 10px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: #9aa2ad; }
+.mp-support .img-ph .ph-alt { font-size: 13px; color: var(--mp-slate); max-width: 44ch; line-height: 1.4; }
+
+/* Prev/next + back */
+.mp-support .article-foot { max-width: 68ch; margin-top: 36px; padding-top: 22px; border-top: 1px solid var(--mp-line); display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.mp-support .article-foot a { font-size: 14px; color: var(--mp-pulse-ink); text-decoration: none; font-weight: 600; }
+.mp-support .back-link { display: inline-block; margin-top: 36px; font-size: 14px; color: var(--mp-slate); text-decoration: none; }
+.mp-support .back-link:hover { color: var(--mp-ink); }

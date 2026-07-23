@@ -1,0 +1,139 @@
+/* Plans page — extends the shared .mp-page token system from WhyMatchPulse.css.
+   Breakpoints: mobile <768px · tablet 768–1023px · desktop ≥1024px.
+   .wrap (from WhyMatchPulse.css) already caps content at --mp-maxw (1080px). */
+
+/* HERO — slimmer than the marketing hero (no scoreboard illustration) */
+.mp-page .plans-hero { padding: 72px 0 56px; text-align: center }
+.mp-page .plans-hero h1 { font-size: clamp(36px, 7vw, 64px); line-height: 1.04; letter-spacing: -.035em; font-weight: 800; margin: 0 auto; max-width: 16ch }
+.mp-page .plans-hero .tagline { font-size: clamp(16px, 2.2vw, 20px); color: var(--mp-slate); max-width: 34ch; margin: 20px auto 0; line-height: 1.45 }
+
+/* POSITIONING BLOCK + CLOSING STATEMENT — shared "bookend" treatment */
+.mp-page .plans-callout {
+  max-width: 640px; margin: 40px auto 0;
+  background: var(--mp-ink); color: #fff;
+  border-radius: var(--mp-radius); padding: 28px 36px; text-align: center;
+}
+.mp-page .plans-callout .co-head { font-size: clamp(18px, 2.4vw, 22px); font-weight: 800; letter-spacing: -.02em; line-height: 1.32; margin: 0 }
+.mp-page .plans-callout .co-sub  { font-size: 15px; color: #8D97A6; margin: 10px 0 0; line-height: 1.5 }
+
+/* TIER GRID — equal-height cards (grid stretches by default) */
+.mp-page .tier-grid {
+  display: grid;
+  grid-template-columns: 1fr;          /* mobile: single column */
+  gap: 18px;
+  margin-top: 48px;
+  align-items: stretch;
+}
+.mp-page .tier-card {
+  display: flex;
+  flex-direction: column;              /* lets the CTA push to the bottom */
+  background: var(--mp-card);
+  border: 1.5px solid var(--mp-line);
+  border-radius: 20px;
+  padding: 30px 24px 28px;
+  position: relative;
+  transition: transform .25s var(--mp-ease), box-shadow .25s var(--mp-ease);
+}
+.mp-page .tier-card:hover { transform: translateY(-4px); box-shadow: 0 16px 40px -16px rgba(11,18,32,.14) }
+.mp-page .tier-card.featured {
+  border-color: var(--mp-pulse);
+  box-shadow: 0 0 0 1px var(--mp-pulse), 0 20px 48px -20px rgba(31,181,115,.25);
+}
+.mp-page .tier-card.featured:hover { box-shadow: 0 0 0 1px var(--mp-pulse), 0 24px 56px -20px rgba(31,181,115,.3) }
+
+.mp-page .tier-badge {
+  align-self: flex-start;
+  font-size: 10px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase;
+  padding: 4px 10px; border-radius: 980px;
+  background: rgba(31,181,115,.12); color: var(--mp-pulse-ink);
+  margin-bottom: 18px;
+}
+.mp-page .tier-badge.featured { background: var(--mp-pulse); color: #fff }
+
+.mp-page .tier-eyebrow { font-size: 13px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--mp-slate); margin-bottom: 8px }
+.mp-page .tier-name    { font-size: 22px; font-weight: 800; letter-spacing: -.02em; margin: 0 0 6px }
+.mp-page .tier-tagline { font-size: 14px; color: var(--mp-slate); line-height: 1.45; margin: 0 0 22px }
+
+/* Price block — consistent vertical rhythm across every card */
+.mp-page .tier-price-row { display: flex; align-items: baseline; gap: 6px; margin-bottom: 4px }
+.mp-page .tier-price { font-size: clamp(32px, 4vw, 40px); font-weight: 800; letter-spacing: -.04em; line-height: 1 }
+.mp-page .tier-per   { font-size: 14px; color: var(--mp-slate); font-weight: 500 }
+.mp-page .tier-note  { font-size: 12px; color: var(--mp-slate); margin: 0 0 22px }
+
+.mp-page .tier-divider { border: none; border-top: 1px solid var(--mp-line); margin: 0 0 20px }
+
+/* Tier feature list — flex row gives a clean hanging indent on wrap */
+.mp-page .tier-diff-list { list-style: none; padding: 0; margin: 0 0 28px; display: flex; flex-direction: column; gap: 10px }
+.mp-page .tier-diff-list li {
+  font-size: 14px; font-weight: 600; color: var(--mp-ink);
+  display: flex; align-items: flex-start; gap: 10px; line-height: 1.4;
+}
+.mp-page .tier-diff-list li::before {
+  content: ""; width: 18px; height: 18px; flex: none; margin-top: 1px;
+  border-radius: 50%;
+  background: rgba(31,181,115,.12) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 24 24' fill='none' stroke='%230E7A4D' stroke-width='3.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='20 6 9 17 4 12'/%3E%3C/svg%3E") no-repeat center;
+}
+
+/* CTA — margin-top:auto pins it to the card bottom for a shared baseline */
+.mp-page .tier-cta-slot { margin-top: auto }
+.mp-page .tier-cta {
+  display: block; width: 100%; text-align: center;
+  min-height: 48px; padding: 13px 20px; border-radius: 980px;
+  font-size: 15px; font-weight: 700; text-decoration: none; line-height: 1.4;
+  cursor: pointer; border: none;
+  transition: transform .2s var(--mp-ease), box-shadow .2s var(--mp-ease), background .2s;
+}
+.mp-page .tier-cta:hover { transform: translateY(-2px) }
+.mp-page .tier-cta-primary { background: var(--mp-pulse); color: #fff; box-shadow: 0 6px 20px rgba(31,181,115,.3) }
+.mp-page .tier-cta-primary:hover { box-shadow: 0 10px 28px rgba(31,181,115,.4) }
+.mp-page .tier-cta-dark { background: var(--mp-ink); color: #fff }
+.mp-page .tier-cta-dark:hover { background: #1a2436 }
+.mp-page .tier-cta:disabled { opacity: .6; cursor: default; transform: none }
+.mp-page .tier-cta-err { font-size: 12px; color: var(--mp-live); margin: 8px 0 0; text-align: center }
+
+/* FEATURE LIST — grouped under three sub-heads */
+.mp-page .feat-groups { display: grid; grid-template-columns: 1fr; gap: 24px; margin-top: 48px }
+.mp-page .feat-group h3 { font-size: 13px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; margin: 0 0 14px; padding-bottom: 10px; border-bottom: 1px solid var(--mp-line) }
+.mp-page .feat-group ul { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 9px }
+.mp-page .feat-group li {
+  font-size: 14px; color: var(--mp-slate); line-height: 1.4;
+  display: flex; gap: 9px; align-items: flex-start;     /* hanging indent on wrap */
+}
+.mp-page .feat-group li::before {
+  content: ""; width: 16px; height: 16px; flex: none; margin-top: 1px;
+  border-radius: 50%;
+  background: rgba(31,181,115,.1) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='9' height='9' viewBox='0 0 24 24' fill='none' stroke='%230E7A4D' stroke-width='3.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='20 6 9 17 4 12'/%3E%3C/svg%3E") no-repeat center;
+}
+
+/* CLOSING STATEMENT */
+.mp-page .plans-footer { text-align: center; padding: 80px 0 72px; border-top: 1px solid var(--mp-line); margin-top: 8px }
+.mp-page .plans-footer p { font-size: clamp(15px, 2vw, 18px); color: var(--mp-slate); max-width: 36ch; margin: 0 auto 6px; line-height: 1.55 }
+.mp-page .plans-footer .payoff { margin-top: 10px }
+.mp-page .plans-footer .payoff b { color: var(--mp-ink); font-weight: 800; font-size: clamp(18px, 2.6vw, 24px); letter-spacing: -.02em }
+
+/* ── TABLET (768–1023px): three-up tiers, two-column feature list ─────────── */
+@media (min-width: 768px) {
+  .mp-page .tier-grid  { grid-template-columns: repeat(3, 1fr) }
+  .mp-page .feat-groups { grid-template-columns: repeat(2, 1fr) }
+}
+
+/* ── DESKTOP (≥1024px): three-up tiers (Plus lifted), three-column features ─ */
+@media (min-width: 1024px) {
+  .mp-page .feat-groups { grid-template-columns: repeat(3, 1fr) }
+  .mp-page .tier-card.featured { transform: translateY(-8px) }
+  .mp-page .tier-card.featured:hover { transform: translateY(-12px) }
+}
+
+@media (max-width: 640px) {
+  .mp-page .plans-hero  { padding: 52px 0 40px }
+  .mp-page .plans-callout { padding: 24px 22px }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mp-page .tier-card,
+  .mp-page .tier-card.featured,
+  .mp-page .tier-cta { transition: none }
+  .mp-page .tier-card:hover,
+  .mp-page .tier-card.featured:hover,
+  .mp-page .tier-cta:hover { transform: none }
+}

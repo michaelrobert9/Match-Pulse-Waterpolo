@@ -1,0 +1,19 @@
+{
+  "name": "MatchPulse Hockey",
+  "short_name": "MatchPulse",
+  "description": "School and club hockey — live scores, fixtures and player records.",
+  "start_url": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "theme_color": "#008C5A",
+  "background_color": "#008C5A",
+  "lang": "en-ZA",
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Match Pulse — Coming Soon</title>
+  <meta name="description" content="Match Pulse — school sport fixtures, results and player records. Launching soon." />
+
+  <!-- Social preview (looks good when shared on WhatsApp) -->
+  <meta property="og:title" content="Match Pulse" />
+  <meta property="og:description" content="School sport fixtures, results and player records. Coming soon." />
+  <meta property="og:type" content="website" />
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,800&display=swap" rel="stylesheet" />
+
+  <style>
+    :root {
+      --night: #0B0E12;
+      --night-2: #11161C;
+      --ember: #FF3B22;
+      --ink: #F4F1EC;
+      --muted: #8A93A0;
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    html, body { height: 100%; }
+
+    body {
+      font-family: "Bricolage Grotesque", Georgia, serif;
+      background: radial-gradient(1200px 600px at 50% 18%, #15202B 0%, var(--night) 60%);
+      color: var(--ink);
+      min-height: 100dvh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+      overflow: hidden;
+      text-align: center;
+      padding: 24px;
+    }
+
+    /* faint grain/texture for depth */
+    body::after {
+      content: "";
+      position: fixed;
+      inset: 0;
+      background-image: radial-gradient(rgba(255,255,255,0.025) 1px, transparent 1px);
+      background-size: 3px 3px;
+      pointer-events: none;
+      opacity: 0.6;
+    }
+
+    /* animated heartbeat / pulse line behind the content */
+    .pulse-line {
+      position: absolute;
+      left: 0;
+      top: 50%;
+      width: 100%;
+      height: 220px;
+      transform: translateY(-50%);
+      opacity: 0.18;
+      pointer-events: none;
+    }
+    .pulse-line path {
+      fill: none;
+      stroke: var(--ember);
+      stroke-width: 2.5;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+      stroke-dasharray: 1400;
+      stroke-dashoffset: 1400;
+      animation: draw 3.2s ease-in-out 0.6s forwards, glow 2.4s ease-in-out 3.8s infinite;
+    }
+
+    @keyframes draw { to { stroke-dashoffset: 0; } }
+    @keyframes glow {
+      0%, 100% { opacity: 0.6; }
+      50%      { opacity: 1; }
+    }
+
+    .stage {
+      position: relative;
+      z-index: 2;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 26px;
+    }
+
+    /* ===== LOGO GOES HERE =====
+       Later, your designer / browser-Claude can replace the wordmark
+       below with: <img src="logo.svg" alt="Match Pulse" class="logo" />
+       and drop the logo file into this same /public folder.          */
+    .logo {
+      max-width: 280px;
+      height: auto;
+      opacity: 0;
+      animation: rise 0.9s cubic-bezier(.2,.7,.2,1) 0.2s forwards;
+    }
+
+    .wordmark {
+      font-weight: 800;
+      font-size: clamp(2.6rem, 9vw, 5.4rem);
+      letter-spacing: -0.02em;
+      line-height: 0.95;
+      opacity: 0;
+      animation: rise 0.9s cubic-bezier(.2,.7,.2,1) 0.2s forwards;
+    }
+    .wordmark .pulse { color: var(--ember); }
+
+    .tagline {
+      font-weight: 600;
+      font-size: clamp(0.85rem, 2.4vw, 1.05rem);
+      letter-spacing: 0.42em;
+      text-transform: uppercase;
+      color: var(--muted);
+      padding-left: 0.42em;
+      opacity: 0;
+      animation: rise 0.9s cubic-bezier(.2,.7,.2,1) 0.55s forwards;
+    }
+
+    @keyframes rise {
+      from { opacity: 0; transform: translateY(14px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    footer {
+      position: absolute;
+      bottom: 22px;
+      z-index: 2;
+      font-size: 0.78rem;
+      letter-spacing: 0.08em;
+      color: var(--muted);
+      opacity: 0;
+      animation: rise 0.9s ease 1s forwards;
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      * { animation: none !important; }
+      .pulse-line path { stroke-dashoffset: 0; }
+      .logo, .wordmark, .tagline, footer { opacity: 1 !important; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Heartbeat / pulse line -->
+  <svg class="pulse-line" viewBox="0 0 1400 220" preserveAspectRatio="none" aria-hidden="true">
+    <path d="M0,110 L520,110 L560,110 L585,40 L620,180 L650,75 L685,135 L715,110 L1400,110" />
+  </svg>
+
+  <div class="stage">
+    <!-- Logo placeholder: swap this <h1> for your logo image later -->
+    <h1 class="wordmark">Match<span class="pulse">Pulse</span></h1>
+
+    <p class="tagline">Coming&nbsp;Soon</p>
+  </div>
+
+  <footer>&copy; 2026 Match Pulse</footer>
+
+</body>
+</html>

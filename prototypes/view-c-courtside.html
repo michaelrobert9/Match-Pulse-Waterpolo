@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Match Pulse — Courtside</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: { extend: { fontFamily: {
+        sans: ['Inter','system-ui','sans-serif'],
+        display: ['Space Grotesk','system-ui','sans-serif'],
+        mono: ['JetBrains Mono','Courier New','monospace']
+      }}}
+    }
+  </script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet" />
+</head>
+<body class="bg-[#0A0C10] text-slate-100 font-sans antialiased">
+<div class="max-w-md mx-auto min-h-screen bg-[#0A0C10] flex flex-col">
+
+  <!-- Admin banner -->
+  <div class="bg-amber-500/10 border-b border-amber-500/30 px-4 py-2 flex items-center justify-between">
+    <span class="text-amber-400 text-[9px] font-mono uppercase tracking-widest">Technical Table · Admin Mode</span>
+    <span class="text-[9px] font-mono text-slate-500">SA Hockey League · Rd 7</span>
+  </div>
+
+  <!-- Score banner -->
+  <div class="bg-[#0F1219] border-b border-slate-800 px-4 py-3">
+    <div class="grid grid-cols-[1fr_auto_1fr] items-center gap-2">
+      <div>
+        <div class="text-[8px] uppercase tracking-widest font-mono text-[#00CC66] mb-0.5">Home</div>
+        <div class="font-display font-bold text-base text-white leading-tight">Western Province</div>
+      </div>
+      <div class="flex items-center gap-2.5">
+        <span id="score-home" class="font-display font-bold text-4xl text-white tabular-nums">2</span>
+        <div class="flex flex-col items-center">
+          <span class="text-slate-600 text-xl font-display leading-none">–</span>
+          <span class="text-[8px] font-mono text-emerald-400 flex items-center gap-1 mt-0.5"><span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse inline-block"></span>Q3 42'</span>
+        </div>
+        <span id="score-away" class="font-display font-bold text-4xl text-white tabular-nums">1</span>
+      </div>
+      <div class="text-right">
+        <div class="text-[8px] uppercase tracking-widest font-mono text-[#6BAED6] mb-0.5">Away</div>
+        <div class="font-display font-bold text-base text-white leading-tight">KZN Raiders</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Action grid -->
+  <div class="grid grid-cols-2 divide-x divide-slate-800 flex-1 min-h-0">
+
+    <!-- HOME (WP) -->
+    <div class="flex flex-col p-3 gap-2.5">
+      <div class="text-[9px] uppercase tracking-widest font-mono text-[#00CC66] text-center pb-1 border-b border-[#00A859]/20">Western Province</div>
+
+      <button onclick="promptPlayer('Goal','home')" class="flex-1 min-h-[72px] bg-emerald-500/10 border border-emerald-500/40 rounded-xl flex flex-col items-center justify-center gap-1.5 active:scale-[.97] transition-transform touch-manipulation select-none">
+        <svg class="w-7 h-7 text-emerald-400" fill="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" opacity=".2"/><circle cx="12" cy="12" r="5"/></svg>
+        <span class="text-xs font-bold text-emerald-300 uppercase tracking-wider">Goal</span>
+        <span class="text-[9px] font-mono text-slate-500">Field Goal</span>
+      </button>
+
+      <button onclick="promptPlayer('PC Goal','home')" class="flex-1 min-h-[72px] bg-emerald-500/10 border border-emerald-500/40 rounded-xl flex flex-col items-center justify-center gap-1.5 active:scale-[.97] transition-transform touch-manipulation select-none">
+        <svg class="w-7 h-7 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" stroke-width="1.5"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 7v5l3.5 3.5"/></svg>
+        <span class="text-xs font-bold text-emerald-300 uppercase tracking-wider">PC Goal</span>
+        <span class="text-[9px] font-mono text-slate-500">Penalty Corner</span>
+      </button>
+
+      <button onclick="promptPlayer('Green Card','home')" class="flex-1 min-h-[72px] bg-green-700/10 border border-green-600/30 rounded-xl flex flex-col items-center justify-center gap-1.5 active:scale-[.97] transition-transform touch-manipulation select-none">
+        <div class="w-6 h-8 bg-green-500/25 border border-green-500/50 rounded flex items-center justify-center">
+          <div class="w-3.5 h-5 bg-green-400 rounded-sm"></div>
+        </div>
+        <span class="text-xs font-bold text-green-400 uppercase tracking-wider">Green Card</span>
+        <span class="text-[9px] font-mono text-slate-500">2 min suspension</span>
+      </button>
+
+      <button onclick="promptPlayer('Yellow Card','home')" class="flex-1 min-h-[72px] bg-yellow-500/10 border border-yellow-500/30 rounded-xl flex flex-col items-center justify-center gap-1.5 active:scale-[.97] transition-transform touch-manipulation select-none">
+        <div class="w-6 h-8 bg-yellow-400/25 border border-yellow-400/50 rounded flex items-center justify-center">
+          <div class="w-3.5 h-5 bg-yellow-400 rounded-sm"></div>
+        </div>
+        <span class="text-xs font-bold text-yellow-400 uppercase tracking-wider">Yellow Card</span>
+        <span class="text-[9px] font-mono text-slate-500">5 min suspension</span>
+      </button>
+    </div>
+
+    <!-- AWAY (KZN) -->
+    <div class="flex flex-col p-3 gap-2.5">
+      <div class="text-[9px] uppercase tracking-widest font-mono text-[#6BAED6] text-center pb-1 border-b border-[#3A7BD5]/20">KZN Raiders</div>
+
+      <button onclick="promptPlayer('Goal','away')" class="flex-1 min-h-[72px] bg-blue-500/10 border border-blue-500/40 rounded-xl flex flex-col items-center justify-center gap-1.5 active:scale-[.97] transition-transform touch-manipulation select-none">
+        <svg class="w-7 h-7 text-blue-400" fill="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" opacity=".2"/><circle cx="12" cy="12" r="5"/></svg>
+        <span class="text-xs font-bold text-blue-300 uppercase tracking-wider">Goal</span>
+        <span class="text-[9px] font-mono text-slate-500">Field Goal</span>
+      </button>
+
+      <button onclick="promptPlayer('PC Goal','away')" class="flex-1 min-h-[72px] bg-blue-500/10 border border-blue-500/40 rounded-xl flex flex-col items-center justify-center gap-1.5 active:scale-[.97] transition-transform touch-manipulation select-none">
+        <svg class="w-7 h-7 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" stroke-width="1.5"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 7v5l3.5 3.5"/></svg>
+        <span class="text-xs font-bold text-blue-300 uppercase tracking-wider">PC Goal</span>
+        <span class="text-[9px] font-mono text-slate-500">Penalty Corner</span>
+      </button>
+
+      <button onclick="promptPlayer('Green Card','away')" class="flex-1 min-h-[72px] bg-green-700/10 border border-green-600/30 rounded-xl flex flex-col items-center justify-center gap-1.5 active:scale-[.97] transition-transform touch-manipulation select-none">
+        <div class="w-6 h-8 bg-green-500/25 border border-green-500/50 rounded flex items-center justify-center">
+          <div class="w-3.5 h-5 bg-green-400 rounded-sm"></div>
+        </div>
+        <span class="text-xs font-bold text-green-400 uppercase tracking-wider">Green Card</span>
+        <span class="text-[9px] font-mono text-slate-500">2 min suspension</span>
+      </button>
+
+      <button onclick="promptPlayer('Yellow Card','away')" class="flex-1 min-h-[72px] bg-yellow-500/10 border border-yellow-500/30 rounded-xl flex flex-col items-center justify-center gap-1.5 active:scale-[.97] transition-transform touch-manipulation select-none">
+        <div class="w-6 h-8 bg-yellow-400/25 border border-yellow-400/50 rounded flex items-center justify-center">
+          <div class="w-3.5 h-5 bg-yellow-400 rounded-sm"></div>
+        </div>
+        <span class="text-xs font-bold text-yellow-400 uppercase tracking-wider">Yellow Card</span>
+        <span class="text-[9px] font-mono text-slate-500">5 min suspension</span>
+      </button>
+    </div>
+
+  </div>
+
+  <!-- Event log -->
+  <div class="border-t border-slate-800 bg-[#0F1219] px-4 py-2.5 shrink-0">
+    <div class="flex items-center justify-between mb-2">
+      <span class="text-[8px] uppercase tracking-widest font-mono text-slate-600">Recent Events</span>
+      <button onclick="undoLast()" class="text-[8px] uppercase tracking-widest font-mono text-red-400/70 hover:text-red-400 transition-colors">Undo Last</button>
+    </div>
+    <div id="event-log" class="space-y-1 max-h-16 overflow-y-auto">
+      <div class="flex items-center gap-2 text-[10px] font-mono"><span class="text-slate-600 w-7 shrink-0">42'</span><span class="w-1.5 h-3 bg-yellow-400 rounded-sm inline-block shrink-0"></span><span class="text-slate-300">Yellow Card · KZN #14 · S. Dlamini</span></div>
+      <div class="flex items-center gap-2 text-[10px] font-mono"><span class="text-slate-600 w-7 shrink-0">38'</span><svg class="w-3 h-3 text-emerald-400 shrink-0" fill="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="12" r="5"/></svg><span class="text-slate-300">Goal · WP #7 · T. van der Merwe</span></div>
+    </div>
+  </div>
+
+</div>
+
+<!-- PLAYER NUMBER MODAL -->
+<div id="modal" class="hidden fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-end justify-center">
+  <div class="w-full max-w-md bg-[#0F1219] border-t border-slate-700 rounded-t-2xl">
+    <div class="flex items-center justify-between px-5 pt-5 pb-3 border-b border-slate-800">
+      <div>
+        <div id="modal-title" class="font-display font-bold text-white text-xl"></div>
+        <div id="modal-team" class="text-[10px] font-mono text-slate-500 uppercase tracking-widest mt-0.5"></div>
+      </div>
+      <button onclick="closeModal()" class="w-9 h-9 rounded-full bg-slate-800 flex items-center justify-center text-slate-400 hover:text-white">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+      </button>
+    </div>
+    <div class="px-5 pt-3 pb-1"><span class="text-[9px] uppercase tracking-widest font-mono text-slate-500">Select Player Number</span></div>
+    <div class="grid grid-cols-4 gap-2 px-5 pb-6" id="number-grid"></div>
+  </div>
+</div>
+
+<script>
+  let pendingAction = null;
+  let pendingTeam   = null;
+  let minute = 42;
+
+  function promptPlayer(action, team) {
+    pendingAction = action;
+    pendingTeam   = team;
+    document.getElementById('modal-title').textContent = action;
+    document.getElementById('modal-team').textContent  = team === 'home' ? 'Western Province' : 'KZN Raiders';
+
+    const isHome   = team === 'home';
+    const accent   = isHome
+      ? 'border-emerald-500/50 text-emerald-200 hover:bg-emerald-500/20 active:bg-emerald-500/30'
+      : 'border-blue-500/50 text-blue-200 hover:bg-blue-500/20 active:bg-blue-500/30';
+
+    const grid = document.getElementById('number-grid');
+    grid.innerHTML = '';
+    for (let i = 1; i <= 16; i++) {
+      const btn = document.createElement('button');
+      btn.className = `h-14 rounded-xl border ${accent} font-display font-bold text-xl transition-colors active:scale-95 transition-transform flex flex-col items-center justify-center`;
+      btn.innerHTML = `<span>${i}</span>${i === 1 ? '<span class="text-[8px] font-mono text-slate-600 font-normal leading-none">GK</span>' : ''}`;
+      btn.addEventListener('click', () => logEvent(i));
+      grid.appendChild(btn);
+    }
+    document.getElementById('modal').classList.remove('hidden');
+  }
+
+  function logEvent(num) {
+    minute++;
+    const teamShort = pendingTeam === 'home' ? 'WP' : 'KZN';
+    const isGoal = pendingAction === 'Goal' || pendingAction === 'PC Goal';
+
+    if (isGoal) {
+      const key = pendingTeam === 'home' ? 'score-home' : 'score-away';
+      document.getElementById(key).textContent = parseInt(document.getElementById(key).textContent) + 1;
+    }
+
+    const log = document.getElementById('event-log');
+    const entry = document.createElement('div');
+    entry.className = 'flex items-center gap-2 text-[10px] font-mono';
+
+    let icon;
+    if (isGoal) icon = '<svg class="w-3 h-3 text-emerald-400 shrink-0" fill="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="12" r="5"/></svg>';
+    else if (pendingAction === 'Yellow Card') icon = '<span class="w-1.5 h-3 bg-yellow-400 rounded-sm inline-block shrink-0"></span>';
+    else icon = '<span class="w-1.5 h-3 bg-green-400 rounded-sm inline-block shrink-0"></span>';
+
+    entry.innerHTML = `<span class="text-slate-600 w-7 shrink-0">${minute}'</span>${icon}<span class="text-slate-300">${pendingAction} · ${teamShort} #${num}</span>`;
+    log.prepend(entry);
+
+    closeModal();
+    showToast(`Logged · ${pendingAction} · ${teamShort} #${num}`);
+  }
+
+  function closeModal() {
+    document.getElementById('modal').classList.add('hidden');
+    pendingAction = pendingTeam = null;
+  }
+
+  function undoLast() {
+    const log = document.getElementById('event-log');
+    if (log.firstChild) log.removeChild(log.firstChild);
+  }
+
+  function showToast(msg) {
+    const t = document.createElement('div');
+    t.id = 'toast';
+    t.className = 'fixed top-6 left-1/2 -translate-x-1/2 bg-slate-800 border border-slate-700 rounded-full px-4 py-2 text-xs font-mono text-white z-[60]';
+    t.textContent = msg;
+    document.body.appendChild(t);
+    setTimeout(() => t.remove(), 1800);
+  }
+
+  document.getElementById('modal').addEventListener('click', e => { if (e.target === e.currentTarget) closeModal(); });
+</script>
+</body>
+</html>

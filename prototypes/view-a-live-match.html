@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Match Pulse — Live Match</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: { extend: { fontFamily: {
+        sans: ['Inter','system-ui','sans-serif'],
+        display: ['Space Grotesk','system-ui','sans-serif'],
+        mono: ['JetBrains Mono','Courier New','monospace']
+      }}}
+    }
+  </script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet" />
+</head>
+<body class="bg-[#0A0C10] text-slate-100 font-sans antialiased">
+<div class="max-w-md mx-auto min-h-screen bg-[#0A0C10]">
+
+  <!-- Nav -->
+  <div class="flex items-center justify-between px-4 py-3 border-b border-slate-800 bg-[#0F1219]">
+    <button class="w-8 h-8 flex items-center justify-center text-slate-400">
+      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
+    </button>
+    <span class="text-[10px] uppercase tracking-widest font-mono text-slate-500">SA Hockey League · Rd 7</span>
+    <button class="w-8 h-8 flex items-center justify-center text-slate-400">
+      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z"/></svg>
+    </button>
+  </div>
+
+  <!-- Match Header -->
+  <div class="bg-[#0F1219] border-b border-slate-800">
+    <div class="flex items-center justify-center gap-2 pt-3 pb-1">
+      <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+      <span class="text-emerald-400 text-[10px] font-mono uppercase tracking-widest">Live · Q3 · 42'</span>
+    </div>
+    <div class="grid grid-cols-[1fr_auto_1fr] items-center px-5 py-3 gap-3">
+      <div class="flex flex-col items-center gap-1.5">
+        <div class="w-11 h-11 rounded-full bg-[#006B3C]/20 border-2 border-[#00A859] flex items-center justify-center">
+          <span class="text-[10px] font-bold text-[#00CC66] font-mono tracking-wider">WP</span>
+        </div>
+        <span class="text-[9px] uppercase tracking-wide text-slate-300 font-semibold text-center leading-tight">Western<br/>Province</span>
+        <div class="w-10 h-0.5 rounded-full bg-[#00A859]"></div>
+      </div>
+      <div class="flex flex-col items-center gap-1">
+        <div class="font-display font-bold text-5xl text-white tracking-tight leading-none tabular-nums">
+          2<span class="text-slate-700 text-3xl mx-1.5">–</span>1
+        </div>
+        <span class="text-[9px] font-mono text-slate-600 uppercase tracking-widest">HT&nbsp;1–1</span>
+      </div>
+      <div class="flex flex-col items-center gap-1.5">
+        <div class="w-11 h-11 rounded-full bg-[#003087]/20 border-2 border-[#3A7BD5] flex items-center justify-center">
+          <span class="text-[10px] font-bold text-[#6BAED6] font-mono tracking-wider">KZN</span>
+        </div>
+        <span class="text-[9px] uppercase tracking-wide text-slate-300 font-semibold text-center leading-tight">KZN<br/>Raiders</span>
+        <div class="w-10 h-0.5 rounded-full bg-[#3A7BD5]"></div>
+      </div>
+    </div>
+    <div class="grid grid-cols-[1fr_1px_1fr] pb-3 mx-5">
+      <div class="grid grid-cols-3 text-center pr-3">
+        <div><span class="font-mono text-xs font-semibold text-white block">7</span><span class="text-[8px] uppercase tracking-widest text-slate-600">Shots</span></div>
+        <div><span class="font-mono text-xs font-semibold text-white block">3</span><span class="text-[8px] uppercase tracking-widest text-slate-600">PCs</span></div>
+        <div><span class="font-mono text-xs font-semibold text-white block">0</span><span class="text-[8px] uppercase tracking-widest text-slate-600">Cards</span></div>
+      </div>
+      <div class="bg-slate-800"></div>
+      <div class="grid grid-cols-3 text-center pl-3">
+        <div><span class="font-mono text-xs font-semibold text-white block">5</span><span class="text-[8px] uppercase tracking-widest text-slate-600">Shots</span></div>
+        <div><span class="font-mono text-xs font-semibold text-white block">4</span><span class="text-[8px] uppercase tracking-widest text-slate-600">PCs</span></div>
+        <div><span class="font-mono text-xs font-semibold text-white block">2</span><span class="text-[8px] uppercase tracking-widest text-slate-600">Cards</span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Tabs -->
+  <div class="flex border-b border-slate-800 bg-[#0F1219] sticky top-0 z-10">
+    <button id="tab-timeline" onclick="showTab('timeline')" class="flex-1 py-2.5 text-[10px] uppercase tracking-widest font-semibold text-emerald-400 border-b-2 border-emerald-400 transition-colors">Timeline</button>
+    <button id="tab-lineups" onclick="showTab('lineups')" class="flex-1 py-2.5 text-[10px] uppercase tracking-widest font-semibold text-slate-500 border-b-2 border-transparent transition-colors">Lineups</button>
+  </div>
+
+  <!-- TIMELINE -->
+  <div id="panel-timeline" class="px-4 pt-2 pb-8">
+    <div class="flex items-center gap-2 py-2.5">
+      <div class="flex-1 h-px bg-slate-800/60"></div>
+      <span class="text-[9px] font-mono uppercase tracking-widest text-slate-600 flex items-center gap-1.5"><span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse inline-block"></span>Q3 In Progress</span>
+      <div class="flex-1 h-px bg-slate-800/60"></div>
+    </div>
+    <!-- 42' Yellow KZN -->
+    <div class="flex items-start gap-3 py-2.5 border-b border-slate-800/40">
+      <span class="font-mono text-[10px] text-slate-500 w-7 text-right shrink-0 mt-0.5">42'</span>
+      <div class="w-5 h-5 rounded bg-yellow-400/15 border border-yellow-500/40 flex items-center justify-center shrink-0 mt-0.5"><div class="w-1.5 h-2.5 bg-yellow-400 rounded-sm"></div></div>
+      <div class="flex-1 min-w-0">
+        <div class="flex items-center justify-between gap-2">
+          <span class="text-sm font-semibold text-white">Yellow Card <span class="text-yellow-400 font-mono text-[10px] font-normal">5m</span></span>
+          <span class="text-[9px] uppercase tracking-wider font-mono text-[#6BAED6] shrink-0">KZN</span>
+        </div>
+        <span class="text-[11px] text-slate-400">S. Dlamini · #14</span>
+      </div>
+    </div>
+    <!-- 38' Goal WP -->
+    <div class="flex items-start gap-3 py-2.5 border-b border-slate-800/40">
+      <span class="font-mono text-[10px] text-slate-500 w-7 text-right shrink-0 mt-0.5">38'</span>
+      <div class="w-5 h-5 rounded-full bg-emerald-500/15 border border-emerald-500/40 flex items-center justify-center shrink-0 mt-0.5"><svg class="w-3 h-3 text-emerald-400" fill="currentColor" viewBox="0 0 20 20"><circle cx="10" cy="10" r="6"/></svg></div>
+      <div class="flex-1 min-w-0">
+        <div class="flex items-center justify-between gap-2">
+          <span class="text-sm font-semibold text-white">Field Goal</span>
+          <span class="text-[9px] uppercase tracking-wider font-mono text-[#00CC66] shrink-0 font-semibold">WP 2–1</span>
+        </div>
+        <span class="text-[11px] text-slate-400">T. van der Merwe · #7</span>
+      </div>
+    </div>
+    <!-- Q3 start -->
+    <div class="flex items-center gap-2 py-2.5"><div class="flex-1 h-px bg-slate-800/60"></div><span class="text-[9px] font-mono uppercase tracking-widest text-slate-600">Q3 Start</span><div class="flex-1 h-px bg-slate-800/60"></div></div>
+    <!-- 29' Green KZN -->
+    <div class="flex items-start gap-3 py-2.5 border-b border-slate-800/40">
+      <span class="font-mono text-[10px] text-slate-500 w-7 text-right shrink-0 mt-0.5">29'</span>
+      <div class="w-5 h-5 rounded bg-green-600/15 border border-green-500/40 flex items-center justify-center shrink-0 mt-0.5"><div class="w-1.5 h-2.5 bg-green-400 rounded-sm"></div></div>
+      <div class="flex-1 min-w-0">
+        <div class="flex items-center justify-between gap-2">
+          <span class="text-sm font-semibold text-white">Green Card <span class="text-green-400 font-mono text-[10px] font-normal">2m</span></span>
+          <span class="text-[9px] uppercase tracking-wider font-mono text-[#6BAED6] shrink-0">KZN</span>
+        </div>
+        <span class="text-[11px] text-slate-400">J. Nkosi · #11</span>
+      </div>
+    </div>
+    <!-- HT -->
+    <div class="flex items-center gap-2 py-2.5"><div class="flex-1 h-px bg-slate-800/60"></div><span class="text-[9px] font-mono uppercase tracking-widest text-slate-600">Half-time · 1–1</span><div class="flex-1 h-px bg-slate-800/60"></div></div>
+    <!-- 22' PC Goal KZN -->
+    <div class="flex items-start gap-3 py-2.5 border-b border-slate-800/40">
+      <span class="font-mono text-[10px] text-slate-500 w-7 text-right shrink-0 mt-0.5">22'</span>
+      <div class="w-5 h-5 rounded-full bg-emerald-500/15 border border-emerald-500/40 flex items-center justify-center shrink-0 mt-0.5"><svg class="w-3 h-3 text-emerald-400" fill="currentColor" viewBox="0 0 20 20"><circle cx="10" cy="10" r="6"/></svg></div>
+      <div class="flex-1 min-w-0">
+        <div class="flex items-center justify-between gap-2">
+          <span class="text-sm font-semibold text-white">PC Goal</span>
+          <span class="text-[9px] uppercase tracking-wider font-mono text-[#6BAED6] shrink-0 font-semibold">KZN 1–1</span>
+        </div>
+        <span class="text-[11px] text-slate-400">P. Govender · #9 · Penalty Corner</span>
+      </div>
+    </div>
+    <!-- Q2 start -->
+    <div class="flex items-center gap-2 py-2.5"><div class="flex-1 h-px bg-slate-800/60"></div><span class="text-[9px] font-mono uppercase tracking-widest text-slate-600">Q2 Start</span><div class="flex-1 h-px bg-slate-800/60"></div></div>
+    <!-- 08' Goal WP -->
+    <div class="flex items-start gap-3 py-2.5 border-b border-slate-800/40">
+      <span class="font-mono text-[10px] text-slate-500 w-7 text-right shrink-0 mt-0.5">08'</span>
+      <div class="w-5 h-5 rounded-full bg-emerald-500/15 border border-emerald-500/40 flex items-center justify-center shrink-0 mt-0.5"><svg class="w-3 h-3 text-emerald-400" fill="currentColor" viewBox="0 0 20 20"><circle cx="10" cy="10" r="6"/></svg></div>
+      <div class="flex-1 min-w-0">
+        <div class="flex items-center justify-between gap-2">
+          <span class="text-sm font-semibold text-white">Field Goal</span>
+          <span class="text-[9px] uppercase tracking-wider font-mono text-[#00CC66] shrink-0 font-semibold">WP 1–0</span>
+        </div>
+        <span class="text-[11px] text-slate-400">A. Groenewald · #12</span>
+      </div>
+    </div>
+    <div class="flex items-center gap-2 py-2.5"><div class="flex-1 h-px bg-slate-800/60"></div><span class="text-[9px] font-mono uppercase tracking-widest text-slate-600">Kick-off · 14:30</span><div class="flex-1 h-px bg-slate-800/60"></div></div>
+  </div>
+
+  <!-- LINEUPS -->
+  <div id="panel-lineups" class="hidden px-4 pt-3 pb-8">
+    <div class="grid grid-cols-2 gap-5">
+      <div>
+        <div class="text-[8px] uppercase tracking-widest text-[#00CC66] font-mono mb-2 pb-1 border-b border-[#00A859]/20">W. Province</div>
+        <div class="text-[7px] uppercase tracking-widest text-slate-700 font-mono mb-1">Starting</div>
+        <div class="flex items-center gap-1.5 py-1 border-b border-slate-800/30"><span class="font-mono text-[9px] text-slate-600 w-4 text-right shrink-0">1</span><span class="text-[11px] text-slate-200">J. Smith</span><span class="ml-auto text-[7px] font-mono text-slate-600">GK</span></div>
+        <div class="flex items-center gap-1.5 py-1 border-b border-slate-800/30"><span class="font-mono text-[9px] text-slate-600 w-4 text-right shrink-0">2</span><span class="text-[11px] text-slate-200">R. Hendricks</span></div>
+        <div class="flex items-center gap-1.5 py-1 border-b border-slate-800/30"><span class="font-mono text-[9px] text-slate-600 w-4 text-right shrink-0">3</span><span class="text-[11px] text-emerald-300 font-medium">M. Botha</span></div>
+        <div class="flex items-center gap-1.5 py-1 border-b border-slate-800/30"><span class="font-mono text-[9px] text-slate-600 w-4 text-right shrink-0">4</span><span class="text-[11px] text-slate-200">C. Petersen</span></div>
+        <div class="flex items-center gap-1.5 py-1 border-b border-slate-800/30"><span class="font-mono text-[9px] text-slate-600 w-4 text-right shrink-0">5</span><span class="text-[11px] text-slate-200">B. du Toit</span></div>
+        <div class="flex items-center gap-1.5 py-1 border-b border-slate-800/30"><span class="font-mono text-[9px] text-slate-600 w-4 text-right shrink-0">6</span><span class="text-[11px] text-slate-200">W. Arendse</span></div>
+        <div class="flex items-center gap-1.5 py-1 border-b border-slate-800/30"><span class="font-mono text-[9px] text-slate-600 w-4 text-right shrink-0">7</span><span class="text-[11px] text-emerald-300 font-medium">T. v.d. Merwe ⚽</span></div>
+        <div class="flex items-center gap-1.5 py-1 border-b border-slate-800/30"><span class="font-mono text-[9px] text-slate-600 w-4 text-right shrink-0">8</span><span class="text-[11px] text-slate-200">L. Fortuin</span></div>
+        <div class="flex items-center gap-1.5 py-1 border-b border-slate-800/30"><span class="font-mono text-[9px] text-slate-600 w-4 text-right shrink-0">9</span><span class="text-[11px] text-slate-200">N. October</span></div>
+        <div class="flex items-center gap-1.5 py-1 border-b border-slate-800/30"><span class="font-mono text-[9px] text-slate-600 w-4 text-right shrink-0">10</span><span class="text-[11px] text-slate-200">D. Jooste</span></div>
+        <div class="flex items-center gap-1.5 py-1 border-b border-slate-800/30"><span class="font-mono text-[9px] text-slate-600 w-4 text-right shrink-0">11</span><span class="text-[11px] text-slate-200">K. Salie</span></div>
+        <div class="flex items-center gap-1.5 py-1 border-b border-slate-800/30"><span class="font-mono text-[9px] text-slate-600 w-4 text-right shrink-0">12</span><span class="text-[11px] text-emerald-300 font-medium">A. Groenewald ⚽</span></div>
+        <div class="text-[7px] uppercase tracking-widest text-slate-700 font-mono mt-2 mb-1">Subs</div>
+        <div class="flex items-center gap-1.5 py-1 border-b border-slate-800/30 opacity-50"><span class="font-mono text-[9px] text-slate-600 w-4 text-right shrink-0">13</span><span class="text-[11px] text-slate-300">F. Fredericks</span></div>
+        <div class="flex items-center gap-1.5 py-1 border-b border-slate-800/30 opacity-50"><span class="font-mono text-[9px] text-slate-600 w-4 text-right shrink-0">14</span><span class="text-[11px] text-slate-300">G. Jardine</span></div>
+        <div class="flex items-center gap-1.5 py-1 opacity-50"><span class="font-mono text-[9px] text-slate-600 w-4 text-right shrink-0">15</span><span class="text-[11px] text-slate-300">H. Carstens</span></div>
+      </div>
+      <div>
+        <div class="text-[8px] uppercase tracking-widest text-[#6BAED6] font-mono mb-2 pb-1 border-b border-[#3A7BD5]/20">KZN Raiders</div>
+        <div class="text-[7px] uppercase tracking-widest text-slate-700 font-mono mb-1">Starting</div>
+        <div class="flex items-center gap-1.5 py-1 border-b border-slate-800/30"><span class="font-mono text-[9px] text-slate-600 w-4 text-right shrink-0">1</span><span class="text-[11px] text-slate-200">T. Naidoo</span><span class="ml-auto text-[7px] font-mono text-slate-600">GK</span></div>
+        <div class="flex items-center gap-1.5 py-1 border-b border-slate-800/30"><span class="font-mono text-[9px] text-slate-600 w-4 text-right shrink-0">2</span><span class="text-[11px] text-slate-200">B. Pillay</span></div>
+        <div class="flex items-center gap-1.5 py-1 border-b border-slate-800/30"><span class="font-mono text-[9px] text-slate-600 w-4 text-right shrink-0">3</span><span class="text-[11px] text-slate-200">C. Moodley</span></div>
+        <div class="flex items-center gap-1.5 py-1 border-b border-slate-800/30"><span class="font-mono text-[9px] text-slate-600 w-4 text-right shrink-0">4</span><span class="text-[11px] text-slate-200">R. Singh</span></div>
+        <div class="flex items-center gap-1.5 py-1 border-b border-slate-800/30"><span class="font-mono text-[9px] text-slate-600 w-4 text-right shrink-0">5</span><span class="text-[11px] text-slate-200">A. Sibiya</span></div>
+        <div class="flex items-center gap-1.5 py-1 border-b border-slate-800/30"><span class="font-mono text-[9px] text-slate-600 w-4 text-right shrink-0">6</span><span class="text-[11px] text-slate-200">M. Thusi</span></div>
+        <div class="flex items-center gap-1.5 py-1 border-b border-slate-800/30"><span class="font-mono text-[9px] text-slate-600 w-4 text-right shrink-0">7</span><span class="text-[11px] text-slate-200">K. Reddy</span></div>
+        <div class="flex items-center gap-1.5 py-1 border-b border-slate-800/30"><span class="font-mono text-[9px] text-slate-600 w-4 text-right shrink-0">8</span><span class="text-[11px] text-slate-200">L. Zulu</span></div>
+        <div class="flex items-center gap-1.5 py-1 border-b border-slate-800/30"><span class="font-mono text-[9px] text-slate-600 w-4 text-right shrink-0">9</span><span class="text-[11px] text-blue-300 font-medium">P. Govender ⚽</span></div>
+        <div class="flex items-center gap-1.5 py-1 border-b border-slate-800/30"><span class="font-mono text-[9px] text-slate-600 w-4 text-right shrink-0">10</span><span class="text-[11px] text-slate-200">S. Maharaj</span></div>
+        <div class="flex items-center gap-1.5 py-1 border-b border-slate-800/30"><span class="font-mono text-[9px] text-slate-600 w-4 text-right shrink-0">11</span><span class="text-[11px] text-green-300 font-medium">J. Nkosi 🟩</span></div>
+        <div class="flex items-center gap-1.5 py-1 border-b border-slate-800/30"><span class="font-mono text-[9px] text-slate-600 w-4 text-right shrink-0">12</span><span class="text-[11px] text-slate-200">V. Ntanzi</span></div>
+        <div class="text-[7px] uppercase tracking-widest text-slate-700 font-mono mt-2 mb-1">Subs</div>
+        <div class="flex items-center gap-1.5 py-1 border-b border-slate-800/30 opacity-50"><span class="font-mono text-[9px] text-slate-600 w-4 text-right shrink-0">13</span><span class="text-[11px] text-slate-300">N. Cele</span></div>
+        <div class="flex items-center gap-1.5 py-1 border-b border-slate-800/30 opacity-50"><span class="font-mono text-[9px] text-slate-600 w-4 text-right shrink-0">14</span><span class="text-[11px] text-yellow-300 font-medium">S. Dlamini 🟨</span><span class="ml-auto text-[7px] font-mono text-yellow-600">5m</span></div>
+        <div class="flex items-center gap-1.5 py-1 opacity-50"><span class="font-mono text-[9px] text-slate-600 w-4 text-right shrink-0">15</span><span class="text-[11px] text-slate-300">T. Buthelezi</span></div>
+      </div>
+    </div>
+  </div>
+
+</div>
+<script>
+  function showTab(tab) {
+    ['timeline','lineups'].forEach(t => {
+      const panel = document.getElementById('panel-' + t);
+      const btn   = document.getElementById('tab-' + t);
+      const active = t === tab;
+      panel.classList.toggle('hidden', !active);
+      btn.classList.toggle('text-emerald-400', active);
+      btn.classList.toggle('border-emerald-400', active);
+      btn.classList.toggle('text-slate-500', !active);
+      btn.classList.toggle('border-transparent', !active);
+    });
+  }
+</script>
+</body>
+</html>

@@ -1,0 +1,45 @@
+# MatchPulse — https://matchpulse.co.za
+# Public hockey content (competitions, fixtures, results, teams, players) is
+# open to crawlers. Authenticated / operational areas are disallowed.
+#
+# NOTE: robots.txt groups do NOT inherit. A crawler that matches a named
+# user-agent group below ignores the "*" group entirely, so the private-area
+# Disallow rules are repeated in each group on purpose.
+
+User-agent: *
+Allow: /
+Disallow: /admin/
+Disallow: /manage/
+Disallow: /score/
+Disallow: /score
+Disallow: /profile
+Disallow: /my-players
+Disallow: /fixtures/
+Disallow: /login
+Disallow: /signup
+Disallow: /portal
+
+# AI / answer-engine crawlers — explicitly welcomed (GEO visibility). These
+# share one ruleset; same private-area rules as everyone else.
+User-agent: GPTBot
+User-agent: OAI-SearchBot
+User-agent: ChatGPT-User
+User-agent: ClaudeBot
+User-agent: Claude-Web
+User-agent: PerplexityBot
+User-agent: Google-Extended
+User-agent: CCBot
+User-agent: Bytespider
+Allow: /
+Disallow: /admin/
+Disallow: /manage/
+Disallow: /score/
+Disallow: /score
+Disallow: /profile
+Disallow: /my-players
+Disallow: /fixtures/
+Disallow: /login
+Disallow: /signup
+Disallow: /portal
+
+Sitemap: https://matchpulse.co.za/sitemap.xml

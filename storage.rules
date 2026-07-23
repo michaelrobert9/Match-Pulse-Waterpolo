@@ -1,0 +1,45 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    match /avatars/{userId} {
+      allow read:  if true;
+      allow write: if request.auth != null
+        && request.auth.uid == userId
+        && request.resource.size < 2 * 1024 * 1024
+        && request.resource.contentType.matches('image/.*');
+    }
+
+    // Competition logos. The blob is public-readable; any signed-in user may
+    // upload an image (size/type constrained). Attaching the logo to a
+    // competition still requires a competition-admin write to the Firestore
+    // competition doc (gated by firestore.rules), so an uploaded blob alone
+    // has no effect until an authorised admin saves its URL.
+    match /competition-logos/{competitionId} {
+      allow read:  if true;
+      allow write: if request.auth != null
+        && request.resource.size < 2 * 1024 * 1024
+        && request.resource.contentType.matches('image/.*');
+    }
+
+    // Competition card / banner images (wide hero). Same model as logos —
+    // public-readable; any signed-in user may upload (size/type constrained);
+    // attaching it requires a competition-admin Firestore write.
+    match /competition-banners/{competitionId} {
+      allow read:  if true;
+      allow write: if request.auth != null
+        && request.resource.size < 5 * 1024 * 1024
+        && request.resource.contentType.matches('image/.*');
+    }
+
+    // Player profile banner images. Same model — the blob is public-readable and
+    // size/type constrained; attaching it to the profile requires a Firestore
+    // write on people/{id}, which only the owner/guardians/managers (or a
+    // platform admin) may make.
+    match /player-banners/{personId} {
+      allow read:  if true;
+      allow write: if request.auth != null
+        && request.resource.size < 5 * 1024 * 1024
+        && request.resource.contentType.matches('image/.*');
+    }
+  }
+}

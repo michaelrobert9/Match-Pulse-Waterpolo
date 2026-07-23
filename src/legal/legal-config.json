@@ -1,0 +1,4 @@
+{
+  "_todo": "SINGLE SOURCE for the legal-document placeholder values. Set infoRegulatorEmail to the real address before launch, then re-run `node scripts/build-legal-content.mjs`. While null, the pages show the '[insert …]' placeholder text so it is obvious it is unfilled. General contact enquiries are handled by the on-site contact form (/contact) — there is no contact-email placeholder.",
+  "infoRegulatorEmail": null
+}

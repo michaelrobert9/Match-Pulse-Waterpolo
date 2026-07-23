@@ -1,0 +1,889 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ── Auth helpers ──────────────────────────────────────────────────────────
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isPlatformAdmin() {
+      return isSignedIn()
+        && exists(/databases/$(database)/documents/users/$(request.auth.uid))
+        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.get('platformAdmin', false) == true;
+    }
+
+    // ── Org-membership helpers ────────────────────────────────────────────────
+    // Authoritative source: the staff SUBCOLLECTION, not the user-writable
+    // orgRoles mirror. The orgRoles field on users/ is a client-side cache only.
+
+    function staffDoc(orgId) {
+      return /databases/$(database)/documents/organizations/$(orgId)/staff/$(request.auth.uid);
+    }
+
+    function isOrgMember(orgId) {
+      return isSignedIn() && (isPlatformAdmin() || exists(staffDoc(orgId)));
+    }
+
+    // Is the org's team-level management toggle on? Gates team-scoped identity
+    // editing and team-scoped Owner/Scorer authority. Default false (absent).
+    function orgTeamMgmtOn(orgId) {
+      return exists(/databases/$(database)/documents/organizations/$(orgId))
+        && get(/databases/$(database)/documents/organizations/$(orgId)).data
+             .get('teamLevelManagement', false) == true;
+    }
+
+    // ORG-WIDE owner: role owner AND no team scope (teamId null/absent). A
+    // team-scoped owner is NOT an org owner — it cannot edit the org profile,
+    // appoint org-wide staff, create competitions, or issue owner invites.
+    function isOrgOwner(orgId) {
+      return isSignedIn() && (
+        isPlatformAdmin()
+        || (exists(staffDoc(orgId))
+            && get(staffDoc(orgId)).data.role == 'owner'
+            && get(staffDoc(orgId)).data.get('teamId', null) == null)
+      );
+    }
+
+    // Owner OR staff member of the org with ORG-WIDE scope. This is the
+    // authority used by canAdministerCompetition(): a team-scoped grant is
+    // participation/scoring authority for one team and never confers
+    // org-wide competition administration.
+    function isOrgOwnerOrStaff(orgId) {
+      return isSignedIn() && (
+        isPlatformAdmin()
+        || (exists(staffDoc(orgId))
+            && get(staffDoc(orgId)).data.get('teamId', null) == null)
+      );
+    }
+
+    function competitionStaffPath(competitionId) {
+      return /databases/$(database)/documents/competitions/$(competitionId)/staff/$(request.auth.uid);
+    }
+
+    function isCompetitionStaff(competitionId) {
+      return isSignedIn() && exists(competitionStaffPath(competitionId));
+    }
+
+    // Team-scoped OWNER of a specific team, gated by the org toggle. Authorises
+    // editing that team's identity and appointing its Team Scorers.
+    function isTeamScopedOwnerOf(orgId, teamId) {
+      return isSignedIn() && teamId != null && teamId != ''
+        && exists(staffDoc(orgId))
+        && get(staffDoc(orgId)).data.role == 'owner'
+        && get(staffDoc(orgId)).data.get('teamId', null) == teamId
+        && orgTeamMgmtOn(orgId);
+    }
+
+    // Match-side authority: an org-wide grant (any team) OR a team-scoped grant
+    // whose team matches this side, gated by the org toggle. Reads the staff
+    // doc; the OR short-circuits to stay within the document-access budget.
+    function hasMatchAuthorityForSide(orgId, teamId) {
+      return isSignedIn() && exists(staffDoc(orgId)) && (
+        get(staffDoc(orgId)).data.get('teamId', null) == null
+        || (teamId != null && teamId != ''
+            && get(staffDoc(orgId)).data.get('teamId', null) == teamId
+            && orgTeamMgmtOn(orgId))
+      );
+    }
+
+    // ── Invite helpers ────────────────────────────────────────────────────────
+    // Used by the staff self-claim rule: validates a pending invite exists,
+    // is still pending, and matches the org / role / claimant email.
+
+    function pendingInviteValid(inviteId, orgId, role, email) {
+      let i = get(/databases/$(database)/documents/invites/$(inviteId)).data;
+      return i.status == 'pending'
+        && i.email == email.lower()
+        && i.orgId == orgId
+        && i.role == role;
+    }
+
+    function inviteMatchesClaim(inviteId, orgId, role, email) {
+      return inviteId != null
+        && exists(/databases/$(database)/documents/invites/$(inviteId))
+        && pendingInviteValid(inviteId, orgId, role, email);
+    }
+
+    // ── Competition helpers ───────────────────────────────────────────────────
+
+    function competitionPath(competitionId) {
+      return /databases/$(database)/documents/competitions/$(competitionId);
+    }
+
+    function competitionData(competitionId) {
+      return get(competitionPath(competitionId)).data;
+    }
+
+    // The owning org of a competition: ownerOrgId (current) or orgId (legacy).
+    function competitionOwnerOrg(competitionId) {
+      return competitionData(competitionId)
+        .get('ownerOrgId', competitionData(competitionId).get('orgId', ''));
+    }
+
+    // Authority test against an already-fetched competition data map. Kept
+    // separate so canAdministerCompetition() reads the competition document only
+    // ONCE — important for staying within Firestore's 10 document-access limit
+    // when chained with membership checks (competition fixture authority).
+    function canAdminCompData(c) {
+      return isPlatformAdmin()
+        || (c.get('ownerOrgId', c.get('orgId', '')) != ''
+            && isOrgOwnerOrStaff(c.get('ownerOrgId', c.get('orgId', ''))))
+        || c.get('ownerUserId', '') == request.auth.uid
+        || c.get('createdBy', '') == request.auth.uid;
+    }
+
+    // Single Competition Administrator authority. Mirrors
+    // src/lib/competitionAuth.js#canAdministerCompetition: platform admins; an
+    // owner/staff member of the owning org; the original creator; or a direct
+    // competition staff member. The exists() guard short-circuits before the
+    // single get() so it is safe to call on a path that may not exist yet.
+    function canAdministerCompetition(competitionId) {
+      return isSignedIn()
+        && exists(competitionPath(competitionId))
+        && (canAdminCompData(competitionData(competitionId))
+            || isCompetitionStaff(competitionId));
+    }
+
+    // A competition is a public record once published, or once its lifecycle has
+    // advanced past draft. Legacy competitions (status upcoming/active/final, no
+    // 'draft') are therefore public; new managed competitions stay private while
+    // status == 'draft' and published != true. The predicate depends only on the
+    // PARENT competition, so it is constant across a subcollection — list queries
+    // over a subcollection are all-or-nothing and never partially rejected.
+    function isPublishedCompetition(competitionId) {
+      return exists(competitionPath(competitionId))
+        && (
+          competitionData(competitionId).get('published', false) == true
+          || competitionData(competitionId).get('status', 'draft') != 'draft'
+        );
+    }
+
+    // ── Team-org helpers ──────────────────────────────────────────────────────
+
+    function teamPath(teamId) {
+      return /databases/$(database)/documents/teams/$(teamId);
+    }
+
+    // Owner/staff of the organisation that owns a given team. Used to enforce
+    // that competition-invite acceptance is performed by the invited team's org.
+    function isTeamOrgMember(teamId) {
+      return isSignedIn()
+        && exists(teamPath(teamId))
+        && isOrgMember(get(teamPath(teamId)).data.get('organizationId', ''));
+    }
+
+    // ── Competition fixture authority ─────────────────────────────────────────
+    // A team is an eligible competition participant when it has a membership
+    // record with status accepted or admin_approved. Pending / declined /
+    // withdrawn members are NOT eligible to appear in a counting fixture.
+    function competitionMemberPath(competitionId, teamId) {
+      return /databases/$(database)/documents/competitions/$(competitionId)/teams/$(teamId);
+    }
+    // Single get() (no separate exists()) to conserve document-access budget.
+    // A missing membership doc makes get() return null and the rule deny — the
+    // correct outcome for a non-member team. Only reached for competition
+    // fixtures, after the team-ownership branches have been ruled out.
+    function isAcceptedCompetitionMember(competitionId, teamId) {
+      return teamId != null && teamId != ''
+        && get(competitionMemberPath(competitionId, teamId)).data.get('status', '')
+             in ['accepted', 'admin_approved'];
+    }
+
+    // A match is a valid competition fixture write when it carries a
+    // competitionId, the caller administers that competition, and BOTH named
+    // teams are accepted/admin-approved members of it. This is what lets a
+    // neutral competition organiser create/link fixtures between member teams
+    // without managing either team's school/club. `data` is request.resource.data.
+    function isCompetitionFixtureWrite(data) {
+      return data.get('competitionId', '') != ''
+        && canAdministerCompetition(data.get('competitionId', ''))
+        && isAcceptedCompetitionMember(data.get('competitionId', ''), data.get('homeTeamId', ''))
+        && isAcceptedCompetitionMember(data.get('competitionId', ''), data.get('awayTeamId', ''));
+    }
+
+    // Team identity / ownership fields on a match may never be altered through
+    // the competition-admin path — competitions control fixtures, not team
+    // identity. Scheduling, venue, competition metadata and scores may change;
+    // the participating teams and their orgs may not.
+    function matchTeamIdentityUnchanged() {
+      return request.resource.data.get('homeTeamId', '') == resource.data.get('homeTeamId', '')
+        && request.resource.data.get('awayTeamId', '') == resource.data.get('awayTeamId', '')
+        && request.resource.data.get('homeOrgId', '')  == resource.data.get('homeOrgId', '')
+        && request.resource.data.get('awayOrgId', '')  == resource.data.get('awayOrgId', '')
+        && request.resource.data.get('homeTeamName', '') == resource.data.get('homeTeamName', '')
+        && request.resource.data.get('awayTeamName', '') == resource.data.get('awayTeamName', '');
+    }
+
+    // ── People (player profiles) ──────────────────────────────────────────────
+    // A player profile is controlled by its owner (the player, people.ownerUid)
+    // or a parent/guardian (uid in people.guardianUids). Delegated managers
+    // (uid in people.managerUids) may edit the profile but never change the
+    // control fields themselves — transfer and manager grants stay with the
+    // owner/guardian.
+
+    function controlsPerson(p) {
+      return isSignedIn() && (
+        p.get('ownerUid', '') == request.auth.uid
+        || request.auth.uid in p.get('guardianUids', [])
+      );
+    }
+
+    function managesPerson(p) {
+      return isSignedIn() && request.auth.uid in p.get('managerUids', []);
+    }
+
+    function personControlFieldsUnchanged() {
+      return request.resource.data.get('ownerUid', '') == resource.data.get('ownerUid', '')
+        && request.resource.data.get('guardianUids', []) == resource.data.get('guardianUids', [])
+        && request.resource.data.get('managerUids', []) == resource.data.get('managerUids', []);
+    }
+
+    // The consent record stamped at creation is immutable — no user may add,
+    // remove or alter it after the fact (only a platform admin bypasses this).
+    function consentFieldsUnchanged() {
+      return request.resource.data.get('consentGiven', false) == resource.data.get('consentGiven', false)
+        && request.resource.data.get('consentTextVersion', '') == resource.data.get('consentTextVersion', '')
+        && request.resource.data.get('consentTimestamp', null) == resource.data.get('consentTimestamp', null)
+        && request.resource.data.get('consentByUid', '') == resource.data.get('consentByUid', '');
+    }
+
+    match /people/{id} {
+      allow read: if true;
+
+      // Create: platform admin; or a user creating a profile they will control —
+      // a player (self as ownerUid), a parent (self in guardianUids) or a manager
+      // (self in managerUids). Orgs/coaches cannot mint an uncontrolled profile:
+      // the creator MUST attach themselves, so every new profile is owned/managed.
+      // A user create ALSO requires a consent record (given, versioned, by self)
+      // — the server-side enforcement of the profile-creation consent gate.
+      allow create: if isPlatformAdmin()
+        || (isSignedIn()
+            && request.resource.data.get('consentGiven', false) == true
+            && request.resource.data.get('consentByUid', '') == request.auth.uid
+            && request.resource.data.get('consentTextVersion', '') != ''
+            && (
+              (request.resource.data.keys().hasAny(['ownerUid'])
+                && request.resource.data.ownerUid == request.auth.uid)
+              || (request.resource.data.keys().hasAny(['guardianUids'])
+                && request.auth.uid in request.resource.data.guardianUids)
+              || (request.resource.data.keys().hasAny(['managerUids'])
+                && request.auth.uid in request.resource.data.managerUids)));
+
+      // Update: platform admin or owner/guardian (full control, including
+      // transfer + manager grants); a delegated manager may edit everything
+      // EXCEPT the control fields.
+      //
+      // A competition admin may write career-stat fields only, scoped via
+      // lastStatCompetitionId. The chain is enforced with two conditions: the
+      // caller must administer that competition, AND that competition must
+      // already be in the person's competitionIds BEFORE this write (before-
+      // state check on resource.data). The before-state check is what gives the
+      // chain its teeth: competitionIds is populated by assignPlayer and
+      // addPersonToMatchLineup (committed earlier), not by the stat write itself.
+      //
+      // Any signed-in user may write competitionIds only (append-only, no
+      // removals). This is the maintenance path used by assignPlayer and
+      // addPersonToMatchLineup so the field is committed before the first career
+      // stat write reads it.
+      allow update: if isPlatformAdmin()
+        || (controlsPerson(resource.data) && consentFieldsUnchanged())
+        || (managesPerson(resource.data) && personControlFieldsUnchanged() && consentFieldsUnchanged())
+        || (isSignedIn()
+            && request.resource.data.diff(resource.data).affectedKeys()
+                 .hasOnly(['careerCaps', 'careerGoals', 'careerCards', 'updatedAt',
+                           'lastStatCompetitionId', 'competitionIds'])
+            && request.resource.data.get('lastStatCompetitionId', '') != ''
+            && canAdministerCompetition(request.resource.data.get('lastStatCompetitionId', ''))
+            && resource.data.get('competitionIds', [])
+                 .hasAny([request.resource.data.get('lastStatCompetitionId', '')]))
+        || (isSignedIn()
+            && request.resource.data.diff(resource.data).affectedKeys()
+                 .hasOnly(['competitionIds'])
+            && request.resource.data.get('competitionIds', [])
+                 .hasAll(resource.data.get('competitionIds', [])))
+        // Self-service CLAIM: a signed-in user may claim an UNCLAIMED profile
+        // (no owner, no guardians) by making themselves the owner (player) OR the
+        // sole guardian (parent). Only the control fields change, and only to
+        // self. Once owner/guardian exists this fails — reassignment then goes
+        // through the controller or a platform admin.
+        || (isSignedIn()
+            && resource.data.get('ownerUid', null) == null
+            && resource.data.get('guardianUids', []).size() == 0
+            && request.resource.data.diff(resource.data).affectedKeys()
+                 .hasOnly(['ownerUid', 'guardianUids', 'updatedAt', 'updatedBy'])
+            && (
+                 (request.resource.data.get('ownerUid', null) == request.auth.uid
+                   && request.resource.data.get('guardianUids', []).size() == 0)
+                 || (request.resource.data.get('ownerUid', null) == null
+                   && request.resource.data.get('guardianUids', []) == [request.auth.uid])
+               ));
+
+      allow delete: if isPlatformAdmin() || controlsPerson(resource.data);
+    }
+
+    // ── Organizations ─────────────────────────────────────────────────────────
+
+    match /organizations/{orgId} {
+      allow read:   if true;
+
+      // Any signed-in user may create an org (Phase E self-service onboarding).
+      allow create: if isSignedIn();
+
+      // Owners and admins may update the org profile.
+      allow update: if isOrgOwner(orgId);
+
+      // Only platform admins may delete an organisation.
+      allow delete: if isPlatformAdmin();
+
+      // ── Staff subcollection ───────────────────────────────────────────────
+      // This is the AUTHORITATIVE membership record — rules derive org access
+      // from here, not from the mirrored users/{uid}.orgRoles field.
+      match /staff/{staffUid} {
+        allow read: if isOrgMember(orgId);
+
+        // Bootstrap: the org creator can add themselves as 'owner' immediately
+        // after the org document is created (the two-step self-service flow).
+        allow create: if isSignedIn()
+          && request.auth.uid == staffUid
+          && request.resource.data.role == 'owner'
+          && get(/databases/$(database)/documents/organizations/$(orgId)).data.createdBy == request.auth.uid;
+
+        // Appointment (admin.appoint): an org OWNER may appoint Administrators
+        // (role 'staff' only — appointment can never grant ownership) and may
+        // remove an Administrator. Appointees inherit the natural Administrator
+        // role exactly; the owner cannot edit their permissions (only a Master
+        // Admin can, via users/{uid}.permissionOverrides).
+        // A team-scoped appointment (teamId set) is only valid while the org's
+        // team-level management toggle is on.
+        allow create: if isOrgOwner(orgId)
+          && request.resource.data.role == 'staff'
+          && (request.resource.data.get('teamId', null) == null
+              || orgTeamMgmtOn(orgId));
+        allow delete: if isOrgOwner(orgId)
+          && resource.data.role == 'staff';
+
+        // A team-scoped OWNER may appoint a Team Scorer (role 'staff') for their
+        // own team only, while the toggle is on. isTeamScopedOwnerOf() enforces
+        // the role/teamId match and the toggle.
+        allow create: if request.resource.data.role == 'staff'
+          && request.resource.data.get('teamId', null) != null
+          && isTeamScopedOwnerOf(orgId, request.resource.data.get('teamId', null));
+        allow delete: if resource.data.role == 'staff'
+          && resource.data.get('teamId', null) != null
+          && isTeamScopedOwnerOf(orgId, resource.data.get('teamId', null));
+
+        // Invite-based self-claim: a user may add themselves to org staff when
+        // a matching pending invite exists in the top-level invites collection.
+        // The inviteId field in the staff record being created is the proof token;
+        // inviteMatchesClaim() does the cross-collection validation. This enables
+        // claimPendingInvites() in invites.js to run from the invitee's session.
+        // A team-scoped self-claim is only valid while the toggle is on, so a
+        // team grant can never be activated against a disabled org.
+        allow create: if isSignedIn()
+          && request.auth.uid == staffUid
+          && inviteMatchesClaim(
+              request.resource.data.get('inviteId', null),
+              orgId,
+              request.resource.data.role,
+              request.auth.token.email
+            )
+          && (request.resource.data.get('teamId', null) == null
+              || orgTeamMgmtOn(orgId));
+
+        // Master Admins manage all staff assignments, including owners.
+        allow create, update, delete: if isPlatformAdmin();
+      }
+    }
+
+    // ── Manual opponents ──────────────────────────────────────────────────────
+    // Unregistered opponent records created during fixture setup. Any signed-in
+    // user may read (for search/suggestions) or create. Only the creator or a
+    // platform admin may update; only admins may delete (for future merge tools).
+
+    match /manualOpponents/{id} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn();
+      allow update: if isSignedIn() && request.auth.uid == resource.data.createdByUid
+                 || isPlatformAdmin();
+      allow delete: if isPlatformAdmin();
+    }
+
+    // ── Entitlement helper ────────────────────────────────────────────────────
+    // Returns true when the org has an active paid entitlement that authorises
+    // creating a competition. Pro = active subscription; event = credit >= 1.
+    function orgHasCompetitionEntitlement(orgId) {
+      let org = get(/databases/$(database)/documents/organizations/$(orgId)).data;
+      let e = org.get('entitlement', 'none');
+      // Pro: active subscription whose expiry timestamp is in the future.
+      // Event: at least one credit remaining. Rules functions allow only a
+      // single return expression — no imperative `if` statements.
+      return (e == 'pro'
+                && org.get('entitlementExpiresAt', null) != null
+                && org.get('entitlementExpiresAt', null) > request.time)
+          || (e == 'event' && org.get('eventCredits', 0) > 0);
+    }
+
+    // Same check against an individual user's profile. PayFast purchases by an
+    // individual land entitlement on users/{uid}; this authorises that user to
+    // create a PERSONAL competition (no org). Entitlement fields are admin-SDK
+    // / platform-admin writable only (see the users/{uid} write rules), so a
+    // user cannot grant themselves access.
+    function userHasCompetitionEntitlement(uid) {
+      let u = get(/databases/$(database)/documents/users/$(uid)).data;
+      let e = u.get('entitlement', 'none');
+      return (e == 'pro'
+                && u.get('entitlementExpiresAt', null) != null
+                && u.get('entitlementExpiresAt', null) > request.time)
+          || (e == 'event' && u.get('eventCredits', 0) > 0);
+    }
+
+    // ── Competitions ──────────────────────────────────────────────────────────
+    // Platform admins administer every competition. Otherwise the single
+    // Competition Administrator is an owner/staff member of the owning org (or
+    // the creator). See canAdministerCompetition().
+    //
+    // NOTE ON PUBLIC READ: the parent competition document stays publicly
+    // readable because the public listing pages run UNFILTERED list queries
+    // (fetchAllCompetitions), and Firestore rejects an entire list query if any
+    // returned document fails its read rule. Draft-hiding is therefore enforced
+    // on the SUBCOLLECTIONS (which hold the substantive content) and on all
+    // writes. See the limitations note for the query-layer remediation needed to
+    // also gate the parent document. Pending/rejected orgs are likewise filtered
+    // at the query layer (queries.js#isOrgPubliclyVisible) for the same reason.
+
+    match /competitions/{competitionId} {
+      allow read: if true;
+
+      // Create:
+      //   • platform admin (unrestricted); or
+      //   • an org-wide OWNER of an org with an active paid entitlement; or
+      //   • an individual user creating a PERSONAL competition (ownerUserId ==
+      //     self, no ownerOrgId) whose own profile has an active entitlement.
+      // Administrators (staff role) may create fixtures but not competitions.
+      allow create: if isPlatformAdmin()
+        || (isSignedIn()
+            && request.resource.data.get('ownerOrgId', request.resource.data.get('orgId', '')) != ''
+            && isOrgOwner(request.resource.data.get('ownerOrgId', request.resource.data.get('orgId', '')))
+            && orgHasCompetitionEntitlement(request.resource.data.get('ownerOrgId', request.resource.data.get('orgId', ''))))
+        || (isSignedIn()
+            && request.resource.data.get('ownerUserId', '') == request.auth.uid
+            && request.resource.data.get('ownerOrgId', '') == ''
+            && request.resource.data.get('orgId', '') == ''
+            && request.resource.data.get('createdBy', '') == request.auth.uid
+            && userHasCompetitionEntitlement(request.auth.uid));
+
+      // Update: competition admin. Non-platform admins may not change the owning
+      // org or owning user (which would re-assign administrative authority).
+      allow update: if isPlatformAdmin()
+        || (canAdministerCompetition(competitionId)
+            && request.resource.data.get('ownerOrgId', resource.data.get('ownerOrgId', '')) == resource.data.get('ownerOrgId', '')
+            && request.resource.data.get('orgId', resource.data.get('orgId', '')) == resource.data.get('orgId', '')
+            && request.resource.data.get('ownerUserId', resource.data.get('ownerUserId', '')) == resource.data.get('ownerUserId', ''));
+
+      allow delete: if isPlatformAdmin();
+
+      // ── Participating teams (membership + invite state) ───────────────────
+      // Public sees the roster only once the competition is published. The
+      // invited team's org may accept/decline (status fields only); everything
+      // else is competition-admin only.
+      //
+      // A participant may be UNCLAIMED (name only — the membership doc carries
+      // its own displaySnapshot under a generated id, with organizationId:null)
+      // or LINKED to a real org via `organizationId`. That link is PARTICIPATION
+      // ONLY: it is never read to grant competition control, which is gated
+      // exclusively on the competition's ownerOrgId (canAdministerCompetition).
+      match /teams/{teamId} {
+        allow read: if isPublishedCompetition(competitionId)
+          || canAdministerCompetition(competitionId)
+          || isTeamOrgMember(teamId);
+
+        allow create: if canAdministerCompetition(competitionId);
+
+        allow update: if canAdministerCompetition(competitionId)
+          || (isTeamOrgMember(teamId)
+              && request.resource.data.diff(resource.data).affectedKeys()
+                   .hasOnly(['status', 'acceptedBy', 'acceptedAt']));
+
+        allow delete: if canAdministerCompetition(competitionId);
+      }
+
+      // ── Single-use invites (doc id == opaque token) ───────────────────────
+      // Readable by the competition admin or the invited team's org. The team
+      // org may consume an invite (status fields only); issue/revoke is admin.
+      match /invites/{token} {
+        allow read: if canAdministerCompetition(competitionId)
+          || isTeamOrgMember(resource.data.get('teamId', ''));
+
+        allow create: if canAdministerCompetition(competitionId);
+
+        allow update: if canAdministerCompetition(competitionId)
+          || (isTeamOrgMember(resource.data.get('teamId', ''))
+              && request.resource.data.diff(resource.data).affectedKeys()
+                   .hasOnly(['status', 'consumedBy', 'consumedAt']));
+
+        allow delete: if canAdministerCompetition(competitionId);
+      }
+
+      // ── Fixtures (competition fixture membership) ─────────────────────────
+      match /fixtures/{fixtureId} {
+        allow read: if isPublishedCompetition(competitionId)
+          || canAdministerCompetition(competitionId);
+        allow create, update, delete: if canAdministerCompetition(competitionId);
+      }
+
+      // ── Stages (admin-defined tournament structure) ───────────────────────
+      match /stages/{stageId} {
+        allow read: if isPublishedCompetition(competitionId)
+          || canAdministerCompetition(competitionId);
+        allow create, update, delete: if canAdministerCompetition(competitionId);
+      }
+
+      // ── Pools (group-stage groupings) ─────────────────────────────────────
+      match /pools/{poolId} {
+        allow read: if isPublishedCompetition(competitionId)
+          || canAdministerCompetition(competitionId);
+        allow create, update, delete: if canAdministerCompetition(competitionId);
+      }
+
+      // ── Knockout structure (bracket slots + advancement sources) ──────────
+      match /knockout/{slotId} {
+        allow read: if isPublishedCompetition(competitionId)
+          || canAdministerCompetition(competitionId);
+        allow create, update, delete: if canAdministerCompetition(competitionId);
+      }
+
+      // ── Advancement (knockout/progression records) ────────────────────────
+      match /advancement/{recordId} {
+        allow read: if isPublishedCompetition(competitionId)
+          || canAdministerCompetition(competitionId);
+        allow create, update, delete: if canAdministerCompetition(competitionId);
+      }
+
+      // ── Verification snapshots — create-only, immutable, never deleted ─────
+      match /snapshots/{snapshotId} {
+        allow read: if isPublishedCompetition(competitionId)
+          || canAdministerCompetition(competitionId);
+        allow create: if canAdministerCompetition(competitionId);
+        allow update, delete: if false;
+      }
+
+      // ── Audit log — create-only, immutable ────────────────────────────────
+      // Competition admins write any audit event. Acceptance/decline events are
+      // written by the invited team's org member during the accept/decline flow,
+      // so those two event types are also permitted for the team's org member.
+      // actorId must equal the caller to prevent spoofed authorship.
+      match /auditLog/{eventId} {
+        allow read: if canAdministerCompetition(competitionId);
+
+        allow create: if request.resource.data.get('actorId', '') == request.auth.uid
+          && (
+            canAdministerCompetition(competitionId)
+            || (request.resource.data.get('eventType', '') in ['invite_accepted', 'invite_declined']
+                && isTeamOrgMember(request.resource.data.payload.after.get('teamId', '')))
+          );
+
+        allow update, delete: if false;
+      }
+
+      // ── Direct competition staff (independent of org) ─────────────────────
+      // Read uses the org-only check to avoid circular reference with
+      // isCompetitionStaff() which reads from this very subcollection.
+      match /staff/{staffUid} {
+        allow read: if isPlatformAdmin()
+          || canAdminCompData(competitionData(competitionId))
+          || (isSignedIn() && request.auth.uid == staffUid);
+
+        allow create, delete: if isPlatformAdmin()
+          || canAdminCompData(competitionData(competitionId))
+          || (isSignedIn() && competitionData(competitionId).get('createdBy', '') == request.auth.uid);
+      }
+    }
+
+    // ── Slug-correction redirects ───────────────────────────────────────────
+    // Publicly readable (NotFound resolves old paths). Only platform admins may
+    // create or change a redirect record.
+
+    match /redirects/{oldPath} {
+      allow read: if true;
+      allow create, update: if isPlatformAdmin();
+      allow delete: if isPlatformAdmin();
+    }
+
+    // ── Teams ─────────────────────────────────────────────────────────────────
+    // Create/delete and full edits require an ORG-WIDE owner (team.add/remove
+    // are org-wide capabilities). Administrators (staff) may create fixtures but
+    // not manage the roster.
+    //
+    // IDENTITY EDITING: when the org's team-level management toggle is on, a
+    // team-scoped Team Owner may edit ONLY their own team's identity fields
+    // (logoUrl/name/bio). They can touch no other field and no other team. Org
+    // owners may edit any team's identity regardless of the toggle.
+
+    match /teams/{id} {
+      allow read: if true;
+
+      allow create: if isPlatformAdmin()
+        || isOrgOwner(request.resource.data.get('organizationId', ''));
+
+      allow update: if isPlatformAdmin()
+        || isOrgOwner(resource.data.get('organizationId', ''))
+        || (isTeamScopedOwnerOf(resource.data.get('organizationId', ''), id)
+            && request.resource.data.diff(resource.data).affectedKeys()
+                 .hasOnly(['name', 'logoUrl', 'bio', 'updatedAt']));
+
+      allow delete: if isPlatformAdmin()
+        || isOrgOwner(resource.data.get('organizationId', ''));
+    }
+
+    // ── Players ───────────────────────────────────────────────────────────────
+
+    match /players/{id} {
+      allow read: if true;
+
+      allow create: if isPlatformAdmin()
+        || isOrgMember(request.resource.data.get('organizationId', ''))
+        || (request.resource.data.get('competitionId', '') != ''
+            && canAdministerCompetition(request.resource.data.get('competitionId', '')));
+
+      allow update, delete: if isPlatformAdmin()
+        || isOrgMember(resource.data.get('organizationId', ''))
+        || (resource.data.get('competitionId', '') != ''
+            && canAdministerCompetition(resource.data.get('competitionId', '')));
+    }
+
+    // ── Matches ───────────────────────────────────────────────────────────────
+    // Two distinct authorities can write a match:
+    //   1. TEAM authority — a member of either team's org (the team owner), or a
+    //      platform admin. Governs standalone fixtures and scoring, unchanged.
+    //   2. COMPETITION authority — a competition administrator may create/link/
+    //      manage a fixture that belongs to a competition they administer, but
+    //      ONLY when both teams are accepted/admin-approved members of it, and
+    //      WITHOUT being able to alter team identity (see matchTeamIdentityUnchanged).
+    // The two are independent: competition admins never gain team-document
+    // authority, and team owners' existing fixture rights are untouched.
+
+    match /matches/{matchId} {
+      allow read: if true;
+
+      // Create: team authority OR a valid competition fixture between members.
+      // Team authority is org-wide for the side's org, OR a team-scoped grant
+      // whose team matches that side (toggle on) — see hasMatchAuthorityForSide.
+      allow create: if isPlatformAdmin()
+        || hasMatchAuthorityForSide(request.resource.data.get('homeOrgId', ''), request.resource.data.get('homeTeamId', ''))
+        || hasMatchAuthorityForSide(request.resource.data.get('awayOrgId', ''), request.resource.data.get('awayTeamId', ''))
+        || isCompetitionFixtureWrite(request.resource.data);
+
+      // Update: team authority (full), OR competition authority limited to
+      // fixtures between members and forbidden from changing team identity.
+      // This covers both managing a created fixture and STAMPING competition
+      // metadata (competitionId/Slug/Season) onto an existing eligible match.
+      allow update: if isPlatformAdmin()
+        || hasMatchAuthorityForSide(resource.data.get('homeOrgId', ''), resource.data.get('homeTeamId', ''))
+        || hasMatchAuthorityForSide(resource.data.get('awayOrgId', ''), resource.data.get('awayTeamId', ''))
+        || (isCompetitionFixtureWrite(request.resource.data) && matchTeamIdentityUnchanged());
+
+      // Player self-removal (player.fixture.selfremove): a player (or their
+      // guardian/manager) may remove exactly one entry from exactly one lineup
+      // array, only when that entry's controllerUids snapshot contains the
+      // caller's uid, and only before the match is finalised. The write must
+      // touch no other field (no lineupPersonIds, updatedAt, updatedBy) so
+      // the blast radius is provably limited to the single lineup array.
+      // removeAll(List) computes the set-difference of array-of-maps by value
+      // equality; [0].controllerUids reads the sole removed entry's snapshot
+      // — no extra document reads required.
+      allow update: if isSignedIn()
+        && resource.data.get('status', '') != 'final'
+        && (
+          (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['homeLineup'])
+           && request.resource.data.homeLineup.size() == resource.data.get('homeLineup', []).size() - 1
+           && resource.data.get('homeLineup', []).removeAll(request.resource.data.homeLineup).size() == 1
+           && request.auth.uid in resource.data.get('homeLineup', []).removeAll(request.resource.data.homeLineup)[0].controllerUids
+           && request.resource.data.get('awayLineup', []) == resource.data.get('awayLineup', []))
+          ||
+          (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['awayLineup'])
+           && request.resource.data.awayLineup.size() == resource.data.get('awayLineup', []).size() - 1
+           && resource.data.get('awayLineup', []).removeAll(request.resource.data.awayLineup).size() == 1
+           && request.auth.uid in resource.data.get('awayLineup', []).removeAll(request.resource.data.awayLineup)[0].controllerUids
+           && request.resource.data.get('homeLineup', []) == resource.data.get('homeLineup', []))
+        );
+
+      // Delete: team authority only. Removing a fixture from a competition is a
+      // membership-record delete (handled under competitions/.../fixtures), and
+      // never deletes the underlying match.
+      allow delete: if isPlatformAdmin()
+        || hasMatchAuthorityForSide(resource.data.get('homeOrgId', ''), resource.data.get('homeTeamId', ''))
+        || hasMatchAuthorityForSide(resource.data.get('awayOrgId', ''), resource.data.get('awayTeamId', ''));
+
+      match /events/{eventId} {
+        allow read:  if true;
+        allow write: if isPlatformAdmin();
+      }
+
+      // Per-fixture audit log (spec §6). Append-only and immutable — no update
+      // or delete, by ANYONE including platform admins; its entire value is that
+      // it can be trusted in a dispute. Organiser-only read (not public). Create
+      // is limited to those with authority over the match, and actorId must
+      // equal the caller to prevent spoofed authorship.
+      match /auditLog/{eventId} {
+        function matchData() {
+          return get(/databases/$(database)/documents/matches/$(matchId)).data;
+        }
+        function canManageMatch() {
+          return isPlatformAdmin()
+            || hasMatchAuthorityForSide(matchData().get('homeOrgId', ''), matchData().get('homeTeamId', ''))
+            || hasMatchAuthorityForSide(matchData().get('awayOrgId', ''), matchData().get('awayTeamId', ''));
+        }
+        allow read:   if canManageMatch();
+        allow create: if request.resource.data.get('actorId', '') == request.auth.uid && canManageMatch();
+        allow update, delete: if false;
+      }
+    }
+
+    // ── User profiles (public read, safe subset) ──────────────────────────────
+    // Public fields only: email, displayName, name (legacy), photoURL.
+    // Written at signup and on every profile save. Any signed-in user may read
+    // so org/competition admins can look up colleagues by email and load staff
+    // display names — without exposing platformAdmin, orgRoles, etc.
+
+    match /userProfiles/{uid} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn() && request.auth.uid == uid;
+      allow update: if (isSignedIn() && request.auth.uid == uid) || isPlatformAdmin();
+      allow delete: if isPlatformAdmin();
+    }
+
+    // ── Users ─────────────────────────────────────────────────────────────────
+    // Full profile with privileged fields (platformAdmin, permissionOverrides,
+    // orgRoles, competitionRoles). Read is restricted to self or platform admin.
+    // Write access remains strictly guarded: self-writes cannot touch
+    // platformAdmin or permissionOverrides; those are platform-admin only.
+
+    match /users/{uid} {
+      allow read: if request.auth.uid == uid || isPlatformAdmin();
+
+      // Self-create: cannot pre-set admin/override flags, and cannot grant
+      // themselves any paid entitlement. Entitlement fields are written only by
+      // the PayFast ITN (admin SDK, bypasses rules) or a platform admin.
+      allow create: if isSignedIn()
+        && request.auth.uid == uid
+        && request.resource.data.get('platformAdmin', false) == false
+        && request.resource.data.get('permissionOverrides', {}) == {}
+        && request.resource.data.get('entitlement', 'none') == 'none'
+        && request.resource.data.get('eventCredits', 0) == 0
+        && request.resource.data.get('entitlementExpiresAt', null) == null;
+
+      // Self-update: cannot change admin/override flags or self-grant
+      // entitlement. eventCredits may only DECREASE (consuming a credit when
+      // creating a personal competition) — never increase.
+      allow update: if isSignedIn()
+        && request.auth.uid == uid
+        && request.resource.data.get('platformAdmin', false) == resource.data.get('platformAdmin', false)
+        && request.resource.data.get('permissionOverrides', {}) == resource.data.get('permissionOverrides', {})
+        && request.resource.data.get('entitlement', 'none') == resource.data.get('entitlement', 'none')
+        && request.resource.data.get('entitlementExpiresAt', null) == resource.data.get('entitlementExpiresAt', null)
+        && request.resource.data.get('eventCredits', 0) <= resource.data.get('eventCredits', 0);
+
+      // Mirror maintenance: when an org owner appoints/removes an Administrator
+      // they update the appointee's orgRoles cache in the same batch. orgRoles
+      // is NEVER an authority source (rules read the staff subcollection), so
+      // a scoped orgRoles-only write by another signed-in user is acceptable.
+      allow update: if isSignedIn()
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['orgRoles']);
+
+      // Mirror maintenance: when a competition admin grants/removes direct staff
+      // access they update the appointee's competitionRoles cache in the same batch.
+      allow update: if isSignedIn()
+        && request.resource.data.diff(resource.data).affectedKeys()
+             .hasOnly(['competitionRoles']);
+
+      // Master Admins may write any user document (grant Master Admin status,
+      // set per-person permission overrides).
+      allow write: if isPlatformAdmin();
+    }
+
+    // ── User invites ──────────────────────────────────────────────────────────
+    // Top-level invites collection. Separate from competition team invites,
+    // which live in competitions/{id}/invites/{token} subcollections.
+    //
+    // Role ceiling enforced here (server-side):
+    //   - Platform admins may create invites for any role.
+    //   - Org owners may only create 'owner' or 'staff' invites for their org.
+    //   - Staff (scorers) may not create invites.
+
+    match /invites/{inviteId} {
+      // Any authenticated user may read — needed so claimPendingInvites() can
+      // query by email after signup. Invite records contain no sensitive data.
+      allow read: if isSignedIn();
+
+      // Create:
+      //   - platform admin: any role.
+      //   - org-wide owner: owner/staff invites; a team-scoped invite (teamId
+      //     set) is only valid while the org toggle is on.
+      //   - team-scoped owner: a Team Scorer (role 'staff') for THEIR team only
+      //     (isTeamScopedOwnerOf enforces role/team match and the toggle).
+      allow create: if isSignedIn() && (
+        isPlatformAdmin() ||
+        (request.resource.data.orgId != null
+         && isOrgOwner(request.resource.data.orgId)
+         && (request.resource.data.role == 'owner'
+             || request.resource.data.role == 'staff')
+         && (request.resource.data.get('teamId', null) == null
+             || orgTeamMgmtOn(request.resource.data.orgId)))
+        ||
+        (request.resource.data.orgId != null
+         && request.resource.data.role == 'staff'
+         && request.resource.data.get('teamId', null) != null
+         && isTeamScopedOwnerOf(request.resource.data.orgId, request.resource.data.get('teamId', null)))
+      );
+
+      // Claim: the invitee (matching email) may mark a pending invite as accepted.
+      // This is the second write in claimPendingInvites() after the staff record
+      // is committed. Only status/claimedBy/claimedAt may change.
+      allow update: if isSignedIn()
+        && resource.data.status == 'pending'
+        && request.resource.data.status == 'accepted'
+        && request.auth.token.email.lower() == resource.data.email
+        && request.resource.data.diff(resource.data).affectedKeys()
+            .hasOnly(['status', 'claimedBy', 'claimedAt']);
+
+      // Platform admins may clean up or audit any invite.
+      allow update, delete: if isPlatformAdmin();
+    }
+
+    // ── Site settings ─────────────────────────────────────────────────────────
+    // Top-level settings/{docId} collection stores platform-wide configuration
+    // (SEO meta, analytics IDs etc.). Readable publicly so SiteSettingsProvider
+    // can load them on every page load without auth; writable only by platform admins.
+    match /settings/{docId} {
+      allow read: if true;
+      allow write: if isPlatformAdmin();
+    }
+
+    // ── Platform meta (private config) ────────────────────────────────────────
+    // _meta/{docId} stores sensitive platform configuration (e.g. PayFast
+    // credentials). Only platform admins may read or write. The Cloud Function
+    // ITN webhook reads this via the Admin SDK (bypasses rules).
+    match /_meta/{docId} {
+      allow read, write: if isPlatformAdmin();
+    }
+
+    // EFT / proforma invoice requests from the Plans page. Anyone (incl. logged
+    // out — the EFT path is offered to prospects) may CREATE a well-formed,
+    // pending request; only platform admins may read or process them. An
+    // organisation is NOT required — the buyer is an individual.
+    match /paymentRequests/{id} {
+      allow read, update, delete: if isPlatformAdmin();
+      allow create: if request.resource.data.status == 'pending'
+        && request.resource.data.plan in ['event', 'pro']
+        && request.resource.data.amount == (request.resource.data.plan == 'pro' ? 15000 : 2000)
+        && request.resource.data.currency == 'ZAR'
+        && request.resource.data.get('paidAt', null) == null
+        && request.resource.data.contactName is string
+        && request.resource.data.contactName.size() > 0
+        && request.resource.data.contactEmail is string
+        && request.resource.data.contactEmail.size() > 0;
+    }
+  }
+}

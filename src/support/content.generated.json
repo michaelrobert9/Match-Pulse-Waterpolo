@@ -1,0 +1,792 @@
+{
+  "generatedAt": null,
+  "index": {
+    "title": "MatchPulse Support Centre",
+    "introHtml": "<p>Everything you need to run a competition on MatchPulse, from setting up your first organisation to finalising a season.</p>\n<p>If you're new, start with <strong>Getting Started</strong>. If you're looking for something specific, jump straight to the section.</p>",
+    "introPlain": "Everything you need to run a competition on MatchPulse, from setting up your first organisation to finalising a season. If you're new, start with **Getting Started**. If you're looking for something specific, jump straight to the section."
+  },
+  "sections": [
+    {
+      "title": "Getting Started",
+      "slug": "getting-started",
+      "articles": [
+        {
+          "category": "getting-started",
+          "slug": "what-is-matchpulse",
+          "title": "What is MatchPulse"
+        },
+        {
+          "category": "getting-started",
+          "slug": "create-your-account",
+          "title": "Create your account"
+        },
+        {
+          "category": "getting-started",
+          "slug": "the-dashboard",
+          "title": "The dashboard explained"
+        },
+        {
+          "category": "getting-started",
+          "slug": "choosing-a-plan",
+          "title": "Choosing a plan: Free, Plus, Pro"
+        },
+        {
+          "category": "getting-started",
+          "slug": "set-up-your-organisation",
+          "title": "Set up your organisation"
+        }
+      ]
+    },
+    {
+      "title": "Organisations & Teams",
+      "slug": "organisations-teams",
+      "articles": [
+        {
+          "category": "organisations-teams",
+          "slug": "org-types",
+          "title": "Org types: Schools, Clubs, Associations, Franchises"
+        },
+        {
+          "category": "organisations-teams",
+          "slug": "create-an-organisation",
+          "title": "Create an organisation"
+        },
+        {
+          "category": "organisations-teams",
+          "slug": "link-a-parent-organisation",
+          "title": "Link a parent organisation"
+        },
+        {
+          "category": "organisations-teams",
+          "slug": "how-teams-are-named",
+          "title": "How teams are created and named"
+        },
+        {
+          "category": "organisations-teams",
+          "slug": "add-a-team",
+          "title": "Add a team"
+        },
+        {
+          "category": "organisations-teams",
+          "slug": "edit-a-team",
+          "title": "Edit a team"
+        },
+        {
+          "category": "organisations-teams",
+          "slug": "manage-your-squad",
+          "title": "Manage your squad and players"
+        },
+        {
+          "category": "organisations-teams",
+          "slug": "archive-or-remove-a-team",
+          "title": "Archive or remove a team"
+        }
+      ]
+    },
+    {
+      "title": "Competitions",
+      "slug": "competitions",
+      "articles": [
+        {
+          "category": "competitions",
+          "slug": "create-a-competition",
+          "title": "Create a competition"
+        },
+        {
+          "category": "competitions",
+          "slug": "naming-conventions",
+          "title": "Competition naming conventions"
+        },
+        {
+          "category": "competitions",
+          "slug": "competition-formats",
+          "title": "Choose a format: league, knockout, hybrid"
+        },
+        {
+          "category": "competitions",
+          "slug": "add-teams-to-a-competition",
+          "title": "Add teams to a competition"
+        },
+        {
+          "category": "competitions",
+          "slug": "edit-a-competition",
+          "title": "Edit a competition"
+        },
+        {
+          "category": "competitions",
+          "slug": "ownership-and-authority",
+          "title": "Competition ownership and authority"
+        },
+        {
+          "category": "competitions",
+          "slug": "finalise-a-competition",
+          "title": "Finalise a competition"
+        }
+      ]
+    },
+    {
+      "title": "Fixtures",
+      "slug": "fixtures",
+      "articles": [
+        {
+          "category": "fixtures",
+          "slug": "add-a-fixture",
+          "title": "Add a fixture"
+        },
+        {
+          "category": "fixtures",
+          "slug": "generate-fixtures",
+          "title": "Generate a full fixture list"
+        },
+        {
+          "category": "fixtures",
+          "slug": "edit-a-fixture",
+          "title": "Edit a fixture"
+        },
+        {
+          "category": "fixtures",
+          "slug": "fixture-lifecycle",
+          "title": "The fixture lifecycle explained"
+        },
+        {
+          "category": "fixtures",
+          "slug": "non-standard-outcomes",
+          "title": "Walkovers, withdrawals and abandonments"
+        },
+        {
+          "category": "fixtures",
+          "slug": "postpone-or-reschedule",
+          "title": "Postpone or reschedule a fixture"
+        },
+        {
+          "category": "fixtures",
+          "slug": "delete-a-fixture",
+          "title": "Delete a fixture"
+        }
+      ]
+    },
+    {
+      "title": "Playoffs & Knockout Stages",
+      "slug": "playoffs",
+      "articles": [
+        {
+          "category": "playoffs",
+          "slug": "build-a-knockout-stage",
+          "title": "Build a knockout stage"
+        },
+        {
+          "category": "playoffs",
+          "slug": "seed-the-bracket",
+          "title": "Seed teams into the bracket"
+        },
+        {
+          "category": "playoffs",
+          "slug": "edit-the-bracket",
+          "title": "Edit the bracket"
+        },
+        {
+          "category": "playoffs",
+          "slug": "how-teams-advance",
+          "title": "How teams advance"
+        }
+      ]
+    },
+    {
+      "title": "Live Scoring",
+      "slug": "live-scoring",
+      "articles": [
+        {
+          "category": "live-scoring",
+          "slug": "start-a-live-match",
+          "title": "Start a live match"
+        },
+        {
+          "category": "live-scoring",
+          "slug": "record-events",
+          "title": "Record goals and events"
+        },
+        {
+          "category": "live-scoring",
+          "slug": "fix-a-mistake",
+          "title": "Fix a mistake during a match"
+        },
+        {
+          "category": "live-scoring",
+          "slug": "finalise-a-result",
+          "title": "Finalise a result"
+        },
+        {
+          "category": "live-scoring",
+          "slug": "correct-a-finalised-result",
+          "title": "Correct a finalised result"
+        }
+      ]
+    },
+    {
+      "title": "Stats & Standings",
+      "slug": "stats-standings",
+      "articles": [
+        {
+          "category": "stats-standings",
+          "slug": "how-standings-work",
+          "title": "How standings are calculated"
+        },
+        {
+          "category": "stats-standings",
+          "slug": "player-and-career-stats",
+          "title": "Player and career stats"
+        },
+        {
+          "category": "stats-standings",
+          "slug": "why-a-stat-looks-wrong",
+          "title": "Why a stat looks wrong"
+        }
+      ]
+    },
+    {
+      "title": "Permissions & Roles",
+      "slug": "permissions",
+      "articles": [
+        {
+          "category": "permissions",
+          "slug": "roles-explained",
+          "title": "Roles explained: Owner and Scorer"
+        },
+        {
+          "category": "permissions",
+          "slug": "scoped-roles",
+          "title": "Team-scoped vs competition-scoped roles"
+        },
+        {
+          "category": "permissions",
+          "slug": "invite-people",
+          "title": "Invite people and assign roles"
+        },
+        {
+          "category": "permissions",
+          "slug": "remove-access",
+          "title": "Remove someone's access"
+        }
+      ]
+    },
+    {
+      "title": "Billing & Plans",
+      "slug": "billing",
+      "articles": [
+        {
+          "category": "billing",
+          "slug": "upgrade",
+          "title": "Upgrade to Plus or Pro"
+        },
+        {
+          "category": "billing",
+          "slug": "how-payment-works",
+          "title": "How payment works"
+        },
+        {
+          "category": "billing",
+          "slug": "manage-subscription",
+          "title": "Manage your subscription"
+        }
+      ]
+    },
+    {
+      "title": "Troubleshooting & FAQ",
+      "slug": "troubleshooting",
+      "articles": [
+        {
+          "category": "troubleshooting",
+          "slug": "faq",
+          "title": "Common questions"
+        },
+        {
+          "category": "troubleshooting",
+          "slug": "something-isnt-working",
+          "title": "Something isn't working"
+        }
+      ]
+    }
+  ],
+  "articles": {
+    "getting-started/what-is-matchpulse": {
+      "category": "getting-started",
+      "slug": "what-is-matchpulse",
+      "key": "getting-started/what-is-matchpulse",
+      "title": "What is MatchPulse",
+      "sectionTitle": "Getting Started",
+      "sectionSlug": "getting-started",
+      "description": "MatchPulse is a platform for running hockey competitions, from a single school fixture to a full league season. You set up your teams, build a competition,",
+      "html": "<p>MatchPulse is a platform for running hockey competitions, from a single school fixture to a full league season. You set up your teams, build a competition, schedule the fixtures, and score matches live. Standings, player stats and career records build themselves from the results as they come in.</p>\n<h2>What you can do with it</h2>\n<ul><li>Run leagues, knockout tournaments, or a mix of both.</li><li>Add and schedule fixtures, including bulk fixture generation.</li><li>Score matches live, with goals and events recorded as they happen.</li><li>Track standings that update automatically from finalised results.</li><li>Keep player and career stats across seasons.</li><li>Give other people access to score or manage, with control over who can change what.</li></ul>\n<h2>Who it's for</h2>\n<p>Schools, clubs, associations and franchises all use MatchPulse a little differently. A school might run its internal fixtures and feed into a wider association league. A club might manage several teams across age groups. The platform handles all of these through one shared structure, which you'll set up when you create your organisation.</p>\n<h2>How the pieces fit together</h2>\n<p>There's a natural order to things:</p>\n<ol><li>You create an <strong>organisation</strong> (your school, club, or association).</li><li>Inside it, you create <strong>teams</strong>.</li><li>You build a <strong>competition</strong> and add teams to it.</li><li>You add <strong>fixtures</strong>, the individual matches.</li><li>You score those fixtures, and the results feed your <strong>standings and stats</strong>.</li></ol>\n<p>Each of these has its own section in this support centre. If you're starting fresh, the next step is to <a href=\"/support/getting-started/create-your-account\">create your account</a>.</p>"
+    },
+    "getting-started/create-your-account": {
+      "category": "getting-started",
+      "slug": "create-your-account",
+      "key": "getting-started/create-your-account",
+      "title": "Create your account",
+      "sectionTitle": "Getting Started",
+      "sectionSlug": "getting-started",
+      "description": "You'll need an account before you can set anything up. It takes a minute.",
+      "html": "<p>You'll need an account before you can set anything up. It takes a minute.</p>\n<h2>Sign up</h2>\n<ol><li>Go to <a href=\"https://matchpulse.co.za\" rel=\"noopener\">matchpulse.co.za</a>.</li><li>Click <strong>Sign up</strong>.</li><li>Enter your email address and choose a password.</li><li>Confirm your email if prompted.</li></ol>\n<p>That's it. You're in on the Free plan, which is enough to set up an organisation and start building.</p>\n<h2>Sign in</h2>\n<p>If you already have an account, click <strong>Sign in</strong> instead and enter the same email and password.</p>\n<h2>Forgot your password</h2>\n<p>On the sign-in screen, click <strong>Forgot password</strong> and enter your email. You'll get a reset link. Follow it, set a new password, and sign in again.</p>\n<h2>What happens next</h2>\n<p>Once you're signed in, you'll land on your dashboard. If this is a brand new account, it'll be mostly empty. The first thing to do is <a href=\"/support/getting-started/set-up-your-organisation\">set up your organisation</a>, which is the home for all your teams and competitions.</p>"
+    },
+    "getting-started/the-dashboard": {
+      "category": "getting-started",
+      "slug": "the-dashboard",
+      "key": "getting-started/the-dashboard",
+      "title": "The dashboard explained",
+      "sectionTitle": "Getting Started",
+      "sectionSlug": "getting-started",
+      "description": "The dashboard is your home base. It's the first thing you see after signing in, and it's where you get to everything else.",
+      "html": "<p>The dashboard is your home base. It's the first thing you see after signing in, and it's where you get to everything else.</p>\n<h2>What's on it</h2>\n<ul><li><strong>Your organisations.</strong> The schools, clubs or associations you belong to or run. If you're new, you'll create your first one here.</li><li><strong>Your competitions.</strong> Any competition you own or have a role in, with quick access to its fixtures and standings.</li><li><strong>Upcoming and recent fixtures.</strong> A view of what's coming up and what's just been played, so you can jump straight into scoring.</li></ul>\n<h2>Moving around</h2>\n<p>From the dashboard you can drill down in a logical order: pick an organisation, see its teams and competitions, open a competition, and from there reach its fixtures and standings. You can always get back to the dashboard from the main navigation.</p>\n<h2>What you'll see depends on your role</h2>\n<p>The dashboard only shows you what you have access to. If someone gave you a Scorer role on one competition, you'll see that competition and its fixtures, but not the rest of their setup. Owners see everything they own. More on this in <a href=\"/support/permissions/roles-explained\">Roles explained</a>.</p>"
+    },
+    "getting-started/choosing-a-plan": {
+      "category": "getting-started",
+      "slug": "choosing-a-plan",
+      "key": "getting-started/choosing-a-plan",
+      "title": "Choosing a plan: Free, Plus, Pro",
+      "sectionTitle": "Getting Started",
+      "sectionSlug": "getting-started",
+      "description": "MatchPulse has three plans. You can start on Free and upgrade whenever you need more.",
+      "html": "<p>MatchPulse has three plans. You can start on Free and upgrade whenever you need more.</p>\n<h2>Free</h2>\n<p>Everything you need to set up an organisation, create teams, build a competition and score matches. A good place to start and find your feet.</p>\n<h2>Plus — R2,000 once-off</h2>\n<p>A one-time payment, not a subscription. Pay once and the Plus features stay unlocked. Suited to a club or school that runs competitions regularly and wants more than the Free plan offers without an annual commitment.</p>\n<h2>Pro — R15,000 per year</h2>\n<p>The full platform, billed annually. Built for associations and larger operations running multiple competitions across a season. If you're managing a lot of teams, fixtures and competitions at once, this is the tier for you.</p>\n<h2>How to decide</h2>\n<p>If you're trying MatchPulse for the first time, stay on Free until you hit a limit. If you run competitions often, Plus pays for itself quickly as a once-off. If you're running a league or association at scale, Pro is the one.</p>\n<p>When you're ready, see <a href=\"/support/billing/upgrade\">Upgrade to Plus or Pro</a>. Payments are handled through PayFast.</p>\n<blockquote>The exact feature breakdown for each tier is shown on the <a href=\"https://matchpulse.co.za/plans\" rel=\"noopener\">Plans page</a>. Check there for the current details before upgrading.</blockquote>"
+    },
+    "getting-started/set-up-your-organisation": {
+      "category": "getting-started",
+      "slug": "set-up-your-organisation",
+      "key": "getting-started/set-up-your-organisation",
+      "title": "Set up your organisation",
+      "sectionTitle": "Getting Started",
+      "sectionSlug": "getting-started",
+      "description": "Your organisation is the home for everything else. Teams live inside it, and competitions are run from it. You'll set this up once, then build on top of it",
+      "html": "<p>Your organisation is the home for everything else. Teams live inside it, and competitions are run from it. You'll set this up once, then build on top of it.</p>\n<h2>Before you start</h2>\n<p>Decide what type of organisation you're creating. MatchPulse has four:</p>\n<ul><li><strong>School</strong></li><li><strong>Club</strong></li><li><strong>Association</strong></li><li><strong>Franchise</strong></li></ul>\n<p>This choice shapes how your organisation behaves and how it connects to others. If you're not sure which fits, read <a href=\"/support/organisations-teams/org-types\">Org types explained</a> first.</p>\n<h2>Create it</h2>\n<ol><li>From your dashboard, click <strong>Create organisation</strong>.</li><li>Choose the organisation type.</li><li>Enter the organisation name.</li><li>Fill in any other details requested (logo, location, and so on).</li><li>Save.</li></ol>\n<p>Your organisation now appears on your dashboard, and you're its Owner.</p>\n<h2>What's next</h2>\n<p>With your organisation in place, you can:</p>\n<ul><li><a href=\"/support/organisations-teams/add-a-team\">Add teams to it</a>.</li><li><a href=\"/support/organisations-teams/link-a-parent-organisation\">Link it to a parent organisation</a>, if it belongs to a wider body.</li><li><a href=\"/support/competitions/create-a-competition\">Create a competition</a>.</li></ul>\n<p>If your organisation sits under a bigger one, such as a school that's part of an association, set up the parent link before you start running shared competitions. It keeps everything connected properly.</p>"
+    },
+    "organisations-teams/org-types": {
+      "category": "organisations-teams",
+      "slug": "org-types",
+      "key": "organisations-teams/org-types",
+      "title": "Org types: Schools, Clubs, Associations, Franchises",
+      "sectionTitle": "Organisations & Teams",
+      "sectionSlug": "organisations-teams",
+      "description": "When you create an organisation, you pick one of four types. The type matters because it affects how your organisation fits into the wider structure and ho",
+      "html": "<p>When you create an organisation, you pick one of four types. The type matters because it affects how your organisation fits into the wider structure and how it connects to others.</p>\n<h2>The four types</h2>\n<p><strong>School</strong> A school running its own teams and fixtures. Often part of a wider association, which you can link as a parent.</p>\n<p><strong>Club</strong> A sports club, usually with several teams across age groups or divisions. Like a school, a club can sit under an association.</p>\n<p><strong>Association</strong> A governing or organising body that runs competitions across multiple schools or clubs. Associations are often the parent organisation for the schools and clubs that play in their leagues.</p>\n<p><strong>Franchise</strong> A franchise structure, typically used where teams operate under a shared brand or umbrella across regions.</p>\n<h2>How types connect</h2>\n<p>The four types aren't isolated. A school or club can belong to an association by setting that association as its <strong>parent organisation</strong>. This is what lets a wider body run a competition that pulls in teams from many member organisations.</p>\n<p>For example, an association might run the league. Each school is its own organisation with the association set as its parent. The school manages its own teams; the association manages the competition they all play in.</p>\n<h2>Choosing the right type</h2>\n<p>Pick the type that describes what the organisation actually is, not what it does. A school is a School even if it's the one organising a friendly tournament. The competition format is set separately, on the competition itself.</p>\n<p>To set up the parent link, see <a href=\"/support/organisations-teams/link-a-parent-organisation\">Link a parent organisation</a>.</p>"
+    },
+    "organisations-teams/create-an-organisation": {
+      "category": "organisations-teams",
+      "slug": "create-an-organisation",
+      "key": "organisations-teams/create-an-organisation",
+      "title": "Create an organisation",
+      "sectionTitle": "Organisations & Teams",
+      "sectionSlug": "organisations-teams",
+      "description": "An organisation holds your teams and is where you run competitions from. You can create more than one if you manage several.",
+      "html": "<p>An organisation holds your teams and is where you run competitions from. You can create more than one if you manage several.</p>\n<h2>Steps</h2>\n<ol><li>From your dashboard, click <strong>Create organisation</strong>.</li><li>Choose the <strong>type</strong>: School, Club, Association or Franchise. (See <a href=\"/support/organisations-teams/org-types\">Org types</a> if you're unsure.)</li><li>Enter the <strong>name</strong> of the organisation.</li><li>Add any extra details you're prompted for, such as a logo or location.</li><li>Click <strong>Save</strong>.</li></ol>\n<p>You're now the Owner of this organisation, and it shows on your dashboard.</p>\n<h2>After you create it</h2>\n<ul><li>If it belongs to a wider body, <a href=\"/support/organisations-teams/link-a-parent-organisation\">link a parent organisation</a>.</li><li>Start <a href=\"/support/organisations-teams/add-a-team\">adding teams</a>.</li><li>When you're ready to run matches, <a href=\"/support/competitions/create-a-competition\">create a competition</a>.</li></ul>\n<h2>Running more than one organisation</h2>\n<p>There's nothing stopping you from creating several organisations. If you manage a school and also help run the local association, each is its own organisation with its own teams and competitions. Your dashboard shows all the ones you own or have a role in.</p>"
+    },
+    "organisations-teams/link-a-parent-organisation": {
+      "category": "organisations-teams",
+      "slug": "link-a-parent-organisation",
+      "key": "organisations-teams/link-a-parent-organisation",
+      "title": "Link a parent organisation",
+      "sectionTitle": "Organisations & Teams",
+      "sectionSlug": "organisations-teams",
+      "description": "A parent organisation connects a smaller organisation to a bigger one. A school links to its association. A club links to the body that runs its league. Th",
+      "html": "<p>A parent organisation connects a smaller organisation to a bigger one. A school links to its association. A club links to the body that runs its league. This is what lets a wider organisation run competitions that include teams from many members.</p>\n<h2>When you need this</h2>\n<p>Set a parent if your organisation plays in competitions run by a higher body. If your school competes in an association league, link the association as the parent. If your organisation is fully independent, you don't need a parent at all.</p>\n<h2>How to link</h2>\n<ol><li>Open the organisation you want to link.</li><li>Go to its <strong>settings</strong>.</li><li>Find the <strong>parent organisation</strong> field.</li><li>Select the organisation that should be the parent.</li><li>Save.</li></ol>\n<p>The link is now in place. Your organisation keeps managing its own teams; the parent can now include those teams in its competitions.</p>\n<h2>Things to know</h2>\n<ul><li>A parent link is optional. Plenty of organisations run perfectly well without one.</li><li>The parent doesn't take over your organisation. You still own and manage your own teams and any competitions you run yourself.</li><li>If your structure changes, you can update or remove the parent link from the same settings.</li></ul>\n<p>For the bigger picture of how the four org types connect, see <a href=\"/support/organisations-teams/org-types\">Org types</a>.</p>"
+    },
+    "organisations-teams/how-teams-are-named": {
+      "category": "organisations-teams",
+      "slug": "how-teams-are-named",
+      "key": "organisations-teams/how-teams-are-named",
+      "title": "How teams are created and named",
+      "sectionTitle": "Organisations & Teams",
+      "sectionSlug": "organisations-teams",
+      "description": "Teams live inside an organisation. A team is what gets entered into competitions and what plays in fixtures. Getting the naming right from the start saves",
+      "html": "<p>Teams live inside an organisation. A team is what gets entered into competitions and what plays in fixtures. Getting the naming right from the start saves confusion later, especially once a team appears across standings, fixtures and stats.</p>\n<h2>Where a team's name comes from</h2>\n<p>A team belongs to an organisation, and its name usually reflects both the organisation and what makes that specific team distinct. The organisation gives it identity; the team name distinguishes it from the organisation's other teams.</p>\n<p>For a school called Riverside College, you might have:</p>\n<ul><li>Riverside College 1st XI</li><li>Riverside College 2nd XI</li><li>Riverside College U16A</li></ul>\n<p>The school is the organisation. Each XI or age-group side is a separate team within it.</p>\n<h2>Naming conventions</h2>\n<p>A few habits keep things tidy:</p>\n<ul><li><strong>Be consistent.</strong> Pick one format and stick to it across all your teams. Mixing \"1st XI\" and \"First Team\" makes lists harder to read.</li><li><strong>Include the level or age group</strong> where it matters, so \"U16A\" and \"U16B\" are easy to tell apart.</li><li><strong>Keep it recognisable.</strong> The name shows up in fixtures and standings, often next to other organisations' teams. It should be clear who the team is at a glance.</li><li><strong>Avoid clutter.</strong> You don't need to repeat the season or competition in the team name. That context comes from the competition the team is entered into.</li></ul>\n<h2>How naming plays out in competitions</h2>\n<p>When a team is entered into a competition, its name carries through to the fixture list and the standings table. That's why consistency matters: a clean, recognisable name reads well everywhere it appears, and avoids the awkward case of two teams that look almost identical.</p>\n<h2>Next steps</h2>\n<p>Ready to create one? See <a href=\"/support/organisations-teams/add-a-team\">Add a team</a>. To change a name later, see <a href=\"/support/organisations-teams/edit-a-team\">Edit a team</a>.</p>"
+    },
+    "organisations-teams/add-a-team": {
+      "category": "organisations-teams",
+      "slug": "add-a-team",
+      "key": "organisations-teams/add-a-team",
+      "title": "Add a team",
+      "sectionTitle": "Organisations & Teams",
+      "sectionSlug": "organisations-teams",
+      "description": "A team belongs to an organisation and is what you enter into competitions. You'll usually create several within one organisation, one for each side you run",
+      "html": "<p>A team belongs to an organisation and is what you enter into competitions. You'll usually create several within one organisation, one for each side you run.</p>\n<h2>Before you start</h2>\n<p>Have your naming sorted. A team's name appears in fixtures and standings, so it's worth being consistent. See <a href=\"/support/organisations-teams/how-teams-are-named\">How teams are created and named</a> for guidance.</p>\n<h2>Steps</h2>\n<ol><li>Open the organisation the team belongs to.</li><li>Go to the <strong>Teams</strong> section.</li><li>Click <strong>Add team</strong>.</li><li>Enter the <strong>team name</strong> (for example, \"Riverside College 1st XI\").</li><li>Add any other details you're prompted for, such as an age group or logo.</li><li>Click <strong>Save</strong>.</li></ol>\n<p>The team now appears under your organisation and is ready to be entered into a competition.</p>\n<h2>Adding several teams</h2>\n<p>If you run multiple sides, repeat the steps for each. Keep the naming format consistent across all of them so they read cleanly when they appear side by side.</p>\n<h2>What's next</h2>\n<ul><li><a href=\"/support/organisations-teams/manage-your-squad\">Add players to your squad</a>.</li><li><a href=\"/support/competitions/add-teams-to-a-competition\">Add the team to a competition</a>.</li><li>Need to change something? See <a href=\"/support/organisations-teams/edit-a-team\">Edit a team</a>.</li></ul>"
+    },
+    "organisations-teams/edit-a-team": {
+      "category": "organisations-teams",
+      "slug": "edit-a-team",
+      "key": "organisations-teams/edit-a-team",
+      "title": "Edit a team",
+      "sectionTitle": "Organisations & Teams",
+      "sectionSlug": "organisations-teams",
+      "description": "You can change a team's details at any time, including its name, logo and other information.",
+      "html": "<p>You can change a team's details at any time, including its name, logo and other information.</p>\n<h2>Steps</h2>\n<ol><li>Open the organisation the team belongs to.</li><li>Go to the <strong>Teams</strong> section.</li><li>Find the team and open it.</li><li>Click <strong>Edit</strong>.</li><li>Update the details you want to change.</li><li>Click <strong>Save</strong>.</li></ol>\n<h2>A note on renaming</h2>\n<p>If you rename a team, the new name carries through everywhere it appears, including fixtures and standings. The team itself stays the same; only its name changes, so its results and stats stay attached to it.</p>\n<p>Be a little careful renaming a team mid-competition. The change is fine and won't break anything, but it can confuse people who knew the team by its old name. If you do it, a quick heads-up to anyone scoring that competition helps.</p>\n<h2>What you can't change here</h2>\n<p>A team's results and stats aren't edited from this screen. Those come from finalised fixtures and recompute from the source. If a stat looks wrong, the fix is at the fixture level, not the team level. See <a href=\"/support/stats-standings/why-a-stat-looks-wrong\">Why a stat looks wrong</a>.</p>"
+    },
+    "organisations-teams/manage-your-squad": {
+      "category": "organisations-teams",
+      "slug": "manage-your-squad",
+      "key": "organisations-teams/manage-your-squad",
+      "title": "Manage your squad and players",
+      "sectionTitle": "Organisations & Teams",
+      "sectionSlug": "organisations-teams",
+      "description": "A team's squad is its list of players. Players are what link goals and events to individuals, which is how player and career stats build up over time.",
+      "html": "<p>A team's squad is its list of players. Players are what link goals and events to individuals, which is how player and career stats build up over time.</p>\n<h2>Add a player</h2>\n<ol><li>Open the team.</li><li>Go to the <strong>Squad</strong> or <strong>Players</strong> section.</li><li>Click <strong>Add player</strong>.</li><li>Enter the player's name and any other details you're prompted for.</li><li>Save.</li></ol>\n<p>Repeat for each player in the squad.</p>\n<h2>Edit a player</h2>\n<p>Open the player from the squad list, click <strong>Edit</strong>, change what you need, and save. This is how you fix a misspelt name or update a player's details.</p>\n<h2>Remove a player</h2>\n<p>Remove a player from the squad list when they're no longer part of the team. Their past stats stay attached to the matches they actually played; removing them from the current squad just means they won't appear in upcoming line-ups.</p>\n<h2>Why the squad matters for stats</h2>\n<p>When you score a match live, goals and events get attributed to players. That's only possible if the players are in the squad. A complete, correctly spelt squad means clean player stats and accurate career records. See <a href=\"/support/stats-standings/player-and-career-stats\">Player and career stats</a> for how those build up.</p>\n<h2>Tip</h2>\n<p>Set up the squad before the season starts rather than mid-match. Scrambling to add a player while a game is live is avoidable hassle.</p>"
+    },
+    "organisations-teams/archive-or-remove-a-team": {
+      "category": "organisations-teams",
+      "slug": "archive-or-remove-a-team",
+      "key": "organisations-teams/archive-or-remove-a-team",
+      "title": "Archive or remove a team",
+      "sectionTitle": "Organisations & Teams",
+      "sectionSlug": "organisations-teams",
+      "description": "When a team is no longer active, you can take it out of the way without losing its history.",
+      "html": "<p>When a team is no longer active, you can take it out of the way without losing its history.</p>\n<h2>Archive vs remove</h2>\n<ul><li><strong>Archive</strong> keeps the team and all its history, but tucks it out of your active lists. This is the safe option for a side that's done for the season but might come back, or one whose past results you want to keep on record.</li><li><strong>Remove</strong> takes the team out entirely.</li></ul>\n<p>Archive is almost always the better choice. A team carries results, stats and a place in past competitions. Keeping it archived means none of that history is disturbed.</p>\n<h2>How to archive</h2>\n<ol><li>Open the organisation.</li><li>Go to the <strong>Teams</strong> section.</li><li>Open the team.</li><li>Choose <strong>Archive</strong>.</li></ol>\n<p>The team moves out of your active teams but stays on record.</p>\n<h2>How to remove</h2>\n<ol><li>Open the team as above.</li><li>Choose <strong>Remove</strong> or <strong>Delete</strong>.</li><li>Confirm.</li></ol>\n<h2>Before you remove a team</h2>\n<p>Think twice if the team has played fixtures. Its results feed standings and stats in any competition it took part in. Removing an active team can leave gaps. If you just want it out of sight, archive it instead.</p>\n<p>If a team is still entered in a live competition, take it out of that competition properly rather than deleting it outright. For non-standard exits like a mid-season withdrawal, see <a href=\"/support/fixtures/non-standard-outcomes\">Walkovers, withdrawals and abandonments</a>.</p>"
+    },
+    "competitions/create-a-competition": {
+      "category": "competitions",
+      "slug": "create-a-competition",
+      "key": "competitions/create-a-competition",
+      "title": "Create a competition",
+      "sectionTitle": "Competitions",
+      "sectionSlug": "competitions",
+      "description": "A competition is the season, league or tournament your teams play in. It holds the fixtures, the standings, and the format. This is where the actual matche",
+      "html": "<p>A competition is the season, league or tournament your teams play in. It holds the fixtures, the standings, and the format. This is where the actual matches come together.</p>\n<h2>Before you start</h2>\n<ul><li>Your organisation should be set up.</li><li>The teams you want to enter should already exist. You can add more later, but having them ready makes setup smoother.</li><li>Have a name in mind. See <a href=\"/support/competitions/naming-conventions\">Competition naming conventions</a>.</li></ul>\n<h2>Steps</h2>\n<ol><li>From your organisation or dashboard, click <strong>Create competition</strong>.</li><li>Enter the <strong>competition name</strong>.</li><li>Choose the <strong>format</strong>: league, knockout, or a hybrid of both. See <a href=\"/support/competitions/competition-formats\">Competition formats</a>.</li><li>Set any other options you're prompted for, such as season or rules.</li><li>Click <strong>Save</strong>.</li></ol>\n<p>You're now the Owner of this competition, with full authority over it.</p>\n<h2>What's next</h2>\n<ol><li><a href=\"/support/competitions/add-teams-to-a-competition\">Add teams to the competition</a>.</li><li><a href=\"/support/fixtures/add-a-fixture\">Add fixtures</a>, or <a href=\"/support/fixtures/generate-fixtures\">generate a full fixture list</a>.</li><li>Score the matches as they're played.</li><li><a href=\"/support/competitions/finalise-a-competition\">Finalise the competition</a> when the season's done.</li></ol>\n<h2>Who can do this</h2>\n<p>Creating a competition makes you its Owner. As Owner you control its teams, fixtures, results and who else can help run it. More on this in <a href=\"/support/competitions/ownership-and-authority\">Competition ownership and authority</a>.</p>"
+    },
+    "competitions/naming-conventions": {
+      "category": "competitions",
+      "slug": "naming-conventions",
+      "key": "competitions/naming-conventions",
+      "title": "Competition naming conventions",
+      "sectionTitle": "Competitions",
+      "sectionSlug": "competitions",
+      "description": "A competition's name is how people find and recognise it. A clear name reads well in lists, on standings tables and anywhere the competition is shared. A v",
+      "html": "<p>A competition's name is how people find and recognise it. A clear name reads well in lists, on standings tables and anywhere the competition is shared. A vague one causes confusion, especially when you run several competitions a season or across years.</p>\n<h2>What a good name includes</h2>\n<p>Aim for a name that answers three things at a glance: who it's for, what it is, and when.</p>\n<ul><li><strong>Who or what level:</strong> the age group, division or grade. \"U16\", \"1st Team\", \"Premier Division\".</li><li><strong>What kind of competition:</strong> \"League\", \"Cup\", \"Tournament\", \"Knockout\".</li><li><strong>When:</strong> the season or year, so this season's competition is easy to tell apart from last season's.</li></ul>\n<p>Put together, you get names like:</p>\n<ul><li>Coastal Schools U16 League 2026</li><li>North Coast 1st XI Cup 2026</li><li>Riverside Invitational Tournament 2026</li></ul>\n<h2>Habits that keep it clean</h2>\n<ul><li><strong>Be consistent across competitions.</strong> If you run several, use the same naming pattern for all of them. It makes your whole list easy to scan.</li><li><strong>Include the year or season.</strong> This is the single most useful thing for telling competitions apart over time. Without it, \"U16 League\" could be any year.</li><li><strong>Don't overload the name.</strong> You don't need to cram in the organisation, the venue and the format all at once. Keep it readable.</li></ul>\n<h2>Why it matters more than it looks</h2>\n<p>The competition name appears wherever the competition does: on the fixture list, the standings, and any link you share. A consistent, dated name means anyone, including people outside your organisation, knows exactly what they're looking at. It also keeps your own admin sane once you've run a few seasons.</p>\n<p>To create one, see <a href=\"/support/competitions/create-a-competition\">Create a competition</a>.</p>"
+    },
+    "competitions/competition-formats": {
+      "category": "competitions",
+      "slug": "competition-formats",
+      "key": "competitions/competition-formats",
+      "title": "Choose a format: league, knockout, hybrid",
+      "sectionTitle": "Competitions",
+      "sectionSlug": "competitions",
+      "description": "When you create a competition, you pick how it's structured. This shapes how fixtures work and how teams progress.",
+      "html": "<p>When you create a competition, you pick how it's structured. This shapes how fixtures work and how teams progress.</p>\n<h2>League</h2>\n<p>Every team plays a set of fixtures, and standings are built from the results. Teams earn points for wins and draws, and the table ranks them. Good for a season where everyone plays everyone, or a round-robin group.</p>\n<p>The standings table is the heart of a league. It recalculates from the results as fixtures are finalised, so it's always up to date.</p>\n<h2>Knockout</h2>\n<p>Teams are placed into a bracket and play elimination rounds. Win and you advance; lose and you're out. Good for cups and tournaments where you want a single winner at the end.</p>\n<p>Knockout structures are built with the playoff builder. See <a href=\"/support/playoffs/build-a-knockout-stage\">Build a knockout stage</a>.</p>\n<h2>Hybrid</h2>\n<p>A mix of both. A common shape is a league or group phase that feeds into a knockout. Teams play a round-robin first, the standings decide who qualifies, and the top teams go into a bracket to decide the winner.</p>\n<p>This is how a lot of real tournaments run: pool play followed by playoffs. You set up the league phase, and when it's done, build the knockout stage from the qualifying teams.</p>\n<h2>Choosing</h2>\n<ul><li>Want a table and everyone playing through a season? <strong>League.</strong></li><li>Want a straight tournament with a single winner? <strong>Knockout.</strong></li><li>Want group play that leads into finals? <strong>Hybrid.</strong></li></ul>\n<p>You set the format when you <a href=\"/support/competitions/create-a-competition\">create the competition</a>. For the knockout side of things, the <a href=\"/support/playoffs/build-a-knockout-stage\">Playoffs section</a> covers building and seeding the bracket.</p>"
+    },
+    "competitions/add-teams-to-a-competition": {
+      "category": "competitions",
+      "slug": "add-teams-to-a-competition",
+      "key": "competitions/add-teams-to-a-competition",
+      "title": "Add teams to a competition",
+      "sectionTitle": "Competitions",
+      "sectionSlug": "competitions",
+      "description": "A competition needs teams before you can schedule any fixtures. Here's how to enter them.",
+      "html": "<p>A competition needs teams before you can schedule any fixtures. Here's how to enter them.</p>\n<h2>Before you start</h2>\n<p>The teams should already exist in an organisation. If they don't, <a href=\"/support/organisations-teams/add-a-team\">add them first</a>.</p>\n<h2>Steps</h2>\n<ol><li>Open the competition.</li><li>Go to the <strong>Teams</strong> section.</li><li>Click <strong>Add team</strong>.</li><li>Select the team you want to enter.</li><li>Repeat for each team.</li><li>Save.</li></ol>\n<p>The teams are now part of the competition and will appear in fixtures and standings.</p>\n<h2>Adding teams from other organisations</h2>\n<p>If your competition is run by an association or a wider body, you can enter teams that belong to member organisations. This is where the parent organisation link matters: it's what connects member schools and clubs to the body running the competition. See <a href=\"/support/organisations-teams/link-a-parent-organisation\">Link a parent organisation</a>.</p>\n<h2>After teams are in</h2>\n<ul><li><a href=\"/support/fixtures/add-a-fixture\">Add fixtures</a> one by one, or</li><li><a href=\"/support/fixtures/generate-fixtures\">Generate a full fixture list</a> automatically from the teams you've entered.</li></ul>\n<h2>Removing a team from a competition</h2>\n<p>If a team needs to come out, remove it from the competition's Teams section. Be careful doing this once fixtures have been played, since it affects standings. For a team that withdraws partway through, handle it as a withdrawal so the results stay correct. See <a href=\"/support/fixtures/non-standard-outcomes\">Walkovers, withdrawals and abandonments</a>.</p>"
+    },
+    "competitions/edit-a-competition": {
+      "category": "competitions",
+      "slug": "edit-a-competition",
+      "key": "competitions/edit-a-competition",
+      "title": "Edit a competition",
+      "sectionTitle": "Competitions",
+      "sectionSlug": "competitions",
+      "description": "You can change a competition's details after it's created, including its name, settings and the teams in it.",
+      "html": "<p>You can change a competition's details after it's created, including its name, settings and the teams in it.</p>\n<h2>Steps</h2>\n<ol><li>Open the competition.</li><li>Click <strong>Edit</strong> or go to its <strong>settings</strong>.</li><li>Change the details you need: name, season, rules, or other options.</li><li>Save.</li></ol>\n<h2>Editing the team list</h2>\n<p>Adding or removing teams is done from the competition's <strong>Teams</strong> section rather than the main edit screen. See <a href=\"/support/competitions/add-teams-to-a-competition\">Add teams to a competition</a>.</p>\n<h2>Editing fixtures</h2>\n<p>Fixtures are managed in the <strong>Fixtures</strong> section, not here. To change a match date, venue or result, go to the fixture itself. See <a href=\"/support/fixtures/edit-a-fixture\">Edit a fixture</a>.</p>\n<h2>What to watch when editing mid-season</h2>\n<ul><li><strong>Renaming</strong> is safe. The new name carries through everywhere, and nothing breaks.</li><li><strong>Removing teams</strong> after fixtures have been played affects the standings, since those results feed the table. If a team is pulling out partway through, handle it as a withdrawal instead. See <a href=\"/support/fixtures/non-standard-outcomes\">Walkovers, withdrawals and abandonments</a>.</li><li><strong>Changing the format</strong> of a competition that's already underway is a bigger move. Do it only if you really need to, and ideally before fixtures are played.</li></ul>\n<h2>Who can edit</h2>\n<p>Only the competition Owner and people in the authority chain can edit a competition. See <a href=\"/support/competitions/ownership-and-authority\">Competition ownership and authority</a>.</p>"
+    },
+    "competitions/ownership-and-authority": {
+      "category": "competitions",
+      "slug": "ownership-and-authority",
+      "key": "competitions/ownership-and-authority",
+      "title": "Competition ownership and authority",
+      "sectionTitle": "Competitions",
+      "sectionSlug": "competitions",
+      "description": "Every competition has a clear line of authority. This decides who can change what, and it stops two people accidentally undoing each other's work.",
+      "html": "<p>Every competition has a clear line of authority. This decides who can change what, and it stops two people accidentally undoing each other's work.</p>\n<h2>The Owner</h2>\n<p>Whoever creates a competition is its Owner. The Owner has full authority over it:</p>\n<ul><li>Edit the competition's settings and name.</li><li>Add and remove teams.</li><li>Add, edit and delete fixtures.</li><li>Score and finalise matches.</li><li>Grant other people roles on the competition.</li></ul>\n<h2>The authority chain</h2>\n<p>Authority flows down from the Owner. The Owner can give other people roles, such as a Scorer for a particular team or the whole competition. Those people can do what their role allows, but they can't override the Owner or grant authority they don't have themselves.</p>\n<p>This chain keeps control clear. The Owner is always the final say on their competition. People they bring in help run it within the limits they've been given.</p>\n<h2>Roles you can grant</h2>\n<ul><li><strong>Owner</strong>-level authority for someone you fully trust to manage the competition with you.</li><li><strong>Scorer</strong> for someone who only needs to score matches, either for one team or across the competition.</li></ul>\n<p>Roles can be scoped to a single team, so a team's coach can score that team's matches without touching anyone else's. See <a href=\"/support/permissions/scoped-roles\">Team-scoped vs competition-scoped roles</a>.</p>\n<h2>Why it works this way</h2>\n<p>A competition often has many people involved: an organiser, a few coaches, someone scoring on the day. The authority chain means everyone can do their part without stepping on each other, and the person who owns the competition stays in control of it.</p>\n<p>To bring people in, see <a href=\"/support/permissions/invite-people\">Invite people and assign roles</a>.</p>"
+    },
+    "competitions/finalise-a-competition": {
+      "category": "competitions",
+      "slug": "finalise-a-competition",
+      "key": "competitions/finalise-a-competition",
+      "title": "Finalise a competition",
+      "sectionTitle": "Competitions",
+      "sectionSlug": "competitions",
+      "description": "When every fixture has been played and scored, you finalise the competition. This closes it out and locks in the final standings and stats.",
+      "html": "<p>When every fixture has been played and scored, you finalise the competition. This closes it out and locks in the final standings and stats.</p>\n<h2>Before you finalise</h2>\n<p>Make sure:</p>\n<ul><li>All fixtures have a result, or have been resolved as a non-standard outcome (walkover, withdrawal, abandonment). See <a href=\"/support/fixtures/non-standard-outcomes\">Walkovers, withdrawals and abandonments</a>.</li><li>The standings look right. They recompute from the results, so if every fixture is finalised, the table should be settled.</li><li>Any corrections are done. It's cleaner to fix a wrong result before finalising than after.</li></ul>\n<h2>Steps</h2>\n<ol><li>Open the competition.</li><li>Confirm all fixtures are complete.</li><li>Choose <strong>Finalise competition</strong>.</li><li>Confirm.</li></ol>\n<h2>What finalising does</h2>\n<p>Finalising marks the competition as complete and settles its records. The competition stats are written, and the final standings stand as the season's result. Player career stats also reflect what happened in this competition.</p>\n<h2>If you need to change something after finalising</h2>\n<p>You can still correct a mistake, but it's more involved than fixing it beforehand. Because stats recompute from the source results, correcting a finalised fixture and re-running the calculations will update the records properly. See <a href=\"/support/live-scoring/correct-a-finalised-result\">Correct a finalised result</a> and <a href=\"/support/stats-standings/why-a-stat-looks-wrong\">Why a stat looks wrong</a>.</p>\n<p>The cleaner path is always to get everything right before you finalise.</p>"
+    },
+    "fixtures/add-a-fixture": {
+      "category": "fixtures",
+      "slug": "add-a-fixture",
+      "key": "fixtures/add-a-fixture",
+      "title": "Add a fixture",
+      "sectionTitle": "Fixtures",
+      "sectionSlug": "fixtures",
+      "description": "A fixture is a single match between two teams. You can add them one at a time, which is handy for a friendly or a one-off, or generate a whole list at once",
+      "html": "<p>A fixture is a single match between two teams. You can add them one at a time, which is handy for a friendly or a one-off, or generate a whole list at once for a league.</p>\n<h2>Before you start</h2>\n<p>The two teams need to be in the competition already. If they're not, <a href=\"/support/competitions/add-teams-to-a-competition\">add them first</a>.</p>\n<h2>Steps</h2>\n<ol><li>Open the competition.</li><li>Go to the <strong>Fixtures</strong> section.</li><li>Click <strong>Add fixture</strong>.</li><li>Choose the <strong>home team</strong> and the <strong>away team</strong>.</li><li>Set the <strong>date and time</strong>.</li><li>Add a <strong>venue</strong> if you have one.</li><li>Save.</li></ol>\n<p>The fixture now appears in the fixture list, ready to be played and scored.</p>\n<h2>Adding several fixtures</h2>\n<p>If you're setting up a full round-robin where everyone plays everyone, generating the fixtures is faster than adding them one by one. See <a href=\"/support/fixtures/generate-fixtures\">Generate a full fixture list</a>.</p>\n<h2>What happens next</h2>\n<p>A new fixture starts at the beginning of its lifecycle, waiting to be played. When the day comes, you <a href=\"/support/live-scoring/start-a-live-match\">start it live</a> and score it. To understand the stages a fixture moves through, see <a href=\"/support/fixtures/fixture-lifecycle\">The fixture lifecycle</a>.</p>\n<h2>Changing a fixture later</h2>\n<p>Dates move and venues change. You can edit any of this after the fact. See <a href=\"/support/fixtures/edit-a-fixture\">Edit a fixture</a>, or <a href=\"/support/fixtures/postpone-or-reschedule\">Postpone or reschedule</a>.</p>"
+    },
+    "fixtures/generate-fixtures": {
+      "category": "fixtures",
+      "slug": "generate-fixtures",
+      "key": "fixtures/generate-fixtures",
+      "title": "Generate a full fixture list",
+      "sectionTitle": "Fixtures",
+      "sectionSlug": "fixtures",
+      "description": "For a league where every team plays the others, generating the fixtures is much faster than adding each one by hand. MatchPulse builds the full set from th",
+      "html": "<p>For a league where every team plays the others, generating the fixtures is much faster than adding each one by hand. MatchPulse builds the full set from the teams you've entered.</p>\n<h2>Before you start</h2>\n<ul><li>All the teams that should play need to be in the competition. See <a href=\"/support/competitions/add-teams-to-a-competition\">Add teams to a competition</a>.</li><li>Decide whether teams play each other once or both home and away.</li></ul>\n<h2>Steps</h2>\n<ol><li>Open the competition.</li><li>Go to the <strong>Fixtures</strong> section.</li><li>Choose <strong>Generate fixtures</strong>.</li><li>Set the options you're given, such as single or double round-robin.</li><li>Generate.</li></ol>\n<p>MatchPulse creates a fixture for each required pairing and adds them all to the list at once.</p>\n<h2>After generating</h2>\n<p>You'll usually want to:</p>\n<ul><li><strong>Set dates and times.</strong> Generated fixtures may need their dates filled in or spread across the season. Edit each one, or work through them in order. See <a href=\"/support/fixtures/edit-a-fixture\">Edit a fixture</a>.</li><li><strong>Add venues</strong> where you know them.</li><li><strong>Check the pairings</strong> look right before the season starts.</li></ul>\n<h2>When generating isn't the right call</h2>\n<p>If your competition is a knockout rather than a league, you don't generate a flat fixture list. You build a bracket instead. See <a href=\"/support/playoffs/build-a-knockout-stage\">Build a knockout stage</a>.</p>\n<p>For a hybrid competition, generate the league phase here, then build the knockout stage once the qualifying teams are known.</p>"
+    },
+    "fixtures/edit-a-fixture": {
+      "category": "fixtures",
+      "slug": "edit-a-fixture",
+      "key": "fixtures/edit-a-fixture",
+      "title": "Edit a fixture",
+      "sectionTitle": "Fixtures",
+      "sectionSlug": "fixtures",
+      "description": "You can change a fixture's details, including its date, time, venue and teams. What you can change depends on where the fixture is in its lifecycle.",
+      "html": "<p>You can change a fixture's details, including its date, time, venue and teams. What you can change depends on where the fixture is in its lifecycle.</p>\n<h2>Steps</h2>\n<ol><li>Open the competition.</li><li>Go to the <strong>Fixtures</strong> section.</li><li>Find the fixture and open it.</li><li>Click <strong>Edit</strong>.</li><li>Change the details you need.</li><li>Save.</li></ol>\n<h2>What you can change</h2>\n<ul><li><strong>Date and time.</strong> Move a fixture to a new slot. For a proper postponement, see <a href=\"/support/fixtures/postpone-or-reschedule\">Postpone or reschedule</a>.</li><li><strong>Venue.</strong> Update where it's played.</li><li><strong>Teams.</strong> Change the home or away team if a fixture was set up wrong. Take care doing this once the fixture has been played.</li></ul>\n<h2>Editing depends on the fixture's status</h2>\n<p>A fixture that hasn't been played is freely editable. One that's live or finished behaves differently, because changing it affects the result and the standings. If you need to change the score of a match that's already finished, that's a result correction, not a simple edit. See <a href=\"/support/live-scoring/correct-a-finalised-result\">Correct a finalised result</a>.</p>\n<p>To understand which stage a fixture is in and what that allows, see <a href=\"/support/fixtures/fixture-lifecycle\">The fixture lifecycle</a>.</p>\n<h2>For non-standard outcomes</h2>\n<p>If a match didn't play out normally, a walkover, a withdrawal, or an abandonment, don't force it through the edit screen. There's a proper way to record each of these. See <a href=\"/support/fixtures/non-standard-outcomes\">Walkovers, withdrawals and abandonments</a>.</p>"
+    },
+    "fixtures/fixture-lifecycle": {
+      "category": "fixtures",
+      "slug": "fixture-lifecycle",
+      "key": "fixtures/fixture-lifecycle",
+      "title": "The fixture lifecycle explained",
+      "sectionTitle": "Fixtures",
+      "sectionSlug": "fixtures",
+      "description": "Every fixture moves through a set of statuses, from the moment it's created to the moment its result is locked in. Knowing where a fixture sits tells you w",
+      "html": "<p>Every fixture moves through a set of statuses, from the moment it's created to the moment its result is locked in. Knowing where a fixture sits tells you what you can do with it and what's expected next.</p>\n<h2>Why there's a lifecycle</h2>\n<p>A match isn't just \"not played\" or \"played\". It might be scheduled, in progress, finished but not yet confirmed, or resolved without being played at all. Tracking this properly keeps the fixture list honest and makes sure standings and stats only count results that are actually settled.</p>\n<h2>The stages</h2>\n<p>A fixture progresses through a sequence that covers its whole life:</p>\n<ol><li><strong>Scheduled.</strong> The fixture exists, has its teams, date and venue, but hasn't started. This is where it sits after you add it.</li><li><strong>In progress / live.</strong> The match has kicked off and you're scoring it. Goals and events are being recorded as they happen.</li><li><strong>Completed / awaiting finalisation.</strong> The match has ended and the score is captured, but it hasn't been locked in yet. This is the moment to check everything's right.</li><li><strong>Finalised.</strong> The result is confirmed and locked. It now counts towards the standings, and player and competition stats are written from it.</li></ol>\n<p>Alongside the normal flow, a fixture can reach a settled state without being played in the usual way, through a <strong>non-standard outcome</strong> like a walkover, withdrawal or abandonment.</p>\n<h2>What each stage lets you do</h2>\n<ul><li><strong>Scheduled:</strong> edit freely, change date, venue or teams, or delete it.</li><li><strong>Live:</strong> record goals and events, fix mistakes as you go.</li><li><strong>Completed:</strong> review the score, make corrections before finalising.</li><li><strong>Finalised:</strong> the result counts. Changing it now is a correction, which recomputes the affected stats and standings.</li></ul>\n<h2>How this connects to stats</h2>\n<p>Stats and standings are built only from settled results. A finalised fixture feeds the table and the records. Because everything recomputes from the source result, a correctly finalised fixture means correct stats, and a corrected one updates them cleanly.</p>\n<p>For the related screens, see <a href=\"/support/live-scoring/start-a-live-match\">Start a live match</a>, <a href=\"/support/live-scoring/finalise-a-result\">Finalise a result</a> and <a href=\"/support/fixtures/non-standard-outcomes\">Walkovers, withdrawals and abandonments</a>.</p>"
+    },
+    "fixtures/non-standard-outcomes": {
+      "category": "fixtures",
+      "slug": "non-standard-outcomes",
+      "key": "fixtures/non-standard-outcomes",
+      "title": "Walkovers, withdrawals and abandonments",
+      "sectionTitle": "Fixtures",
+      "sectionSlug": "fixtures",
+      "description": "Not every fixture plays out the normal way. A team doesn't show, a side pulls out of the competition, or a match gets called off partway through. MatchPuls",
+      "html": "<p>Not every fixture plays out the normal way. A team doesn't show, a side pulls out of the competition, or a match gets called off partway through. MatchPulse has a proper way to record each of these so the standings and stats stay correct. Don't try to fake these with a manual score.</p>\n<h2>Walkover</h2>\n<p>A walkover is when one team doesn't field a side and the match is awarded to the other. Use this when a team fails to turn up or can't play, and the result goes to their opponent without a real game.</p>\n<p>Record it as a walkover on the fixture rather than entering an invented scoreline. MatchPulse handles how it counts towards the standings.</p>\n<h2>Withdrawal</h2>\n<p>A withdrawal is when a team pulls out of the competition partway through. This is bigger than a single match, since it affects every fixture that team still had to play, and sometimes the ones they already played.</p>\n<p>Handle this as a withdrawal at the competition level so MatchPulse can resolve the team's remaining fixtures correctly. Don't just delete the team, which can leave gaps in the standings. See also <a href=\"/support/competitions/add-teams-to-a-competition\">Add teams to a competition</a> for the team list, and <a href=\"/support/organisations-teams/archive-or-remove-a-team\">Archive or remove a team</a> for the team itself.</p>\n<h2>Abandonment</h2>\n<p>An abandonment is when a match starts but can't be finished, often because of weather or another interruption. The fixture was played in part but has no normal full-time result.</p>\n<p>Record it as an abandonment on the fixture. How it's treated, replayed, voided, or settled on the score at the time, depends on your competition's rules, so resolve it the way your competition handles it.</p>\n<h2>Why use these instead of a manual score</h2>\n<p>Each of these outcomes affects the standings differently from a normal win or loss. Recording them properly means:</p>\n<ul><li>The standings stay accurate.</li><li>The stats engine treats them correctly when it recomputes.</li><li>Anyone looking at the competition sees what actually happened, not a misleading scoreline.</li></ul>\n<p>Forcing a fake result through the normal flow can quietly throw off the table and the records. Use the right outcome type and let MatchPulse do the rest.</p>\n<p>For where these sit in a fixture's life, see <a href=\"/support/fixtures/fixture-lifecycle\">The fixture lifecycle</a>.</p>"
+    },
+    "fixtures/postpone-or-reschedule": {
+      "category": "fixtures",
+      "slug": "postpone-or-reschedule",
+      "key": "fixtures/postpone-or-reschedule",
+      "title": "Postpone or reschedule a fixture",
+      "sectionTitle": "Fixtures",
+      "sectionSlug": "fixtures",
+      "description": "Fixtures move. Rain, clashes, travel. When a match needs a new slot, you reschedule it rather than deleting it and starting over.",
+      "html": "<p>Fixtures move. Rain, clashes, travel. When a match needs a new slot, you reschedule it rather than deleting it and starting over.</p>\n<h2>Reschedule to a new date</h2>\n<ol><li>Open the competition.</li><li>Go to the <strong>Fixtures</strong> section.</li><li>Open the fixture.</li><li>Click <strong>Edit</strong>.</li><li>Change the <strong>date and time</strong> to the new slot.</li><li>Save.</li></ol>\n<p>The fixture keeps everything else, the same teams, the same venue if it hasn't changed, and just sits at its new time.</p>\n<h2>Postpone without a new date yet</h2>\n<p>Sometimes you know a match won't go ahead but don't yet know when it'll be replayed. Mark it as postponed so everyone knows it's off, then set the new date once it's confirmed. Come back and edit the date when you have it.</p>\n<h2>Why not just delete and re-add</h2>\n<p>Deleting loses the fixture and anything attached to it. Rescheduling keeps the same fixture, which is cleaner and avoids confusion for anyone following the competition. Always move the existing fixture rather than replacing it.</p>\n<h2>If the match was abandoned mid-play</h2>\n<p>A match that started and then couldn't finish isn't a reschedule, it's an abandonment, and how it's handled depends on your competition's rules. See <a href=\"/support/fixtures/non-standard-outcomes\">Walkovers, withdrawals and abandonments</a>.</p>"
+    },
+    "fixtures/delete-a-fixture": {
+      "category": "fixtures",
+      "slug": "delete-a-fixture",
+      "key": "fixtures/delete-a-fixture",
+      "title": "Delete a fixture",
+      "sectionTitle": "Fixtures",
+      "sectionSlug": "fixtures",
+      "description": "You can delete a fixture that shouldn't exist, for example one created by mistake or a duplicate. Deleting is for fixtures that were never meant to be ther",
+      "html": "<p>You can delete a fixture that shouldn't exist, for example one created by mistake or a duplicate. Deleting is for fixtures that were never meant to be there, not for matches that didn't play out as planned.</p>\n<h2>Steps</h2>\n<ol><li>Open the competition.</li><li>Go to the <strong>Fixtures</strong> section.</li><li>Open the fixture.</li><li>Choose <strong>Delete</strong>.</li><li>Confirm.</li></ol>\n<h2>When to delete</h2>\n<ul><li>A duplicate fixture.</li><li>A fixture set up with the wrong teams that you'd rather remove than fix.</li><li>A scheduling mistake.</li></ul>\n<h2>When not to delete</h2>\n<ul><li><strong>A match that's being moved.</strong> Reschedule it instead so it keeps its history. See <a href=\"/support/fixtures/postpone-or-reschedule\">Postpone or reschedule</a>.</li><li><strong>A match that didn't play normally.</strong> A no-show, a withdrawal, or an abandonment each has a proper outcome to record. Deleting the fixture hides what happened and can throw off the standings. See <a href=\"/support/fixtures/non-standard-outcomes\">Walkovers, withdrawals and abandonments</a>.</li><li><strong>A finalised fixture.</strong> Its result already feeds the standings and stats. Deleting it leaves a gap. If the result is wrong, correct it rather than deleting. See <a href=\"/support/live-scoring/correct-a-finalised-result\">Correct a finalised result</a>.</li></ul>\n<h2>The rule of thumb</h2>\n<p>If the fixture should never have existed, delete it. If it should exist but something about it is wrong, edit or correct it instead.</p>"
+    },
+    "playoffs/build-a-knockout-stage": {
+      "category": "playoffs",
+      "slug": "build-a-knockout-stage",
+      "key": "playoffs/build-a-knockout-stage",
+      "title": "Build a knockout stage",
+      "sectionTitle": "Playoffs & Knockout Stages",
+      "sectionSlug": "playoffs",
+      "description": "A knockout stage is a bracket of elimination matches. Win and you advance, lose and you're out, until one team is left. You build it with the playoff build",
+      "html": "<p>A knockout stage is a bracket of elimination matches. Win and you advance, lose and you're out, until one team is left. You build it with the playoff builder, either as a standalone knockout competition or as the finals stage of a hybrid competition.</p>\n<h2>When you build one</h2>\n<ul><li><strong>Standalone knockout:</strong> the whole competition is a bracket. Build it once your teams are in.</li><li><strong>Hybrid finals:</strong> a league or group phase runs first, then the top teams go into a knockout. Build this stage once the qualifying teams are known.</li></ul>\n<p>See <a href=\"/support/competitions/competition-formats\">Competition formats</a> for the difference.</p>\n<h2>Before you start</h2>\n<ul><li>The teams that will play in the knockout should be ready.</li><li>For a hybrid, the league phase should be far enough along that you know who's qualified.</li></ul>\n<h2>Steps</h2>\n<ol><li>Open the competition.</li><li>Go to the <strong>Playoffs</strong> or <strong>Knockout</strong> section.</li><li>Choose <strong>Build knockout stage</strong>.</li><li>Set the number of teams and the bracket shape (for example, quarter-finals into semis into a final).</li><li>Add the teams into the bracket. You can seed them so the bracket is balanced. See <a href=\"/support/playoffs/seed-the-bracket\">Seed the bracket</a>.</li><li>Save.</li></ol>\n<p>MatchPulse lays out the rounds and creates the fixtures for the first round.</p>\n<h2>After building</h2>\n<ul><li>Check the matchups look right.</li><li>Set dates, times and venues for the first-round fixtures, the same as any other fixture.</li><li>As results come in, winners advance to the next round automatically. See <a href=\"/support/playoffs/how-teams-advance\">How teams advance</a>.</li></ul>\n<h2>Changing it later</h2>\n<p>If you set the bracket up wrong before any matches are played, you can edit it. See <a href=\"/support/playoffs/edit-the-bracket\">Edit the bracket</a>.</p>"
+    },
+    "playoffs/seed-the-bracket": {
+      "category": "playoffs",
+      "slug": "seed-the-bracket",
+      "key": "playoffs/seed-the-bracket",
+      "title": "Seed teams into the bracket",
+      "sectionTitle": "Playoffs & Knockout Stages",
+      "sectionSlug": "playoffs",
+      "description": "Seeding is how you place teams in a knockout bracket so the matchups are fair and the strongest teams don't meet too early. A well-seeded bracket keeps the",
+      "html": "<p>Seeding is how you place teams in a knockout bracket so the matchups are fair and the strongest teams don't meet too early. A well-seeded bracket keeps the best contests for the later rounds.</p>\n<h2>Why seed at all</h2>\n<p>Without seeding, the draw is essentially random, and the two best teams could end up facing each other in the first round. Seeding ranks the teams and places them so the top seeds are kept apart until deeper in the bracket.</p>\n<h2>How seeds are decided</h2>\n<p>It depends on the competition:</p>\n<ul><li><strong>Hybrid competition:</strong> the league or group phase usually decides the seeds. The team that topped the table is the top seed, and so on down. The standings give you the order. See <a href=\"/support/stats-standings/how-standings-work\">How standings are calculated</a>.</li><li><strong>Standalone knockout:</strong> you set the seeds yourself, based on whatever ranking makes sense, past results, an external ranking, or organiser's choice.</li></ul>\n<h2>Steps</h2>\n<ol><li>In the playoff builder, after setting the bracket shape, place each team into a seed position.</li><li>Put the top seed and the lowest seed on opposite ends so they can only meet in the final.</li><li>Fill the rest of the bracket so higher seeds face lower seeds in the early rounds.</li><li>Save.</li></ol>\n<h2>Standard knockout seeding</h2>\n<p>A typical eight-team bracket pairs them 1 v 8, 4 v 5, 3 v 6, 2 v 7, which keeps the top two seeds apart until the final. MatchPulse helps you lay this out when you build the stage.</p>\n<p>Once you're happy with the seeding, the first-round fixtures are set. To change the layout before matches are played, see <a href=\"/support/playoffs/edit-the-bracket\">Edit the bracket</a>.</p>"
+    },
+    "playoffs/edit-the-bracket": {
+      "category": "playoffs",
+      "slug": "edit-the-bracket",
+      "key": "playoffs/edit-the-bracket",
+      "title": "Edit the bracket",
+      "sectionTitle": "Playoffs & Knockout Stages",
+      "sectionSlug": "playoffs",
+      "description": "You can change a knockout bracket, but how much you can change depends on whether matches have already been played.",
+      "html": "<p>You can change a knockout bracket, but how much you can change depends on whether matches have already been played.</p>\n<h2>Before any matches are played</h2>\n<p>The bracket is fully editable. You can:</p>\n<ul><li>Change the seeding and move teams between positions.</li><li>Swap a team in or out.</li><li>Adjust the bracket shape if you set it up wrong.</li></ul>\n<ol><li>Open the competition's <strong>Playoffs</strong> section.</li><li>Open the bracket.</li><li>Make your changes.</li><li>Save.</li></ol>\n<p>This is the best time to fix anything. Get the bracket right before the first round kicks off.</p>\n<h2>Once matches have started</h2>\n<p>After results come in, the bracket is partly settled. Teams that have won have advanced, and changing the structure underneath them gets messy. Avoid reshaping a bracket mid-tournament unless you have to.</p>\n<p>If a first-round result was scored wrong and the wrong team advanced, the fix is to correct that result, not to rearrange the bracket by hand. Correcting the result updates who advances. See <a href=\"/support/live-scoring/correct-a-finalised-result\">Correct a finalised result</a>.</p>\n<h2>A note on advancing</h2>\n<p>You don't manually move winners forward in a normal knockout. As each match is finalised, the winner advances to the next round on its own. See <a href=\"/support/playoffs/how-teams-advance\">How teams advance</a>. The bracket editor is for setting up the structure, not for forcing results.</p>"
+    },
+    "playoffs/how-teams-advance": {
+      "category": "playoffs",
+      "slug": "how-teams-advance",
+      "key": "playoffs/how-teams-advance",
+      "title": "How teams advance",
+      "sectionTitle": "Playoffs & Knockout Stages",
+      "sectionSlug": "playoffs",
+      "description": "In a knockout, the winner of each match moves on to the next round. MatchPulse handles this for you as results are finalised, so you don't have to move tea",
+      "html": "<p>In a knockout, the winner of each match moves on to the next round. MatchPulse handles this for you as results are finalised, so you don't have to move teams forward by hand.</p>\n<h2>How it works</h2>\n<ol><li>You play and score a knockout fixture, the same as any other match.</li><li>When you finalise the result, MatchPulse knows who won.</li><li>The winner is placed into the next round's fixture automatically.</li><li>Once both feeder matches in a round are finalised, the next-round matchup is complete and ready to be played.</li></ol>\n<p>So a quarter-final winner lands in the right semi-final slot, and the two semi-final winners meet in the final, all driven by the results you enter.</p>\n<h2>What you still do</h2>\n<ul><li><strong>Score the matches</strong> and finalise them. That's what triggers the advance.</li><li><strong>Set dates and venues</strong> for the next round once the matchups are known.</li></ul>\n<h2>If a match can't be a draw</h2>\n<p>Knockout matches need a winner. If your competition allows draws in normal play, decide in advance how knockout ties are settled, by your competition's rules, and record the winning side so the right team advances.</p>\n<h2>If the wrong team advanced</h2>\n<p>That almost always means a result was entered wrong. Don't try to drag the team back by editing the bracket. Correct the original result instead, and the advance updates to match. See <a href=\"/support/live-scoring/correct-a-finalised-result\">Correct a finalised result</a>.</p>"
+    },
+    "live-scoring/start-a-live-match": {
+      "category": "live-scoring",
+      "slug": "start-a-live-match",
+      "key": "live-scoring/start-a-live-match",
+      "title": "Start a live match",
+      "sectionTitle": "Live Scoring",
+      "sectionSlug": "live-scoring",
+      "description": "When it's time to play, you start the fixture live and score it as the match unfolds. Goals and events go in as they happen.",
+      "html": "<p>When it's time to play, you start the fixture live and score it as the match unfolds. Goals and events go in as they happen.</p>\n<h2>Before kick-off</h2>\n<ul><li>The fixture should already exist with the right teams, date and venue. If not, <a href=\"/support/fixtures/add-a-fixture\">add it</a>.</li><li>Both squads should be set up, so you can attribute goals to players. See <a href=\"/support/organisations-teams/manage-your-squad\">Manage your squad</a>.</li><li>Make sure you have permission to score this fixture. A Scorer role on the team or competition is enough. See <a href=\"/support/permissions/roles-explained\">Roles explained</a>.</li></ul>\n<h2>Start it</h2>\n<ol><li>Open the competition.</li><li>Go to the <strong>Fixtures</strong> section.</li><li>Open the fixture you're about to play.</li><li>Choose <strong>Start match</strong> (or <strong>Go live</strong>).</li></ol>\n<p>The fixture moves into its live state, and you're ready to record the action.</p>\n<h2>During the match</h2>\n<p>With the match live, you record goals and events as they happen. See <a href=\"/support/live-scoring/record-events\">Record goals and events</a>.</p>\n<h2>If you start the wrong fixture</h2>\n<p>It happens. If you've gone live on the wrong match, stop and check before recording anything. A fixture that's been started but not scored is easy to set straight. The trouble only comes if you start recording goals against the wrong teams.</p>\n<h2>When the match ends</h2>\n<p>At full time you'll move the fixture towards finalisation, where you confirm the score and lock it in. See <a href=\"/support/live-scoring/finalise-a-result\">Finalise a result</a>.</p>"
+    },
+    "live-scoring/record-events": {
+      "category": "live-scoring",
+      "slug": "record-events",
+      "key": "live-scoring/record-events",
+      "title": "Record goals and events",
+      "sectionTitle": "Live Scoring",
+      "sectionSlug": "live-scoring",
+      "description": "With a match live, you record what happens as it happens. Goals are the main thing, and attributing them to players is what builds player and career stats.",
+      "html": "<p>With a match live, you record what happens as it happens. Goals are the main thing, and attributing them to players is what builds player and career stats.</p>\n<h2>Record a goal</h2>\n<ol><li>With the match live, choose <strong>Add goal</strong> (or tap the scoring control for the team that scored).</li><li>Pick the <strong>team</strong> that scored.</li><li>Pick the <strong>player</strong> who scored, from that team's squad.</li><li>Confirm.</li></ol>\n<p>The score updates straight away, and the goal is logged against that player.</p>\n<h2>Why attributing to a player matters</h2>\n<p>A goal recorded against a player counts towards their stats for the competition and their career record. If you record a goal without a scorer, the team score is still right, but the player stat is missed. For clean records, attribute every goal you can.</p>\n<p>This only works if the player is in the squad. If someone's missing, add them to the squad and then record the goal. See <a href=\"/support/organisations-teams/manage-your-squad\">Manage your squad</a>.</p>\n<h2>Other events</h2>\n<p>Depending on the match, you may record other events as they occur. Add them live the same way, so the match record reflects what actually happened.</p>\n<h2>Keep up with play</h2>\n<p>Score as you go rather than trying to reconstruct the match afterwards from memory. Live entry is more accurate and means the result is ready to finalise the moment the final whistle goes.</p>\n<h2>Made a mistake</h2>\n<p>Wrong scorer, wrong team, a goal that didn't count. You can fix it during the match. See <a href=\"/support/live-scoring/fix-a-mistake\">Fix a mistake during a match</a>.</p>"
+    },
+    "live-scoring/fix-a-mistake": {
+      "category": "live-scoring",
+      "slug": "fix-a-mistake",
+      "key": "live-scoring/fix-a-mistake",
+      "title": "Fix a mistake during a match",
+      "sectionTitle": "Live Scoring",
+      "sectionSlug": "live-scoring",
+      "description": "Scoring live means the odd slip: a goal to the wrong team, the wrong scorer, or one logged that shouldn't have been. While the match is live, these are qui",
+      "html": "<p>Scoring live means the odd slip: a goal to the wrong team, the wrong scorer, or one logged that shouldn't have been. While the match is live, these are quick to put right.</p>\n<h2>Fix a goal</h2>\n<ol><li>Find the goal in the match's event list.</li><li>Edit it to correct the team or scorer, or remove it if it shouldn't be there.</li><li>The score adjusts to match.</li></ol>\n<h2>Common fixes</h2>\n<ul><li><strong>Wrong scorer, right team:</strong> edit the goal and change the player. The team score stays the same; the player credit moves.</li><li><strong>Wrong team:</strong> edit the goal to the correct team, or remove and re-add it.</li><li><strong>Goal that shouldn't count:</strong> remove it. The score drops back.</li></ul>\n<h2>Do it while you're live</h2>\n<p>The best time to fix a scoring mistake is during the match, before you finalise. Everything's still open and a correction is just an edit.</p>\n<p>Once the match is finalised, the result is locked and feeds the standings and stats. Fixing it then is a result correction, which is more involved. See <a href=\"/support/live-scoring/correct-a-finalised-result\">Correct a finalised result</a>.</p>\n<h2>Before you finalise</h2>\n<p>When the match ends, take a moment to check the score and the scorers look right before locking it in. A quick review at full time saves a correction later. See <a href=\"/support/live-scoring/finalise-a-result\">Finalise a result</a>.</p>"
+    },
+    "live-scoring/finalise-a-result": {
+      "category": "live-scoring",
+      "slug": "finalise-a-result",
+      "key": "live-scoring/finalise-a-result",
+      "title": "Finalise a result",
+      "sectionTitle": "Live Scoring",
+      "sectionSlug": "live-scoring",
+      "description": "When a match ends, you finalise it to lock in the result. This is what makes the score count towards the standings and writes the stats.",
+      "html": "<p>When a match ends, you finalise it to lock in the result. This is what makes the score count towards the standings and writes the stats.</p>\n<h2>Before you finalise</h2>\n<p>Take a moment to check:</p>\n<ul><li>The <strong>score</strong> is right.</li><li>The <strong>goals are attributed</strong> to the correct players.</li><li>Any other events are recorded.</li></ul>\n<p>It's much easier to fix something now than after finalising. See <a href=\"/support/live-scoring/fix-a-mistake\">Fix a mistake during a match</a>.</p>\n<h2>Steps</h2>\n<ol><li>With the match finished, open it.</li><li>Choose <strong>Finalise</strong> (or <strong>Confirm result</strong>).</li><li>Confirm.</li></ol>\n<p>The fixture moves to its finalised state. The result is locked.</p>\n<h2>What finalising does</h2>\n<ul><li>The result counts towards the <strong>standings</strong>, which recompute to include it.</li><li><strong>Competition stats</strong> are written from the match.</li><li><strong>Player and career stats</strong> update to reflect the goals recorded.</li></ul>\n<p>This all flows from the source result, so a correctly finalised match produces correct records right across the competition.</p>\n<h2>After finalising</h2>\n<p>If you spot a mistake after locking it in, you can still correct it, but it takes a bit more care because the result is already feeding the standings and stats. See <a href=\"/support/live-scoring/correct-a-finalised-result\">Correct a finalised result</a>.</p>\n<p>The simplest path is always to check carefully before you finalise.</p>"
+    },
+    "live-scoring/correct-a-finalised-result": {
+      "category": "live-scoring",
+      "slug": "correct-a-finalised-result",
+      "key": "live-scoring/correct-a-finalised-result",
+      "title": "Correct a finalised result",
+      "sectionTitle": "Live Scoring",
+      "sectionSlug": "live-scoring",
+      "description": "Sometimes a mistake only comes to light after a match is finalised: a wrong score, a misattributed goal, a result that was confirmed too early. You can sti",
+      "html": "<p>Sometimes a mistake only comes to light after a match is finalised: a wrong score, a misattributed goal, a result that was confirmed too early. You can still fix it. Because everything is calculated from the source result, correcting the fixture and re-running the numbers puts the records straight.</p>\n<h2>How it works</h2>\n<p>MatchPulse builds standings and stats from the actual results, not by adding and subtracting as it goes. So when you correct a finalised fixture:</p>\n<ol><li>You change the result on the fixture itself.</li><li>The standings recompute to reflect the corrected result.</li><li>The stats are rebuilt from the source, so player and competition records update to match.</li></ol>\n<p>You're not patching the table by hand. You fix the source, and the rest follows.</p>\n<h2>Steps</h2>\n<ol><li>Open the competition.</li><li>Go to the <strong>Fixtures</strong> section.</li><li>Open the finalised fixture.</li><li>Make the correction: fix the score, the scorer, or the outcome.</li><li>Confirm the correction.</li></ol>\n<p>The affected standings and stats update from the corrected result.</p>\n<h2>Things to know</h2>\n<ul><li><strong>Fix the source, not the symptom.</strong> If the standings look wrong, the cause is almost always a wrong result. Correct the fixture, and the table sorts itself out. See <a href=\"/support/stats-standings/why-a-stat-looks-wrong\">Why a stat looks wrong</a>.</li><li><strong>Knockout brackets follow too.</strong> If a corrected result changes who won, the team that advances updates with it. See <a href=\"/support/playoffs/how-teams-advance\">How teams advance</a>.</li><li><strong>Career stats rebuild.</strong> Player career records recompute from match results, so a correction flows through to a player's career totals as well.</li></ul>\n<h2>Better still</h2>\n<p>Corrections work, but checking carefully before you finalise is always cleaner. See <a href=\"/support/live-scoring/finalise-a-result\">Finalise a result</a>.</p>"
+    },
+    "stats-standings/how-standings-work": {
+      "category": "stats-standings",
+      "slug": "how-standings-work",
+      "key": "stats-standings/how-standings-work",
+      "title": "How standings are calculated",
+      "sectionTitle": "Stats & Standings",
+      "sectionSlug": "stats-standings",
+      "description": "The standings table ranks the teams in a competition by their results. It updates itself as fixtures are finalised, so it's always current.",
+      "html": "<p>The standings table ranks the teams in a competition by their results. It updates itself as fixtures are finalised, so it's always current.</p>\n<h2>Built from results, recomputed on read</h2>\n<p>MatchPulse doesn't keep a running tally that it nudges up and down. Instead, the standings are worked out from the actual finalised results whenever they're shown. Every time you look at the table, it reflects exactly what the results say.</p>\n<p>This is why the table is reliable. There's no separate score being maintained that could drift out of step with the matches. The results are the single source of truth, and the table is calculated from them.</p>\n<h2>What feeds the table</h2>\n<ul><li><strong>Finalised fixtures.</strong> Only settled results count. A match that's scheduled or still live doesn't affect the table yet.</li><li><strong>Non-standard outcomes.</strong> Walkovers, withdrawals and abandonments are factored in according to how they're recorded. See <a href=\"/support/fixtures/non-standard-outcomes\">Walkovers, withdrawals and abandonments</a>.</li></ul>\n<h2>How teams are ranked</h2>\n<p>Teams earn points from their results, and the table orders them accordingly, typically points first, then the usual tie-breakers your competition uses. As more fixtures finalise, the table fills out and settles towards the final standings.</p>\n<h2>When the season ends</h2>\n<p>Once every fixture is finalised, the table is settled and reflects the final standings. Finalising the competition locks this in. See <a href=\"/support/competitions/finalise-a-competition\">Finalise a competition</a>.</p>\n<h2>If the table looks off</h2>\n<p>Because the table is computed from results, a wrong-looking table almost always traces back to a wrong or missing result. Fix the fixture, and the table corrects itself. See <a href=\"/support/stats-standings/why-a-stat-looks-wrong\">Why a stat looks wrong</a>.</p>"
+    },
+    "stats-standings/player-and-career-stats": {
+      "category": "stats-standings",
+      "slug": "player-and-career-stats",
+      "key": "stats-standings/player-and-career-stats",
+      "title": "Player and career stats",
+      "sectionTitle": "Stats & Standings",
+      "sectionSlug": "stats-standings",
+      "description": "MatchPulse tracks stats for individual players, both within a competition and across their whole career. These build from the goals and events you record w",
+      "html": "<p>MatchPulse tracks stats for individual players, both within a competition and across their whole career. These build from the goals and events you record when scoring matches.</p>\n<h2>Where player stats come from</h2>\n<p>When you score a match and attribute a goal to a player, that goal counts towards their stats. Do this across a competition and you get a full picture of who scored what. This is why a complete, correctly spelt squad and live attribution matter, they're what make player stats possible. See <a href=\"/support/live-scoring/record-events\">Record goals and events</a>.</p>\n<h2>Competition stats vs career stats</h2>\n<ul><li><strong>Competition stats</strong> cover a single competition, the goals a player scored in that season or tournament.</li><li><strong>Career stats</strong> span everything a player has done across competitions over time.</li></ul>\n<h2>How career stats are built</h2>\n<p>Career stats are compiled from the player's match results across all the competitions they've played in. They're rebuilt from those source results rather than kept as a separate running figure. This keeps them accurate: if an underlying result is corrected, the career totals recompute to match.</p>\n<p>This rebuild happens in the background, so career records stay in step with the actual match data over time.</p>\n<h2>Keeping stats clean</h2>\n<ul><li><strong>Attribute goals to the right player</strong> during the match.</li><li><strong>Keep squads accurate</strong>, with correct names and no duplicates. See <a href=\"/support/organisations-teams/manage-your-squad\">Manage your squad</a>.</li><li><strong>Fix mistakes at the source.</strong> If a player's tally looks wrong, the cause is usually a misattributed goal in a specific match. Correct that match and the stat follows.</li></ul>\n<h2>If a stat looks wrong</h2>\n<p>See <a href=\"/support/stats-standings/why-a-stat-looks-wrong\">Why a stat looks wrong</a> for how to track it down and fix it.</p>"
+    },
+    "stats-standings/why-a-stat-looks-wrong": {
+      "category": "stats-standings",
+      "slug": "why-a-stat-looks-wrong",
+      "key": "stats-standings/why-a-stat-looks-wrong",
+      "title": "Why a stat looks wrong",
+      "sectionTitle": "Stats & Standings",
+      "sectionSlug": "stats-standings",
+      "description": "If a standings position or a player's tally looks off, the good news is that it's almost always traceable to a specific result, and fixing that result fixe",
+      "html": "<p>If a standings position or a player's tally looks off, the good news is that it's almost always traceable to a specific result, and fixing that result fixes the stat. Here's how to think about it.</p>\n<h2>Stats are calculated, not stored</h2>\n<p>MatchPulse works out standings and stats from the actual match results rather than keeping a separate running count. Standings recompute when they're shown, and stats are rebuilt from their source results. So a stat is only ever as right as the results behind it.</p>\n<p>That's the key idea: the table and the records aren't the source of truth. The finalised fixtures are. If something looks wrong in the table, the fix lives in a fixture.</p>\n<h2>How to track it down</h2>\n<ol><li><strong>Find the result behind the number.</strong> A team too high or too low in the table? Look at their fixtures. A player's goal count off? Look at the matches they scored in.</li><li><strong>Check the fixture.</strong> Is the score right? Are the goals attributed to the correct players? Was a match finalised that shouldn't have been, or not finalised that should have been?</li><li><strong>Correct the source.</strong> Fix the fixture, and the standings and stats recompute to match. See <a href=\"/support/live-scoring/correct-a-finalised-result\">Correct a finalised result</a>.</li></ol>\n<h2>Common causes</h2>\n<ul><li><strong>A goal credited to the wrong player.</strong> The team score is right, so the table looks fine, but one player's tally is high and another's is low. Fix the goal's scorer on that match.</li><li><strong>A wrong score.</strong> Affects the standings directly. Correct the result.</li><li><strong>A match not finalised.</strong> A played match that was never finalised won't count yet. Finalise it. See <a href=\"/support/live-scoring/finalise-a-result\">Finalise a result</a>.</li><li><strong>A non-standard outcome recorded as a normal score.</strong> A walkover or abandonment forced through as an invented scoreline can skew the table. Record it as the proper outcome instead. See <a href=\"/support/fixtures/non-standard-outcomes\">Walkovers, withdrawals and abandonments</a>.</li></ul>\n<h2>The one habit that prevents most of this</h2>\n<p>Check the score and scorers before you finalise a match. Most stat problems are just a scoring slip that got locked in. Catching it at full time avoids the whole chase later.</p>"
+    },
+    "permissions/roles-explained": {
+      "category": "permissions",
+      "slug": "roles-explained",
+      "key": "permissions/roles-explained",
+      "title": "Roles explained: Owner and Scorer",
+      "sectionTitle": "Permissions & Roles",
+      "sectionSlug": "permissions",
+      "description": "MatchPulse uses roles to control who can do what. This lets you bring people in to help, a coach here, a scorer there, without handing over control of ever",
+      "html": "<p>MatchPulse uses roles to control who can do what. This lets you bring people in to help, a coach here, a scorer there, without handing over control of everything.</p>\n<h2>Owner</h2>\n<p>The Owner has full authority. Whoever creates an organisation or a competition is its Owner. An Owner can:</p>\n<ul><li>Edit settings, teams and fixtures.</li><li>Score and finalise matches.</li><li>Resolve non-standard outcomes.</li><li>Grant roles to other people.</li></ul>\n<p>The Owner is the final say. Everyone else operates within the limits the Owner sets.</p>\n<h2>Scorer</h2>\n<p>A Scorer can score matches: start a match live, record goals and events, and finalise the result. A Scorer can't reshape the competition, change its settings, or grant roles to others.</p>\n<p>This is the role for someone whose job is to score on the day, a team manager, a coach, a parent helping out, without giving them control over the wider setup.</p>\n<h2>Why roles are separated this way</h2>\n<p>Running a competition usually involves several people. The organiser sets it all up. Coaches or volunteers score their matches. Keeping Owner and Scorer separate means each person can do their part without being able to accidentally change things outside their job.</p>\n<h2>Scoping a role</h2>\n<p>Roles can be limited to a single team rather than the whole competition. A team's coach can be a Scorer for just that team's matches, and nothing else. This is one of the most useful things about the system. See <a href=\"/support/permissions/scoped-roles\">Team-scoped vs competition-scoped roles</a>.</p>\n<h2>Granting roles</h2>\n<p>Owners hand out roles. See <a href=\"/support/permissions/invite-people\">Invite people and assign roles</a>. For how authority flows from the Owner down, see <a href=\"/support/competitions/ownership-and-authority\">Competition ownership and authority</a>.</p>"
+    },
+    "permissions/scoped-roles": {
+      "category": "permissions",
+      "slug": "scoped-roles",
+      "key": "permissions/scoped-roles",
+      "title": "Team-scoped vs competition-scoped roles",
+      "sectionTitle": "Permissions & Roles",
+      "sectionSlug": "permissions",
+      "description": "A role can apply to a whole competition or to just one team within it. Choosing the right scope means people get exactly the access they need and nothing m",
+      "html": "<p>A role can apply to a whole competition or to just one team within it. Choosing the right scope means people get exactly the access they need and nothing more.</p>\n<h2>Competition-scoped</h2>\n<p>A role at competition level applies across the whole competition. A competition-scoped Scorer can score any match in the competition, whichever teams are playing. Good for an organiser or a dedicated scorer covering everything.</p>\n<h2>Team-scoped</h2>\n<p>A team-scoped role applies to just one team. A team-scoped Scorer can score that team's matches, but not anyone else's. This is the natural fit for a coach or manager who's responsible for their own side and shouldn't be touching other teams' results.</p>\n<h2>Why this matters</h2>\n<p>In a league with many teams, you don't want every coach able to score every match. Team-scoping lets you give each coach access to their own team's fixtures only. Everyone can help, but they stay in their lane, and there's no risk of one team's manager accidentally changing another's result.</p>\n<h2>How it works</h2>\n<p>When you grant someone a role, you choose its scope: the whole competition, or a specific team. The same Owner or Scorer role becomes broad or narrow depending on the scope you give it.</p>\n<h2>Choosing the scope</h2>\n<ul><li><strong>One person covering the whole event?</strong> Competition scope.</li><li><strong>A coach handling only their team?</strong> Team scope, set to that team.</li></ul>\n<p>To grant a role and set its scope, see <a href=\"/support/permissions/invite-people\">Invite people and assign roles</a>.</p>"
+    },
+    "permissions/invite-people": {
+      "category": "permissions",
+      "slug": "invite-people",
+      "key": "permissions/invite-people",
+      "title": "Invite people and assign roles",
+      "sectionTitle": "Permissions & Roles",
+      "sectionSlug": "permissions",
+      "description": "As an Owner, you can bring other people in to help run your competition, and decide exactly what each can do.",
+      "html": "<p>As an Owner, you can bring other people in to help run your competition, and decide exactly what each can do.</p>\n<h2>Before you start</h2>\n<p>Decide two things:</p>\n<ol><li><strong>What role</strong> they need: Owner-level to manage with you, or Scorer to score matches. See <a href=\"/support/permissions/roles-explained\">Roles explained</a>.</li><li><strong>What scope</strong>: the whole competition, or just one team. See <a href=\"/support/permissions/scoped-roles\">Team-scoped vs competition-scoped roles</a>.</li></ol>\n<h2>Steps</h2>\n<ol><li>Open the competition (or team) you want to give access to.</li><li>Go to the <strong>People</strong> or <strong>Roles</strong> section.</li><li>Choose <strong>Add</strong> or <strong>Invite</strong>.</li><li>Enter the person's details (usually their email).</li><li>Pick the <strong>role</strong>.</li><li>Set the <strong>scope</strong>, the whole competition or a specific team.</li><li>Confirm.</li></ol>\n<p>The person now has the access you granted and will see the relevant competition or team on their dashboard.</p>\n<h2>A worked example</h2>\n<p>You run a school league with eight teams. You want each coach to score their own team's matches, and a colleague to help you manage the whole thing.</p>\n<ul><li>Give your colleague a competition-scoped Owner-level role.</li><li>Give each coach a Scorer role scoped to their own team.</li></ul>\n<p>Now everyone can do their part, and only their part.</p>\n<h2>Good practice</h2>\n<ul><li><strong>Give the least access that does the job.</strong> A coach who only scores doesn't need Owner rights.</li><li><strong>Use team scope for coaches</strong>, so they can't touch other teams' results.</li><li><strong>Keep Owner-level access to people you fully trust</strong> to manage the competition.</li></ul>\n<h2>Removing access</h2>\n<p>When someone no longer needs access, take it away. See <a href=\"/support/permissions/remove-access\">Remove someone's access</a>.</p>"
+    },
+    "permissions/remove-access": {
+      "category": "permissions",
+      "slug": "remove-access",
+      "key": "permissions/remove-access",
+      "title": "Remove someone's access",
+      "sectionTitle": "Permissions & Roles",
+      "sectionSlug": "permissions",
+      "description": "When a coach moves on, a season ends, or someone no longer needs to help, you can take away their access. Only Owners can do this.",
+      "html": "<p>When a coach moves on, a season ends, or someone no longer needs to help, you can take away their access. Only Owners can do this.</p>\n<h2>Steps</h2>\n<ol><li>Open the competition or team they have access to.</li><li>Go to the <strong>People</strong> or <strong>Roles</strong> section.</li><li>Find the person.</li><li>Choose <strong>Remove</strong> (or change their role).</li><li>Confirm.</li></ol>\n<p>Their access ends, and the competition or team no longer appears on their dashboard.</p>\n<h2>Change instead of remove</h2>\n<p>You don't always need to remove someone entirely. If their job is changing rather than ending, adjust their role or scope instead. For example, narrow a competition-wide Scorer down to a single team, or move someone from Owner-level to Scorer. See <a href=\"/support/permissions/roles-explained\">Roles explained</a> and <a href=\"/support/permissions/scoped-roles\">Scoped roles</a>.</p>\n<h2>What removing doesn't do</h2>\n<p>Removing someone's access doesn't undo the work they did. Matches they scored stay scored, and results they finalised stay in place. You're taking away what they can do from now on, not erasing what's already happened.</p>\n<h2>Good practice</h2>\n<ul><li><strong>Tidy up at season's end.</strong> Remove access people no longer need, so your list of who-can-do-what stays accurate.</li><li><strong>Keep Owner-level access tight.</strong> The fewer people with full authority, the clearer your control of the competition stays.</li></ul>"
+    },
+    "billing/upgrade": {
+      "category": "billing",
+      "slug": "upgrade",
+      "key": "billing/upgrade",
+      "title": "Upgrade to Plus or Pro",
+      "sectionTitle": "Billing & Plans",
+      "sectionSlug": "billing",
+      "description": "When you're ready for more than the Free plan offers, you can upgrade to Plus or Pro. Payments go through PayFast.",
+      "html": "<p>When you're ready for more than the Free plan offers, you can upgrade to Plus or Pro. Payments go through PayFast.</p>\n<h2>The options</h2>\n<ul><li><strong>Plus, R2,000 once-off.</strong> A single payment, not a subscription. Pay once and Plus stays unlocked.</li><li><strong>Pro, R15,000 per year.</strong> Billed annually, for running multiple competitions at scale.</li></ul>\n<p>For who each suits, see <a href=\"/support/getting-started/choosing-a-plan\">Choosing a plan</a>.</p>\n<h2>How to upgrade</h2>\n<ol><li>Go to the <a href=\"https://matchpulse.co.za/plans\" rel=\"noopener\">Plans page</a>.</li><li>Check what each tier includes and pick the one you want.</li><li>Choose <strong>Upgrade</strong> on that plan.</li><li>You'll be taken to PayFast to complete payment.</li><li>Pay using your preferred PayFast method.</li><li>Once payment confirms, your plan unlocks.</li></ol>\n<h2>After paying</h2>\n<p>Your account updates to the new plan once PayFast confirms the payment. If it doesn't seem to have unlocked, give it a moment, payment confirmation can take a little time to come back. If it still hasn't, see <a href=\"/support/billing/manage-subscription\">Manage your subscription</a> or get in touch via the <a href=\"/support/troubleshooting/something-isnt-working\">troubleshooting</a> page.</p>\n<h2>How payment works</h2>\n<p>For more on the payment process and what PayFast handles, see <a href=\"/support/billing/how-payment-works\">How payment works</a>.</p>"
+    },
+    "billing/how-payment-works": {
+      "category": "billing",
+      "slug": "how-payment-works",
+      "key": "billing/how-payment-works",
+      "title": "How payment works",
+      "sectionTitle": "Billing & Plans",
+      "sectionSlug": "billing",
+      "description": "MatchPulse handles payments through PayFast, a South African payment gateway. You don't pay MatchPulse directly with card details; PayFast processes the pa",
+      "html": "<p>MatchPulse handles payments through PayFast, a South African payment gateway. You don't pay MatchPulse directly with card details; PayFast processes the payment and confirms it back.</p>\n<h2>The flow</h2>\n<ol><li>You choose a plan to upgrade to on the <a href=\"https://matchpulse.co.za/plans\" rel=\"noopener\">Plans page</a>.</li><li>MatchPulse sends you to PayFast to pay.</li><li>You complete payment with your chosen method on PayFast.</li><li>PayFast confirms the payment back to MatchPulse.</li><li>Your plan unlocks on your account.</li></ol>\n<p>That confirmation step is automatic. Once PayFast tells MatchPulse the payment went through, your account updates.</p>\n<h2>What you're paying for</h2>\n<ul><li><strong>Plus</strong> is a once-off payment. You pay one time and the plan stays active. There's nothing recurring to manage.</li><li><strong>Pro</strong> is an annual payment, renewed each year.</li></ul>\n<h2>If confirmation is slow</h2>\n<p>Payment confirmation usually comes through quickly, but it can take a short while. If your plan hasn't unlocked right after paying, wait a few minutes and refresh. If it still hasn't updated, check <a href=\"/support/billing/manage-subscription\">Manage your subscription</a> or reach out via <a href=\"/support/troubleshooting/something-isnt-working\">Something isn't working</a>.</p>\n<h2>Security</h2>\n<p>Your payment details are handled by PayFast, not stored by MatchPulse. PayFast is an established South African gateway built for exactly this.</p>"
+    },
+    "billing/manage-subscription": {
+      "category": "billing",
+      "slug": "manage-subscription",
+      "key": "billing/manage-subscription",
+      "title": "Manage your subscription",
+      "sectionTitle": "Billing & Plans",
+      "sectionSlug": "billing",
+      "description": "You can check your current plan and sort out anything to do with billing from your account.",
+      "html": "<p>You can check your current plan and sort out anything to do with billing from your account.</p>\n<h2>Check your current plan</h2>\n<ol><li>Open your account or billing settings.</li><li>Your active plan, Free, Plus or Pro, is shown there.</li></ol>\n<h2>Plus: the once-off plan</h2>\n<p>Plus is a single payment, so there's no recurring subscription to manage. Once it's paid and unlocked, it stays active. Nothing renews and nothing needs cancelling.</p>\n<h2>Pro: the annual plan</h2>\n<p>Pro renews each year. Check your billing settings for your renewal details. If you want to change or stop the annual renewal, do it from there before the renewal date.</p>\n<h2>Payment didn't unlock my plan</h2>\n<p>If you've paid but the plan hasn't activated:</p>\n<ol><li>Give it a few minutes, confirmation from PayFast can take a moment.</li><li>Refresh the page.</li><li>Check your billing settings to see whether the payment registered.</li></ol>\n<p>If it still hasn't come through after that, reach out via <a href=\"/support/troubleshooting/something-isnt-working\">Something isn't working</a> with the details of your payment, and we'll sort it out.</p>\n<h2>Changing plans</h2>\n<p>To move from Free to Plus or Pro, see <a href=\"/support/billing/upgrade\">Upgrade to Plus or Pro</a>. To understand which plan fits you, see <a href=\"/support/getting-started/choosing-a-plan\">Choosing a plan</a>.</p>"
+    },
+    "troubleshooting/faq": {
+      "category": "troubleshooting",
+      "slug": "faq",
+      "key": "troubleshooting/faq",
+      "title": "Common questions",
+      "sectionTitle": "Troubleshooting & FAQ",
+      "sectionSlug": "troubleshooting",
+      "description": "Quick answers to the things people ask most. Each links to the full article if you want more.",
+      "html": "<p>Quick answers to the things people ask most. Each links to the full article if you want more.</p>\n<h2>Setup</h2>\n<p><strong>Do I need to create an organisation before anything else?</strong> Yes. Teams live inside an organisation, and competitions run from it. Start there. See <a href=\"/support/getting-started/set-up-your-organisation\">Set up your organisation</a>.</p>\n<p><strong>What's the difference between an organisation and a team?</strong> An organisation is the school, club or association. A team is a side within it (like a 1st XI). One organisation usually has several teams. See <a href=\"/support/organisations-teams/org-types\">Org types</a>.</p>\n<p><strong>What does a parent organisation do?</strong> It links a smaller organisation to a wider one, so an association can run competitions that include teams from its member schools and clubs. See <a href=\"/support/organisations-teams/link-a-parent-organisation\">Link a parent organisation</a>.</p>\n<h2>Competitions and fixtures</h2>\n<p><strong>Can I run a league and a knockout in the same competition?</strong> Yes, that's a hybrid: a league phase that feeds into a knockout. See <a href=\"/support/competitions/competition-formats\">Competition formats</a>.</p>\n<p><strong>Do I have to add every fixture by hand?</strong> No. For a league you can generate the whole fixture list at once. See <a href=\"/support/fixtures/generate-fixtures\">Generate a full fixture list</a>.</p>\n<p><strong>A team didn't show up. What do I record?</strong> A walkover, not an invented score. See <a href=\"/support/fixtures/non-standard-outcomes\">Walkovers, withdrawals and abandonments</a>.</p>\n<p><strong>A team pulled out mid-season. What now?</strong> Handle it as a withdrawal so their remaining fixtures resolve properly. Don't just delete the team. See <a href=\"/support/fixtures/non-standard-outcomes\">Walkovers, withdrawals and abandonments</a>.</p>\n<h2>Scoring and stats</h2>\n<p><strong>I finalised a match with the wrong score. Can I fix it?</strong> Yes. Correct the result and the standings and stats recompute from it. See <a href=\"/support/live-scoring/correct-a-finalised-result\">Correct a finalised result</a>.</p>\n<p><strong>A player's goal tally looks wrong.</strong> Usually a goal credited to the wrong player in a specific match. Fix that match. See <a href=\"/support/stats-standings/why-a-stat-looks-wrong\">Why a stat looks wrong</a>.</p>\n<p><strong>Why doesn't the standings table match what I expect?</strong> It's computed from finalised results, so a wrong-looking table traces back to a result. See <a href=\"/support/stats-standings/how-standings-work\">How standings are calculated</a>.</p>\n<h2>Access</h2>\n<p><strong>How do I let a coach score their team's matches only?</strong> Give them a Scorer role scoped to that team. See <a href=\"/support/permissions/scoped-roles\">Team-scoped vs competition-scoped roles</a>.</p>\n<h2>Billing</h2>\n<p><strong>Is Plus a subscription?</strong> No, it's a once-off payment. Pro is the annual one. See <a href=\"/support/getting-started/choosing-a-plan\">Choosing a plan</a>.</p>\n<p><strong>I paid but my plan hasn't unlocked.</strong> Give it a few minutes and refresh; PayFast confirmation can take a moment. See <a href=\"/support/billing/manage-subscription\">Manage your subscription</a>.</p>\n<p>Still stuck? See <a href=\"/support/troubleshooting/something-isnt-working\">Something isn't working</a>.</p>"
+    },
+    "troubleshooting/something-isnt-working": {
+      "category": "troubleshooting",
+      "slug": "something-isnt-working",
+      "key": "troubleshooting/something-isnt-working",
+      "title": "Something isn't working",
+      "sectionTitle": "Troubleshooting & FAQ",
+      "sectionSlug": "troubleshooting",
+      "description": "Most issues come down to a few common causes. Work through these before reaching out, and you'll often have it sorted in a minute.",
+      "html": "<p>Most issues come down to a few common causes. Work through these before reaching out, and you'll often have it sorted in a minute.</p>\n<h2>I can't see a competition or team</h2>\n<p>You only see what you have access to. If something's missing from your dashboard, you may not have a role on it. Ask the Owner to check your access, or see <a href=\"/support/permissions/roles-explained\">Roles explained</a>.</p>\n<h2>I can't edit or score a match</h2>\n<p>This is almost always a permissions thing. Scoring needs at least a Scorer role on that team or competition. If your role is scoped to one team, you can't touch another team's matches. See <a href=\"/support/permissions/scoped-roles\">Team-scoped vs competition-scoped roles</a>.</p>\n<h2>My changes don't deploy or the site looks out of date</h2>\n<p>If you're seeing an old version, try a hard refresh of the page first. Browser caching is the usual culprit for stale content.</p>\n<h2>The standings or stats look wrong</h2>\n<p>These are calculated from finalised results, so a wrong-looking number nearly always traces back to a fixture. Track down the result behind it and correct that. See <a href=\"/support/stats-standings/why-a-stat-looks-wrong\">Why a stat looks wrong</a>.</p>\n<h2>A match won't finalise</h2>\n<p>Check that the score and any required details are filled in. If goals need scorers attributed and the squad is missing a player, add them to the squad first, then finalise. See <a href=\"/support/organisations-teams/manage-your-squad\">Manage your squad</a>.</p>\n<h2>I paid but my plan hasn't unlocked</h2>\n<p>Give PayFast a few minutes to confirm, then refresh. Check your billing settings to see whether the payment registered. See <a href=\"/support/billing/manage-subscription\">Manage your subscription</a>.</p>\n<h2>A team advanced wrong in a knockout</h2>\n<p>That means the feeder result was scored wrong. Don't drag the bracket around by hand. Correct the original result, and the advance updates. See <a href=\"/support/playoffs/how-teams-advance\">How teams advance</a>.</p>\n<h2>Still stuck</h2>\n<p>If none of the above sorts it out, get in touch and we'll help. When you do, it speeds things up to include:</p>\n<ul><li>What you were trying to do.</li><li>What you expected to happen, and what happened instead.</li><li>The competition, team or fixture involved.</li><li>A screenshot if you have one.</li></ul>\n<p>The more specific you can be, the faster we can pin it down.</p>"
+    }
+  }
+}
