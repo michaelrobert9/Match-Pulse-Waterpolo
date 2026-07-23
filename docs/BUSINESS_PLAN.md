@@ -7,7 +7,7 @@
 ## 1. Business Overview
 
 **Name:** Match Pulse
-**Firebase Project:** `match-pulse-waterpolo`
+**Firebase Project:** `match-pulse-4560e`
 **Founded:** 2026
 **Owner / Founder:** Michael Robert (michael@robertfamily.co.za)
 **Status:** React app scaffold live; player career page deployed; Firestore ready for data

@@ -60,7 +60,7 @@ jobs:
           repoToken: ${{ secrets.GITHUB_TOKEN }}
           firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
           channelId: live
-          projectId: match-pulse-waterpolo
+          projectId: match-pulse-4560e
 
       # The hosting action above only deploys hosting. Firestore rules and the
       # composite indexes (required by the matches status+scheduledAt queries on
@@ -85,6 +85,6 @@ jobs:
           printf '%s' "$FIREBASE_SERVICE_ACCOUNT" > "$GOOGLE_APPLICATION_CREDENTIALS"
           npx --yes firebase-tools@latest deploy \
             --only firestore:rules,firestore:indexes \
-            --project match-pulse-waterpolo \
+            --project match-pulse-4560e \
             --non-interactive
           rm -f "$GOOGLE_APPLICATION_CREDENTIALS"

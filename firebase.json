@@ -1,9 +1,11 @@
 {
   "firestore": {
+    "database": "waterpolo",
     "rules": "firestore.rules",
     "indexes": "firestore.indexes.json"
   },
   "hosting": {
+    "site": "match-pulse-waterpolo-f9b4c",
     "public": "dist",
     "ignore": [
       "firebase.json",

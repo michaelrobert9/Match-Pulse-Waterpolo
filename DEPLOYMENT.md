@@ -4,7 +4,7 @@ MatchPulse is a Vite SPA on **Firebase Hosting** with **Cloud Firestore** rules 
 indexes. This guide covers both automated (CI) and manual deployment, and — importantly —
 the **IAM permissions** the CI service account needs to deploy Firestore rules.
 
-- **Firebase project:** `match-pulse-waterpolo`
+- **Firebase project:** `match-pulse-4560e`
 - **CI workflow:** `.github/workflows/firebase-deploy.yml` (runs on push to `main`)
 
 ---
@@ -51,13 +51,13 @@ This is an **IAM / deployment-permission issue, not an application-code issue.**
 
 **Console:**
 IAM & Admin → IAM → find the service account (e.g.
-`github-deployer@match-pulse-waterpolo.iam.gserviceaccount.com`) → **Edit** → **Add another
+`github-deployer@match-pulse-4560e.iam.gserviceaccount.com`) → **Edit** → **Add another
 role** → add each of the three roles above → **Save**.
 
 **gcloud CLI:**
 ```bash
-PROJECT_ID=match-pulse-waterpolo
-SA_EMAIL=github-deployer@match-pulse-waterpolo.iam.gserviceaccount.com   # adjust to your SA
+PROJECT_ID=match-pulse-4560e
+SA_EMAIL=github-deployer@match-pulse-4560e.iam.gserviceaccount.com   # adjust to your SA
 
 gcloud projects add-iam-policy-binding "$PROJECT_ID" \
   --member="serviceAccount:$SA_EMAIL" --role="roles/firebase.admin"
@@ -84,12 +84,12 @@ Use this when CI permissions are not yet in place, or to deploy rules out of ban
 
 ### Prerequisites
 - Firebase CLI: `npm install -g firebase-tools`
-- Signed in as a user with deploy rights on `match-pulse-waterpolo`: `firebase login`
+- Signed in as a user with deploy rights on `match-pulse-4560e`: `firebase login`
 
 ### Deploy Firestore rules only (the common case)
 ```bash
 git pull origin <your-branch>
-firebase deploy --only firestore:rules --project match-pulse-waterpolo
+firebase deploy --only firestore:rules --project match-pulse-4560e
 ```
 
 Expected output:
@@ -102,17 +102,17 @@ Expected output:
 ### Other manual targets
 ```bash
 # Rules + indexes together
-firebase deploy --only firestore:rules,firestore:indexes --project match-pulse-waterpolo
+firebase deploy --only firestore:rules,firestore:indexes --project match-pulse-4560e
 
 # Storage rules
-firebase deploy --only storage --project match-pulse-waterpolo
+firebase deploy --only storage --project match-pulse-4560e
 
 # Hosting (after npm run build)
 npm run build
-firebase deploy --only hosting --project match-pulse-waterpolo
+firebase deploy --only hosting --project match-pulse-4560e
 
 # Everything
-firebase deploy --project match-pulse-waterpolo
+firebase deploy --project match-pulse-4560e
 ```
 
 > A signed-in **human user** with the Owner/Editor role on the project does not hit the
