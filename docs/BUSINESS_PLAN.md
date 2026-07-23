@@ -7,14 +7,14 @@
 ## 1. Business Overview
 
 **Name:** Match Pulse
-**Firebase Project:** `match-pulse-4560e`
+**Firebase Project:** `match-pulse-waterpolo`
 **Founded:** 2026
 **Owner / Founder:** Michael Robert (michael@robertfamily.co.za)
 **Status:** React app scaffold live; player career page deployed; Firestore ready for data
 
 ### Mission Statement
 
-Match Pulse gives school and club hockey a professional digital home. Every fixture, result, and player record — searchable, shareable, and live — so that parents, coaches, scouts, and players never miss a moment of the game they love.
+Match Pulse gives school and club water polo a professional digital home. Every fixture, result, and player record — searchable, shareable, and live — so that parents, coaches, scouts, and players never miss a moment of the game they love.
 
 ---
 
@@ -22,7 +22,7 @@ Match Pulse gives school and club hockey a professional digital home. Every fixt
 
 ### Primary Competitor: Altiusrt
 
-The platform currently used by most field-hockey federations, including SA Hockey Association (`saha.altiusrt.com`), is **Altiusrt** (`altiusrt.com`).
+The platform currently used by most field-water polo federations, including SA Water Polo Association (`saha.altiusrt.com`), is **Altiusrt** (`altiusrt.com`).
 
 **Altiusrt's strengths:**
 - Proven data model (competitions, fixtures, results, player records)
@@ -51,7 +51,7 @@ The platform currently used by most field-hockey federations, including SA Hocke
 
 ### Beachhead market
 
-**South African hockey** — schools, clubs, and provincial unions. Altiusrt's interface is weakest here (parent and player-facing experience) and the switching cost is lowest (SA Hockey has no infrastructure lock-in beyond data).
+**South African water polo** — schools, clubs, and provincial unions. Altiusrt's interface is weakest here (parent and player-facing experience) and the switching cost is lowest (SA Water Polo has no infrastructure lock-in beyond data).
 
 ---
 
@@ -63,7 +63,7 @@ The platform currently used by most field-hockey federations, including SA Hocke
 
 ## 4. Target Market
 
-**Primary:** South African schools and clubs with active inter-school or league hockey programmes (initially field hockey; designed to expand to other codes).
+**Primary:** South African schools and clubs with active inter-school or league water polo programmes (initially water polo; designed to expand to other codes).
 
 **Secondary:** Sport administrators and coaches who currently manage records in spreadsheets or WhatsApp groups.
 
@@ -99,7 +99,7 @@ Fast courtside scoring screen with live Firestore updates. Shareable match resul
 
 ### Later (post-validation)
 
-Custom domain. Blaze plan upgrade + Firebase App Hosting with server-side rendering for search visibility ("school X hockey results 2026"). Push notifications / follow-your-team.
+Custom domain. Blaze plan upgrade + Firebase App Hosting with server-side rendering for search visibility ("school X water polo results 2026"). Push notifications / follow-your-team.
 
 ---
 
@@ -160,7 +160,7 @@ See `/docs/BRAND_BOOK.md` for all brand, typography, and colour decisions.
 
 ## 8. Revenue Model
 
-Not yet defined. The product must first prove it delivers value to hockey organisations before a monetisation model is chosen.
+Not yet defined. The product must first prove it delivers value to water polo organisations before a monetisation model is chosen.
 
 **Candidates under consideration (no decision made):**
 - Free for one competition; paid subscription to unlock additional competitions or organisations
@@ -174,7 +174,7 @@ Not yet defined. The product must first prove it delivers value to hockey organi
 | # | Question | Priority | Status |
 |---|----------|----------|--------|
 | 1 | Target launch date for Phase 2 (admin & real data)? | High | Open |
-| 2 | Which sport codes in scope at launch? Hockey only, or multi-sport? | High | Open |
+| 2 | Which sport codes in scope at launch? Water Polo only, or multi-sport? | High | Open |
 | 3 | First real competition to run through the system? | High | Open |
 | 4 | Revenue model selection | Medium | Open |
 | 5 | Mobile app in the roadmap, or mobile-web only? | Medium | Open |

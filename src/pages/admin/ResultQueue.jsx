@@ -10,10 +10,12 @@ import { submitFixtureResult, postponeFixture, cancelFixture } from '../../lib/a
 // their provisional live score pre-filled; untracked fixtures get a blank form
 // plus optional goal scorer and card fields (§D stat parity).
 
+// Water polo discipline tiers (keys shared with the stats engine):
+//   green → Exclusion, yellow → Misconduct, red → Brutality.
 const CARD_TYPES = [
-  { value: 'green',  label: 'Green' },
-  { value: 'yellow', label: 'Yellow' },
-  { value: 'red',    label: 'Red' },
+  { value: 'green',  label: 'Exclusion' },
+  { value: 'yellow', label: 'Misconduct' },
+  { value: 'red',    label: 'Brutality' },
 ]
 
 function fmtWhen(val) {
@@ -159,7 +161,7 @@ function QueueRow({ match, onResolved }) {
             onChange={setAwayScorers} teamLabel={awayLabel} />
           {cards.length > 0 && (
             <div className="space-y-1.5">
-              <p className="text-[10px] font-semibold uppercase tracking-widest text-slate-400">Cards</p>
+              <p className="text-[10px] font-semibold uppercase tracking-widest text-slate-400">Exclusions</p>
               {cards.map((c, i) => (
                 <CardEntry key={i} card={c} index={i}
                   homeLabel={homeLabel} awayLabel={awayLabel}
@@ -175,7 +177,7 @@ function QueueRow({ match, onResolved }) {
         <div className="mb-3">
           <button type="button" onClick={addCard}
             className="inline-flex items-center gap-1 text-[11px] font-semibold text-slate-500 hover:text-emerald-600 transition-colors">
-            <Plus className="w-3 h-3" /> Add card
+            <Plus className="w-3 h-3" /> Add exclusion
           </button>
         </div>
       )}

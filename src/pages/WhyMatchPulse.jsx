@@ -31,7 +31,7 @@ export default function WhyMatchPulse() {
         <div className="wrap">
           <div className="eyebrow"><span className="dot" />Live match tracking</div>
           <h1>Every match.<br />On the record.</h1>
-          <p className="lede">Create fixtures, score live, and publish results the moment the whistle goes. Built for school and club hockey.</p>
+          <p className="lede">Create fixtures, score live, and publish results the moment the whistle goes. Built for school and club water polo.</p>
           <div className="hero-ctas">
             <Link to="/signup" className="btn btn-primary">Start scoring</Link>
           </div>
@@ -83,7 +83,7 @@ export default function WhyMatchPulse() {
               <span className="line" />
               <span className="idx tnum">02</span>
               <h3>Score it live</h3>
-              <p>Tap to add goals and cards as they happen. The clock, the quarters and the scoreline update in real time on every screen watching.</p>
+              <p>Tap to add goals and exclusions as they happen. The clock, the quarters and the scoreline update in real time on every screen watching.</p>
             </div>
             <div className="step reveal">
               <span className="line" />
@@ -105,7 +105,7 @@ export default function WhyMatchPulse() {
             <div className="feat reveal">
               <div className="ico">⏱</div>
               <h3>Live scoring console</h3>
-              <p>A pitch-side console built for one-handed tapping. Quarters, clock, goals and cards. Big targets, no fumbling.</p>
+              <p>A poolside console built for one-handed tapping. Quarters, clock, goals and exclusions. Big targets, no fumbling.</p>
             </div>
             <div className="feat reveal">
               <div className="ico">▦</div>
@@ -141,7 +141,7 @@ export default function WhyMatchPulse() {
         <div className="wrap">
           <div className="record reveal">
             <div className="big tnum">0<small>sec</small></div>
-            <p>That&rsquo;s the gap between the final whistle and a published result. The match is on the record before you&rsquo;ve left the pitch.</p>
+            <p>That&rsquo;s the gap between the final whistle and a published result. The match is on the record before you&rsquo;ve left the poolside.</p>
           </div>
         </div>
       </section>
@@ -162,7 +162,7 @@ export default function WhyMatchPulse() {
               </ul>
             </div>
             <div className="aud reveal">
-              <span className="tag">For the hockey community</span>
+              <span className="tag">For the water polo community</span>
               <h3>Never miss a score.</h3>
               <ul>
                 <li>Live scores from every fixture, not just the ones you&rsquo;re at.</li>

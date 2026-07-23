@@ -2,7 +2,7 @@
 
 **Last updated: 15 July 2026**
 
-This Privacy Policy explains how MatchPulse ("we", "us", "our") collects and uses personal information when you use our hockey tournament management and live scoring platform (the "Platform"). It is written to meet our obligations under the Protection of Personal Information Act, 2013 (POPIA).
+This Privacy Policy explains how MatchPulse ("we", "us", "our") collects and uses personal information when you use our water polo tournament management and live scoring platform (the "Platform"). It is written to meet our obligations under the Protection of Personal Information Act, 2013 (POPIA).
 
 For the purposes of POPIA, MatchPulse is the responsible party for the personal information described below. Our contact details are at the end of this policy.
 
@@ -60,7 +60,7 @@ Competition results, standings and Player statistics are shown on public pages, 
 
 ## 6. Children's information
 
-The Platform may hold personal information about minors, for example in junior hockey.
+The Platform may hold personal information about minors, for example in junior water polo.
 
 Under POPIA, processing a minor's personal information generally requires the consent of a competent person, usually a parent or guardian. Because only a Player, Parent or Manager can create a Player profile, the responsibility for obtaining that consent rests with the person who creates the profile.
 

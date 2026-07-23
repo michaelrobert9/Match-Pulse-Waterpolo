@@ -129,7 +129,7 @@ export default function Nav() {
             Match<span className="text-emerald-600">Pulse</span>
           </span>
           <span className="text-[9px] font-black uppercase tracking-[0.15em] text-emerald-700 bg-emerald-100 rounded px-1.5 py-0.5 leading-none">
-            Hockey
+            Water Polo
           </span>
         </Link>
 

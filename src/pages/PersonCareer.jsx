@@ -151,7 +151,7 @@ function TeamBlock({ team }) {
                 ? (team.goals / team.caps).toFixed(2) : '—',
               label: 'Avg/Game', cls: 'text-slate-900',
             },
-            { val: totalCards || '—', label: 'Cards', cls: 'text-slate-900' },
+            { val: totalCards || '—', label: 'Exclusions', cls: 'text-slate-900' },
           ].map(({ val, label, cls }, i) => (
             <div key={label} className={`flex flex-col items-center${i > 0 ? ' border-l border-slate-200' : ''}`}>
               <span className={`font-mono font-black text-xl tabular-nums ${cls}`}>{val}</span>
@@ -402,7 +402,7 @@ export default function PersonCareer() {
                   <span className="font-mono font-black text-xl text-slate-400 tabular-nums leading-none">0</span>
                 )}
               </div>
-              <span className="text-[9px] font-bold uppercase tracking-widest text-slate-500 text-center leading-tight">Total Cards</span>
+              <span className="text-[9px] font-bold uppercase tracking-widest text-slate-500 text-center leading-tight">Total Exclusions</span>
             </div>
           </div>
 

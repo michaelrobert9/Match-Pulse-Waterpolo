@@ -298,7 +298,7 @@ function UpcomingFixturesSection({ orgId, org, competitions, teams, matches, set
 
           <Input label="Date & time" type="datetime-local" required
             value={form.scheduledAt} onChange={e => setForm(f => ({ ...f, scheduledAt: e.target.value }))} />
-          <Input label="Venue / pitch (optional)" value={form.pitch} placeholder="e.g. Astro 1"
+          <Input label="Venue / pool (optional)" value={form.pitch} placeholder="e.g. Main pool"
             onChange={e => setForm(f => ({ ...f, pitch: e.target.value }))} />
 
           <div>

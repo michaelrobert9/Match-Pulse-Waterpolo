@@ -10,7 +10,7 @@ const TYPE_OPTIONS = [
   {
     value: 'school',
     label: 'School',
-    description: 'A school hockey programme, representing one institution.',
+    description: 'A school water polo programme, representing one institution.',
   },
   {
     value: 'club',
@@ -58,7 +58,7 @@ export default function CreateOrg() {
   const canSubmit = type && name.trim() && !saving
 
   const typeLabel = type === 'school' ? 'School' : type === 'club' ? 'Club' : type === 'association' ? 'Association' : 'Organisation'
-  const namePlaceholder = type === 'school' ? 'e.g. Pretoria Girls High School' : type === 'club' ? 'e.g. Crusaders Hockey Club' : type === 'association' ? 'e.g. KZN Hockey Association' : 'e.g. Pretoria Girls High School'
+  const namePlaceholder = type === 'school' ? 'e.g. Pretoria Girls High School' : type === 'club' ? 'e.g. Crusaders Water Polo Club' : type === 'association' ? 'e.g. KZN Water Polo Association' : 'e.g. Pretoria Girls High School'
 
   async function handleSubmit(e) {
     e.preventDefault()

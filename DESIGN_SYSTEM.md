@@ -1,11 +1,11 @@
 # MatchPulse Design System
-**Version 2.0 · July 2026 · Light theme · Hockey**
+**Version 2.0 · July 2026 · Light theme · Water Polo**
 
 > Rewritten to match the shipped product. Supersedes v1.0 (June 2026), which described a
 > dark, emerald-live theme that was never built. Every token below was read from the
 > live code (`tailwind.config.js`, `index.css`, `Home.jsx`, `StatusBadge.jsx`,
 > `TeamIdentity.jsx`). Sections 3–9 are shared byte-for-byte with the Rugby app;
-> Section 10 is the hockey skin.
+> Section 10 is the water polo skin.
 
 ---
 
@@ -17,14 +17,14 @@ the card and typography systems, and the layout rules — read directly from the
 components (`Home.jsx`, `StatusBadge.jsx`, `TeamIdentity.jsx`, `tailwind.config.js`,
 `index.css`).
 
-MatchPulse ships as two apps — **Rugby** and **Hockey** — from two repositories that
+MatchPulse ships as two apps — **Rugby** and **Water Polo** — from two repositories that
 share one design. The rule is:
 
 > **One shared design, two sport skins.**
 > Every visual token, component, and layout in Sections 3–9 is **identical** in both
 > repositories. The two apps differ *only* in the sport-specific seam described in
 > Section 10 — terminology, scoring, formats, positions, and copy. There is **no
-> colour or layout divergence** between rugby and hockey.
+> colour or layout divergence** between rugby and water polo.
 
 When you change anything in Sections 3–9, apply the identical change to **both** repos
 in the same design branch. When you change something in Section 10, change only the
@@ -304,42 +304,46 @@ system — fold it back into these components.
 
 ---
 
-## 10. Sport skin — Hockey
+## 10. Sport skin — Water Polo
 
-The shared design (Sections 3–9) is **identical** to the Rugby app. Hockey differs only in
+The shared design (Sections 3–9) is **identical** to the Rugby app. Water Polo differs only in
 this seam. Keep every change here inside the files listed below so the visual layer stays
 in sync across both repositories.
 
 ### 10.1 Terminology
 
-- **Unit of scoring:** goals. A match score is a goal total (e.g. `3–2`).
-- **Scoring events:** goal (1), typically from open play, a short corner, or a penalty
-  stroke.
-- **Roster:** a squad of 11 plus substitutes; positions split goalkeeper / defence /
-  midfield / forwards.
-- **Period language:** quarters (Q1–Q4) or halves depending on format; "FT" at full time.
-- **Tagline:** "The easiest way to create, score and publish school and club **hockey**
+- **Unit of scoring:** goals. A match score is a goal total (e.g. `9–7`).
+- **Scoring events:** goal (1), typically from action (even-strength) play, a power play
+  (man-up after an exclusion), or a 5-metre penalty.
+- **Discipline:** exclusions (20-second kick-outs), misconduct (excluded for the game) and
+  brutality (send-off with a 4-minute man-down). There are no hockey/football-style cards.
+- **Roster:** seven in the water (six field players plus a goalkeeper) drawn from a squad of
+  up to 13; positions split goalkeeper / centre forward / centre back / drivers / wings.
+- **Period language:** four quarters (Q1–Q4), 8 minutes each on stopped time; "FT" at full
+  time. A drawn knockout is decided by a penalty shootout.
+- **Tagline:** "The easiest way to create, score and publish school and club **water polo**
   fixtures."
 
 ### 10.2 Scoring & rules code
 
-- The hockey scoring lib (the counterpart to Rugby's `rugbyScoring.js`) — goal-based
+- The water polo scoring lib (the counterpart to Rugby's `rugbyScoring.js`) — goal-based
   score derivation.
 - `StandingsTable.jsx` — standard win/draw/loss points with **goal difference**;
   **no rugby bonus-point columns**. This is the main structural difference from Rugby's
   standings.
-- `FormatSelector.jsx` — hockey match formats (11-a-side outdoor, indoor, etc.).
-- `SquadManager.jsx` — hockey positions and squad size.
+- `FormatSelector.jsx` — water polo match formats (four 8-minute quarters by default;
+  outdoor or indoor pool; per-fixture overrides for shorter age-group quarters).
+- `SquadManager.jsx` — water polo positions and squad size (up to 13).
 
 ### 10.3 Copy & metadata
 
 - SEO/meta copy and `useSeoMeta` strings, `package.json` name, PWA manifest, and any
-  "hockey" wording in `Nav` / `Layout`.
+  "water polo" wording in `Nav` / `Layout`.
 
 Everything not in this section — colours, cards, typography, layout, icons, shared
 components — must match the Rugby app exactly.
 
 ---
 
-*End of MatchPulse Design System v2.0 (Hockey). The Rugby repository carries an identical
+*End of MatchPulse Design System v2.0 (Water Polo). The Rugby repository carries an identical
 document differing only in Section 10.*

@@ -10,9 +10,9 @@ import { getFunctions } from 'firebase/functions'
 
 const firebaseConfig = {
   apiKey:            import.meta.env.VITE_FIREBASE_API_KEY            || '',
-  authDomain:        import.meta.env.VITE_FIREBASE_AUTH_DOMAIN        || 'match-pulse-4560e.firebaseapp.com',
-  projectId:         import.meta.env.VITE_FIREBASE_PROJECT_ID         || 'match-pulse-4560e',
-  storageBucket:     import.meta.env.VITE_FIREBASE_STORAGE_BUCKET     || 'match-pulse-4560e.appspot.com',
+  authDomain:        import.meta.env.VITE_FIREBASE_AUTH_DOMAIN        || 'match-pulse-waterpolo.firebaseapp.com',
+  projectId:         import.meta.env.VITE_FIREBASE_PROJECT_ID         || 'match-pulse-waterpolo',
+  storageBucket:     import.meta.env.VITE_FIREBASE_STORAGE_BUCKET     || 'match-pulse-waterpolo.firebasestorage.app',
   messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID || '',
   appId:             import.meta.env.VITE_FIREBASE_APP_ID              || '',
 }

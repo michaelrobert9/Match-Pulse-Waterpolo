@@ -1,6 +1,6 @@
 # What is MatchPulse
 
-MatchPulse is a platform for running hockey competitions, from a single school fixture to a full league season. You set up your teams, build a competition, schedule the fixtures, and score matches live. Standings, player stats and career records build themselves from the results as they come in.
+MatchPulse is a platform for running water polo competitions, from a single school fixture to a full league season. You set up your teams, build a competition, schedule the fixtures, and score matches live. Standings, player stats and career records build themselves from the results as they come in.
 
 ## What you can do with it
 

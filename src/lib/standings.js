@@ -23,7 +23,11 @@ import { fixtureContribution } from './fixtureResult.js'
 
 const CONFIRMED = new Set(['accepted', 'admin_approved'])
 
-// Fair play: yellow=1pt, red=3pts. Lower score is better (direction: 'asc').
+// Fair play: a misconduct (exclusion for the game) counts 1, a brutality
+// (send-off) counts 3. Routine 20-second exclusions are NOT counted — they are
+// an ordinary part of water polo, not a discipline signal. Lower is better
+// (direction: 'asc'). Keys mirror the stored card tiers (yellow=misconduct,
+// red=brutality).
 const FAIR_PLAY_WEIGHTS = { yellow: 1, red: 3 }
 
 function mkStats(teamId) {

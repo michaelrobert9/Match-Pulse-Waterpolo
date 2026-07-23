@@ -67,30 +67,36 @@ function wallTime(iso) {
   return new Date(iso).toLocaleTimeString('en-ZA', { hour: '2-digit', minute: '2-digit' })
 }
 
+// Water polo goal categories. 'open' (action / even-strength) is the default;
+// power-play goals come while a man up after an exclusion, penalty goals from a
+// 5-metre penalty throw.
 const GOAL_TYPES = [
-  { key: 'open', label: 'Open Play' },
-  { key: 'sc',   label: 'Short Corner' },
-  { key: 'ps',   label: 'Penalty Stroke' },
+  { key: 'open', label: 'Action' },
+  { key: 'pp',   label: 'Power Play' },
+  { key: 'pen',  label: 'Penalty' },
   { key: 'og',   label: 'Own Goal' },
 ]
-const GOAL_TYPE_SHORT = { open: 'Open Play', sc: 'Short Corner', ps: 'Penalty Stroke', og: 'Own Goal' }
+const GOAL_TYPE_SHORT = { open: 'Action', pp: 'Power Play', pen: 'Penalty', og: 'Own Goal' }
+// Water polo discipline tiers. Keys stay green/yellow/red (the stored card
+// tiers, shared with the stats engine); the labels carry the water polo meaning:
+//   green  → Exclusion  (20-second exclusion, the ordinary personal foul)
+//   yellow → Misconduct (excluded for the game; a substitute may enter after 20s)
+//   red    → Brutality  (send-off with a 4-minute man-down)
 const CARD_TYPES = [
-  { key: 'green',  label: 'Green Card',  dot: 'bg-emerald-500' },
-  { key: 'yellow', label: 'Yellow Card', dot: 'bg-yellow-400' },
-  { key: 'red',    label: 'Red Card',    dot: 'bg-red-500' },
+  { key: 'green',  label: 'Exclusion',  dot: 'bg-emerald-500' },
+  { key: 'yellow', label: 'Misconduct', dot: 'bg-yellow-400' },
+  { key: 'red',    label: 'Brutality',  dot: 'bg-red-500' },
 ]
 const CARD_DOT = { green: 'bg-emerald-400', yellow: 'bg-yellow-400', red: 'bg-red-500' }
-const CARD_LABEL = { green: 'Green Card', yellow: 'Yellow Card', red: 'Red Card' }
-// Sensible hockey defaults when no explicit duration is captured. Red = sent off.
-const CARD_DEFAULT_MIN = { green: 2, yellow: 5, red: null }
-// Selectable suspension lengths for a green card.
-const GREEN_DURATIONS = [1, 2, 3, 5]
+const CARD_LABEL = { green: 'Exclusion', yellow: 'Misconduct', red: 'Brutality' }
 
-// Timeline duration text: stored duration wins, else the colour's default.
+// Timeline duration text for a discipline event. A routine exclusion is a fixed
+// 20 seconds; a brutality carries a 4-minute man-down; a misconduct removes the
+// player for the rest of the game.
 function cardDurationLabel(ev) {
-  if (ev.cardType === 'red') return 'Sent off'
-  const min = ev.durationMinutes ?? CARD_DEFAULT_MIN[ev.cardType]
-  return min != null ? `${min} min` : null
+  if (ev.cardType === 'red')    return 'Sent off · 4 min'
+  if (ev.cardType === 'yellow') return 'Excluded (game)'
+  return '20 sec'
 }
 
 // ── Theme (scoring screen only) ──────────────────────────────────────────────
@@ -580,14 +586,11 @@ export default function ScoreMatch() {
     lockTap(key)
     setPendingCard({ side, matchTimestamp: getElapsedMs(match), playerName: null, playerPlayerId: null })
   }
-  // Green cards carry a suspension duration — capture it before writing.
-  // Yellow/red are written immediately on colour selection.
+  // A water polo exclusion is a fixed 20-second sanction and a misconduct or
+  // brutality removes the player outright, so no duration is captured — every
+  // tier is written immediately on selection.
   function applyCardColour(cardType) {
     if (!pendingCard) return
-    if (cardType === 'green') {
-      setPendingCard(pc => ({ ...pc, cardType: 'green' }))
-      return
-    }
     writeCard(cardType, null)
   }
   async function writeCard(cardType, durationMinutes) {
@@ -1089,9 +1092,9 @@ export default function ScoreMatch() {
                     <span className={`w-2.5 h-3 rounded-sm shrink-0 ${CARD_DOT[ev.cardType] ?? 'bg-slate-400'}`} />
                   )}
                   <span className="text-sm flex-1 min-w-0 truncate">
-                    <span className="font-semibold">{ev.kind === 'goal' ? 'Goal' : (CARD_LABEL[ev.cardType] ?? 'Card')}</span>
+                    <span className="font-semibold">{ev.kind === 'goal' ? 'Goal' : (CARD_LABEL[ev.cardType] ?? 'Exclusion')}</span>
                     {' · '}{teamName(ev.side)}
-                    {ev.kind === 'goal' && <span className={t.muted}> · {GOAL_TYPE_SHORT[ev.goalType] ?? 'Open Play'}</span>}
+                    {ev.kind === 'goal' && <span className={t.muted}> · {GOAL_TYPE_SHORT[ev.goalType] ?? 'Action'}</span>}
                     {ev.scorerName && <span className={t.muted}> · {ev.scorerName}</span>}
                     {ev.kind === 'goal' && ev.assistName && <span className={t.muted}> · A: {ev.assistName}</span>}
                     {ev.kind === 'card' && ev.playerName && <span className={t.muted}> · {ev.playerName}</span>}
@@ -1153,7 +1156,7 @@ export default function ScoreMatch() {
                     className={`flex-[3] border font-bold text-sm rounded-xl transition-colors landscape:h-14 ${
                       cardAccepted ? 'bg-emerald-500/20 border-emerald-500 text-emerald-600' : t.neutralBtn
                     }`} style={{ minHeight: 64 }}>
-                    {cardAccepted ? '✓' : 'CARD'}
+                    {cardAccepted ? '✓' : 'EXCL'}
                   </button>
                 </div>
               </div>
@@ -1290,68 +1293,47 @@ export default function ScoreMatch() {
         )
       })()}
 
-      {/* Card colour strip (colour required) */}
+      {/* Exclusion strip (tier required) */}
       {pendingCard && (
-        <Sheet t={t} title={`Card · ${teamName(pendingCard.side)}`}
+        <Sheet t={t} title={`Exclusion · ${teamName(pendingCard.side)}`}
           subtitle={`${gameMinuteLabel(match, pendingCard.matchTimestamp)}`}
           color={teamColor(pendingCard.side)} onClose={() => setPendingCard(null)}>
 
-          {pendingCard.cardType === 'green' ? (
-            /* Green-card duration step */
-            <>
-              <div className="flex items-center gap-2 mb-3">
-                <span className="w-4 h-5 rounded-sm bg-emerald-500 shrink-0" />
-                <span className="font-bold text-sm">Green Card duration</span>
-              </div>
-              <div className="grid grid-cols-2 gap-2 mb-3">
-                {GREEN_DURATIONS.map(min => (
-                  <button key={min} onClick={() => writeCard('green', min)} disabled={saving}
-                    className={`flex items-center justify-center font-bold text-sm rounded-xl border border-slate-300/30 hover:opacity-90 transition-opacity ${t.neutralBtn}`}
-                    style={{ minHeight: 52 }}>
-                    {min} min
-                  </button>
-                ))}
-              </div>
-              <button onClick={() => writeCard('green', null)} disabled={saving}
-                className={`w-full text-sm font-bold rounded-xl py-3 transition-colors ${t.muted} hover:opacity-70`}>
-                Skip — no duration
-              </button>
-            </>
-          ) : (
-            /* Player (optional) + colour selection */
-            <>
-              {pickerSidePlayers(pendingCard.side).length > 0 && (
-                <>
-                  <div className={`text-[10px] font-bold uppercase tracking-widest ${t.muted} mb-2`}>Player (optional)</div>
-                  <div className="space-y-1 max-h-32 overflow-y-auto mb-4">
-                    {pickerSidePlayers(pendingCard.side).map(p => (
-                      <button key={p.id}
-                        onClick={() => setPendingCard(pc => ({ ...pc, playerName: p.personName, playerPlayerId: p.id }))}
-                        className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-left border transition-colors ${
-                          pendingCard.playerPlayerId === p.id ? 'bg-emerald-500/20 border-emerald-500/50' : t.neutralBtn
-                        }`}>
-                        <span className={`font-mono text-xs ${t.muted} w-6 text-right shrink-0`}>{p.shirtNumber ?? '–'}</span>
-                        <PersonAvatar name={p.personName} photoUrl={p.photoUrl} size={24} />
-                        <span className="text-sm flex-1">{p.personName}</span>
-                      </button>
-                    ))}
-                  </div>
-                </>
-              )}
-              <div className={`text-[10px] font-bold uppercase tracking-widest ${t.muted} mb-2`}>Card colour</div>
-              <div className="space-y-2">
-                {CARD_TYPES.map(c => (
-                  <button key={c.key} onClick={() => applyCardColour(c.key)}
-                    className="w-full flex items-center gap-3 px-4 rounded-xl border border-slate-300/30 font-bold text-sm hover:opacity-90 transition-opacity"
-                    style={{ minHeight: 52 }}>
-                    <span className={`w-4 h-5 rounded-sm ${c.dot}`} />
-                    {c.label}
-                    {c.key === 'green' && <span className={`ml-auto text-[11px] ${t.muted}`}>Set duration →</span>}
-                  </button>
-                ))}
-              </div>
-            </>
-          )}
+          {/* Player (optional) + tier selection */}
+          <>
+            {pickerSidePlayers(pendingCard.side).length > 0 && (
+              <>
+                <div className={`text-[10px] font-bold uppercase tracking-widest ${t.muted} mb-2`}>Player (optional)</div>
+                <div className="space-y-1 max-h-32 overflow-y-auto mb-4">
+                  {pickerSidePlayers(pendingCard.side).map(p => (
+                    <button key={p.id}
+                      onClick={() => setPendingCard(pc => ({ ...pc, playerName: p.personName, playerPlayerId: p.id }))}
+                      className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-left border transition-colors ${
+                        pendingCard.playerPlayerId === p.id ? 'bg-emerald-500/20 border-emerald-500/50' : t.neutralBtn
+                      }`}>
+                      <span className={`font-mono text-xs ${t.muted} w-6 text-right shrink-0`}>{p.shirtNumber ?? '–'}</span>
+                      <PersonAvatar name={p.personName} photoUrl={p.photoUrl} size={24} />
+                      <span className="text-sm flex-1">{p.personName}</span>
+                    </button>
+                  ))}
+                </div>
+              </>
+            )}
+            <div className={`text-[10px] font-bold uppercase tracking-widest ${t.muted} mb-2`}>Sanction</div>
+            <div className="space-y-2">
+              {CARD_TYPES.map(c => (
+                <button key={c.key} onClick={() => applyCardColour(c.key)}
+                  className="w-full flex items-center gap-3 px-4 rounded-xl border border-slate-300/30 font-bold text-sm hover:opacity-90 transition-opacity"
+                  style={{ minHeight: 52 }}>
+                  <span className={`w-4 h-5 rounded-sm ${c.dot}`} />
+                  {c.label}
+                  <span className={`ml-auto text-[11px] ${t.muted}`}>
+                    {c.key === 'green' ? '20 sec' : c.key === 'yellow' ? 'Game' : '4 min'}
+                  </span>
+                </button>
+              ))}
+            </div>
+          </>
         </Sheet>
       )}
 
@@ -1879,10 +1861,10 @@ export default function ScoreMatch() {
                 className={`w-full rounded-xl border px-3 py-2.5 text-sm focus:outline-none focus:border-emerald-500 transition-colors ${t.neutralBtn}`} />
             </div>
             <div>
-              <div className={`text-[10px] font-bold uppercase tracking-widest ${t.muted} mb-1.5`}>Pitch / venue</div>
+              <div className={`text-[10px] font-bold uppercase tracking-widest ${t.muted} mb-1.5`}>Venue / pool</div>
               <input type="text" value={editForm.pitch}
                 onChange={e => setEditForm(f => ({ ...f, pitch: e.target.value }))}
-                placeholder="e.g. Field 1"
+                placeholder="e.g. Main pool"
                 className={`w-full rounded-xl border px-3 py-2.5 text-sm focus:outline-none focus:border-emerald-500 transition-colors ${t.neutralBtn}`} />
             </div>
             <div>

@@ -2,7 +2,7 @@
 
 **Last updated: 15 July 2026**
 
-These Terms and Conditions ("Terms") govern your use of MatchPulse, a hockey tournament management and live scoring platform accessible through our website and web application (the "Platform"). MatchPulse is operated by the entity referred to in these Terms as "MatchPulse", "we", "us" or "our".
+These Terms and Conditions ("Terms") govern your use of MatchPulse, a water polo tournament management and live scoring platform accessible through our website and web application (the "Platform"). MatchPulse is operated by the entity referred to in these Terms as "MatchPulse", "we", "us" or "our".
 
 By creating an account, purchasing a plan, or otherwise using the Platform, you agree to these Terms. If you do not agree, do not use the Platform.
 
@@ -90,7 +90,7 @@ By creating an account, purchasing a plan, or otherwise using the Platform, you 
 
 ## 6. Minors
 
-6.1. The Platform may record the names and statistics of Players who are minors, for example in schoolboy or junior hockey.
+6.1. The Platform may record the names and statistics of Players who are minors, for example in schoolboy or junior water polo.
 
 6.2. A Player profile relating to a minor may only be created and managed by the Player's Parent, or by a Manager acting with the Parent's consent. Whoever creates the profile confirms that they have the authority and any consent required to publish the minor's information.
 
