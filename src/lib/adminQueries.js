@@ -528,9 +528,12 @@ export async function createTeam(orgData, displayName, options = {}) {
     orgName:        orgData.name,
     displayName:    name,
     searchName:     name.toLowerCase(),
-    shortCode:      orgData.shortCode,
+    // Firestore rejects `undefined`; orgs need not carry a shortCode/primary
+    // colour, so coalesce every optional org-derived field to null (or a
+    // sensible default) rather than passing undefined straight through.
+    shortCode:      orgData.shortCode ?? null,
     logoUrl:        orgData.logoUrl || null,
-    primaryColor:   orgData.primaryColor,
+    primaryColor:   orgData.primaryColor ?? null,
     secondaryColor: orgData.secondaryColor || '#FFFFFF',
     // Structured naming fields — gender (school: boys/girls, club: division)
     // and the team label (e.g. "U16A" or "1st Team") are stored alongside the
