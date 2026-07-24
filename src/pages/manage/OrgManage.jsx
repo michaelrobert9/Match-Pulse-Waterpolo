@@ -12,6 +12,7 @@ import {
   createCompetition, fetchCompetitionsForOrg, addFixtureToCompetition,
   createTeam, updateTeam, deleteTeam,
   createMatch, deleteMatch,
+  ensureCreatorOwnership,
   fetchOrgStaff, removeOrgStaff,
   propagateTeamNameToMatches, propagateOrgNameToMatches,
   redeemEntitlementToken,
@@ -458,6 +459,7 @@ function TeamsSection({ orgId, org, competitions, teams, setTeams, defaultOpen, 
   const [editId,           setEditId]           = useState(null)
   const [squadOpenId,      setSquadOpenId]      = useState(null)   // team whose squad panel is open
   const [saving,           setSaving]           = useState(false)
+  const [addError,         setAddError]         = useState('')     // surfaced create failure
   const [editSaving,       setEditSaving]       = useState(false)
   const [deleteTarget,     setDeleteTarget]     = useState(null)   // team to delete
   const [deleteConfirmText, setDeleteConfirmText] = useState('')
@@ -506,6 +508,7 @@ function TeamsSection({ orgId, org, competitions, teams, setTeams, defaultOpen, 
     )
     if (isDupe) return
     setSaving(true)
+    setAddError('')
     const options = isSchool
       ? { gender: effectiveSchoolGender, teamLabel: dispName.trim() }
       : { gender, teamLabel: (teamLevel === 'custom' ? customLevel.trim() : teamLevel) || null }
@@ -525,6 +528,13 @@ function TeamsSection({ orgId, org, competitions, teams, setTeams, defaultOpen, 
       setGender('')
       setTeamLevel('')
       setCustomLevel('')
+    } catch (err) {
+      // Never fail silently — a denied write (e.g. Firestore rules) or a
+      // network error must tell the user why the team wasn't created.
+      const msg = err?.code === 'permission-denied'
+        ? "You don't have permission to add a team to this organisation."
+        : (err?.message || 'Could not add the team. Please try again.')
+      setAddError(msg)
     } finally { setSaving(false) }
   }
 
@@ -769,6 +779,9 @@ function TeamsSection({ orgId, org, competitions, teams, setTeams, defaultOpen, 
               <>
                 {isDupe && (
                   <p className="text-xs text-red-600">A team with this name already exists.</p>
+                )}
+                {addError && (
+                  <p className="text-xs text-red-600">{addError}</p>
                 )}
                 <button type="submit" disabled={saving || (isSchool ? !canAddSchool : !canAddClub) || !!isDupe}
                   className="w-full bg-emerald-500 hover:bg-emerald-400 disabled:opacity-50 text-white font-bold text-sm uppercase tracking-wider rounded-lg py-2.5 transition-colors">
@@ -1509,7 +1522,7 @@ export default function OrgManage() {
   const { id } = useParams()
   const navigate = useNavigate()
   const { state: locationState } = useLocation()
-  const { uid, isPlatformAdmin, isOrgMember, orgRoles, canDo } = useAuth()
+  const { uid, isPlatformAdmin, isOrgMember, orgRoles, canDo, refreshUserData } = useAuth()
 
   const [org,             setOrg]             = useState(null)
   const [competitions,    setCompetitions]    = useState([])
@@ -1541,6 +1554,16 @@ export default function OrgManage() {
     ]).then(async ([orgData, comps, teamList]) => {
       setOrg(orgData)
       setCompetitions(comps)
+      // Self-heal: if you created this org but aren't registered as a member
+      // (interrupted self-create, or data created against another database),
+      // write the owner staff doc so team creation is authorised, then refresh
+      // the role mirror. Guarded on non-membership because the staff doc is
+      // unreadable to a non-member (so we assert rather than check first).
+      if (!isPlatformAdmin && !isOrgMember(id) && orgData?.createdBy === uid) {
+        ensureCreatorOwnership(id, orgData)
+          .then(repaired => { if (repaired) refreshUserData?.() })
+          .catch(() => {})
+      }
       // Teams are org assets — competition membership lives in
       // competitions/{id}/teams, never on the team doc itself.
       setTeams(teamList)
