@@ -61,10 +61,6 @@ export default function FormatSelector({ periods, periodMinutes, breakMinutes = 
     onChange({ periods, periodMinutes, breakMinutes: next, indoor: isIndoor })
   }
 
-  function setIndoor(v) {
-    onChange({ periods, periodMinutes, breakMinutes: normalizedBreaks, indoor: v })
-  }
-
   const periodLabel = i => {
     if (numPeriods === 2) return i === 0 ? '1st Half' : '2nd Half'
     if (numPeriods === 4) return `Q${i + 1}`
@@ -73,24 +69,6 @@ export default function FormatSelector({ periods, periodMinutes, breakMinutes = 
 
   return (
     <div className="space-y-4">
-      {/* Outdoor / indoor */}
-      <div>
-        <p className="text-[10px] font-bold uppercase tracking-widest text-slate-500 mb-2">Game type</p>
-        <div className="flex gap-2">
-          {[{ v: false, label: 'Outdoor' }, { v: true, label: 'Indoor' }].map(opt => (
-            <button type="button" key={opt.label}
-              onClick={() => setIndoor(opt.v)}
-              className={`flex-1 text-sm font-bold py-2 rounded-lg border transition-colors ${
-                isIndoor === opt.v
-                  ? 'bg-emerald-600 border-emerald-600 text-white'
-                  : 'border-slate-200 text-slate-500 hover:border-slate-400'
-              }`}>
-              {opt.label}
-            </button>
-          ))}
-        </div>
-      </div>
-
       {/* Periods */}
       <div>
         <p className="text-[10px] font-bold uppercase tracking-widest text-slate-500 mb-2">Periods</p>
@@ -140,7 +118,7 @@ export default function FormatSelector({ periods, periodMinutes, breakMinutes = 
       {/* Summary */}
       {numPeriods > 0 && numMins > 0 && (
         <p className="text-[11px] text-slate-500 font-mono">
-          {isIndoor ? 'Indoor' : 'Outdoor'} · {numPeriods} × {numMins} min
+          {numPeriods} × {numMins} min
           {normalizedBreaks.length > 0 &&
             ' · breaks: ' + normalizedBreaks.map(b => `${b}m`).join(' / ')
           }

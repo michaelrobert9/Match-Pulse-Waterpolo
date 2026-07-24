@@ -18,8 +18,6 @@ const NAV_ITEMS = [
   { to: '/',               label: 'Home',          end: true },
   { to: '/competitions',   label: 'Competitions' },
   { to: '/players',        label: 'Players' },
-  { to: '/why-matchpulse', label: 'Why MatchPulse' },
-  { to: '/plans',          label: 'Plans' },
   { to: '/support',        label: 'Support' },
 ]
 

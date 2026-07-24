@@ -67,35 +67,42 @@ function wallTime(iso) {
   return new Date(iso).toLocaleTimeString('en-ZA', { hour: '2-digit', minute: '2-digit' })
 }
 
-// Water polo goal categories. 'open' (action / even-strength) is the default;
-// power-play goals come while a man up after an exclusion, penalty goals from a
-// 5-metre penalty throw.
+// Water polo goal categories. 'open' (action / even-strength 6-on-6) is the
+// default; a power-play goal is scored a man up after an opponent's exclusion;
+// a counter-attack goal on the transition break; a penalty goal from a 5-metre
+// penalty throw; own goals are rare but possible.
 const GOAL_TYPES = [
-  { key: 'open', label: 'Action' },
-  { key: 'pp',   label: 'Power Play' },
-  { key: 'pen',  label: 'Penalty' },
-  { key: 'og',   label: 'Own Goal' },
+  { key: 'open',    label: 'Action' },
+  { key: 'pp',      label: 'Power Play' },
+  { key: 'counter', label: 'Counter' },
+  { key: 'pen',     label: 'Penalty' },
+  { key: 'og',      label: 'Own Goal' },
 ]
-const GOAL_TYPE_SHORT = { open: 'Action', pp: 'Power Play', pen: 'Penalty', og: 'Own Goal' }
-// Water polo discipline tiers. Keys stay green/yellow/red (the stored card
-// tiers, shared with the stats engine); the labels carry the water polo meaning:
-//   green  → Exclusion  (20-second exclusion, the ordinary personal foul)
-//   yellow → Misconduct (excluded for the game; a substitute may enter after 20s)
-//   red    → Brutality  (send-off with a 4-minute man-down)
+const GOAL_TYPE_SHORT = { open: 'Action', pp: 'Power Play', counter: 'Counter', pen: 'Penalty', og: 'Own Goal' }
+// Water polo player sanctions (World Aquatics), escalating. Keys stay
+// green/yellow/red (the stored tiers, shared with the stats engine); the labels
+// carry the water polo meaning:
+//   green  → Exclusion       20-second exclusion; the player re-enters after 20s
+//                            (or sooner on a goal or change of possession).
+//   yellow → Match exclusion player excluded for the rest of the match — a 3rd
+//                            personal foul or a misconduct — a substitute may
+//                            enter after 20 seconds.
+//   red    → Brutality       red card: player ejected, the opponent is awarded a
+//                            penalty and the team plays a man down for 4 minutes.
 const CARD_TYPES = [
-  { key: 'green',  label: 'Exclusion',  dot: 'bg-emerald-500' },
-  { key: 'yellow', label: 'Misconduct', dot: 'bg-yellow-400' },
-  { key: 'red',    label: 'Brutality',  dot: 'bg-red-500' },
+  { key: 'green',  label: 'Exclusion',       dot: 'bg-emerald-500' },
+  { key: 'yellow', label: 'Match exclusion', dot: 'bg-yellow-400' },
+  { key: 'red',    label: 'Brutality',       dot: 'bg-red-500' },
 ]
 const CARD_DOT = { green: 'bg-emerald-400', yellow: 'bg-yellow-400', red: 'bg-red-500' }
-const CARD_LABEL = { green: 'Exclusion', yellow: 'Misconduct', red: 'Brutality' }
+const CARD_LABEL = { green: 'Exclusion', yellow: 'Match exclusion', red: 'Brutality' }
 
-// Timeline duration text for a discipline event. A routine exclusion is a fixed
-// 20 seconds; a brutality carries a 4-minute man-down; a misconduct removes the
-// player for the rest of the game.
+// Timeline duration text for a sanction: a routine exclusion is 20 seconds; a
+// match exclusion removes the player for the rest of the game; a brutality
+// ejects the player and leaves the team a man down for 4 minutes (plus penalty).
 function cardDurationLabel(ev) {
-  if (ev.cardType === 'red')    return 'Sent off · 4 min'
-  if (ev.cardType === 'yellow') return 'Excluded (game)'
+  if (ev.cardType === 'red')    return 'Ejected · 4 min man-down'
+  if (ev.cardType === 'yellow') return 'Out for match'
   return '20 sec'
 }
 
@@ -1328,7 +1335,7 @@ export default function ScoreMatch() {
                   <span className={`w-4 h-5 rounded-sm ${c.dot}`} />
                   {c.label}
                   <span className={`ml-auto text-[11px] ${t.muted}`}>
-                    {c.key === 'green' ? '20 sec' : c.key === 'yellow' ? 'Game' : '4 min'}
+                    {c.key === 'green' ? '20 sec' : c.key === 'yellow' ? 'Out for match' : '4 min + pen'}
                   </span>
                 </button>
               ))}
@@ -1866,22 +1873,6 @@ export default function ScoreMatch() {
                 onChange={e => setEditForm(f => ({ ...f, pitch: e.target.value }))}
                 placeholder="e.g. Main pool"
                 className={`w-full rounded-xl border px-3 py-2.5 text-sm focus:outline-none focus:border-emerald-500 transition-colors ${t.neutralBtn}`} />
-            </div>
-            <div>
-              <div className={`text-[10px] font-bold uppercase tracking-widest ${t.muted} mb-1.5`}>Game type</div>
-              <div className="grid grid-cols-2 gap-2">
-                {[{ v: false, label: 'Outdoor' }, { v: true, label: 'Indoor' }].map(opt => (
-                  <button type="button" key={opt.label}
-                    onClick={() => setEditForm(f => ({ ...f, indoor: opt.v }))}
-                    className={`text-sm font-bold py-2.5 rounded-xl border transition-colors ${
-                      (editForm.indoor === true) === opt.v
-                        ? 'bg-emerald-600 border-emerald-600 text-white'
-                        : t.neutralBtn
-                    }`}>
-                    {opt.label}
-                  </button>
-                ))}
-              </div>
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div>

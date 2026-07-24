@@ -34,7 +34,17 @@ export const CLUB_DIVISIONS = [
   { value: 'juniorBoys',  label: 'Boys'    },
   { value: 'juniorGirls', label: 'Girls'   },
 ]
-export const TEAM_LEVELS = ['1st Team', '2nd Team', '3rd Team']
+// Senior/open team levels as plain ordinals — water polo squad sizes vary, so
+// there is deliberately NO reference to a number of players (no "XI"/"Team").
+export const TEAM_LEVELS = ['1st', '2nd', '3rd', '4th', '5th', '6th']
+
+// Quick-pick team designations shared by the create-team and add-opponent chip
+// grids: senior ordinals plus the common age-group teams. No player-count words.
+export const TEAM_LEVEL_CHIPS = [
+  '1st', '2nd', '3rd', '4th', '5th', '6th',
+  'U19A', 'U19B', 'U18A', 'U18B', 'U16A', 'U16B',
+  'U15A', 'U15B', 'U14A', 'U14B', 'U13A', 'U13B', 'U12A', 'U12B',
+]
 
 // A school's effective gender for team naming. Co-ed (or unset) means "ask".
 export function schoolGenderProfile(org) {

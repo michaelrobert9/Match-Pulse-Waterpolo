@@ -9,8 +9,6 @@ import SiteSettingsProvider from './components/SiteSettingsProvider'
 
 // Public pages
 import Home from './pages/Home'
-import WhyMatchPulse from './pages/WhyMatchPulse'
-import Plans from './pages/Plans'
 import Signup from './pages/Signup'
 import CompetitionsListPage from './pages/CompetitionsList'
 import OrgList from './pages/OrgList'
@@ -80,9 +78,7 @@ export default function App() {
         {/* Public + authenticated pages that share the Layout shell */}
         <Route element={<Layout />}>
           <Route path="/"                               element={<Home />} />
-          <Route path="/why-matchpulse"                 element={<WhyMatchPulse />} />
           <Route path="/install"                        element={<InstallHelp />} />
-          <Route path="/plans"                          element={<Plans />} />
           <Route path="/support"                        element={<LazyBoundary><SupportIndex /></LazyBoundary>} />
           <Route path="/support/:category/:slug"        element={<LazyBoundary><SupportArticle /></LazyBoundary>} />
           <Route path="/legal/:doc"                     element={<LegalPage />} />

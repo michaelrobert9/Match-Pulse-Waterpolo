@@ -10,11 +10,11 @@ import { submitFixtureResult, postponeFixture, cancelFixture } from '../../lib/a
 // their provisional live score pre-filled; untracked fixtures get a blank form
 // plus optional goal scorer and card fields (§D stat parity).
 
-// Water polo discipline tiers (keys shared with the stats engine):
-//   green → Exclusion, yellow → Misconduct, red → Brutality.
+// Water polo player sanctions (keys shared with the stats engine):
+//   green → Exclusion (20s), yellow → Match exclusion, red → Brutality.
 const CARD_TYPES = [
   { value: 'green',  label: 'Exclusion' },
-  { value: 'yellow', label: 'Misconduct' },
+  { value: 'yellow', label: 'Match exclusion' },
   { value: 'red',    label: 'Brutality' },
 ]
 

@@ -20,10 +20,10 @@ import { playerUrl, matchUrl } from '../lib/slugify'
 import { gameMinuteLabel, periodRemainingMs, formatCountdown } from '../lib/matchClock'
 import { useSeoMeta } from '../lib/useSeoMeta'
 
-const GOAL_TYPE_LABEL = { open: 'Action', pp: 'Power Play', pen: 'Penalty', og: 'Own Goal' }
-// Water polo discipline tiers (keys shared with the stats engine):
-//   green → Exclusion, yellow → Misconduct, red → Brutality.
-const CARD_LABEL      = { green: 'Exclusion', yellow: 'Misconduct', red: 'Brutality' }
+const GOAL_TYPE_LABEL = { open: 'Action', pp: 'Power Play', counter: 'Counter', pen: 'Penalty', og: 'Own Goal' }
+// Water polo player sanctions (keys shared with the stats engine):
+//   green → Exclusion (20s), yellow → Match exclusion, red → Brutality.
+const CARD_LABEL      = { green: 'Exclusion', yellow: 'Match exclusion', red: 'Brutality' }
 const CARD_COLOR      = { green: '#16a34a', yellow: '#ca8a04', red: '#dc2626' }
 
 // Player attribution is secondary — never surface "Unknown" placeholders.
@@ -35,8 +35,8 @@ function cleanName(name) {
 }
 
 function cardDurationText(card) {
-  if (card.cardType === 'red')    return 'Sent off · 4-minute man-down'
-  if (card.cardType === 'yellow') return 'Excluded for the game'
+  if (card.cardType === 'red')    return 'Brutality — ejected, penalty + 4-minute man-down'
+  if (card.cardType === 'yellow') return 'Excluded for the rest of the match'
   return '20-second exclusion'
 }
 
@@ -530,11 +530,6 @@ export default function MatchDetail() {
         <div className="border-t border-slate-200 px-5 py-5 flex flex-col items-center gap-2 text-center">
           <div className="text-[15px] text-slate-600 leading-snug">{fmtMatchDate(match.scheduledAt)}</div>
           {match.pitch && <div className="text-[15px] text-slate-400 leading-snug">{match.pitch}</div>}
-          {typeof match.indoor === 'boolean' && (
-            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full border border-slate-200 bg-slate-50 text-[10px] font-bold uppercase tracking-widest text-slate-500">
-              {match.indoor ? 'Indoor' : 'Outdoor'}
-            </span>
-          )}
           <ShareButton shareData={shareData}
             className="mt-1 min-h-[44px] px-6 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 active:bg-slate-100 text-slate-500 hover:text-slate-900 transition-colors shadow-sm" />
         </div>

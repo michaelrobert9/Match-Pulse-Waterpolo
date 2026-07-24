@@ -5,6 +5,7 @@ import { useAuth } from '../../../contexts/AuthContext'
 import { fetchCompetitionsForOrg, fetchCompetitionsForUser } from '../../../lib/adminQueries'
 import { fetchOrganization } from '../../../lib/queries'
 import { orgEntitlementStatus, userEntitlementStatus } from '../../../lib/entitlement'
+import { MASTER_PLANS_URL } from '../../../lib/externalLinks'
 import CompetitionStatusBadge from '../../../components/CompetitionStatusBadge'
 
 const TYPE_ICON = { league: Trophy, tournament: ListOrdered, festival: Sparkles }
@@ -68,10 +69,10 @@ export default function CompetitionsManageList() {
               <Plus className="w-4 h-4" /> New
             </Link>
           ) : (
-            <Link to="/plans"
+            <a href={MASTER_PLANS_URL} target="_blank" rel="noopener noreferrer"
               className="flex items-center gap-2 px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 transition-colors text-slate-500 text-sm font-bold shrink-0">
               <Lock className="w-4 h-4" /> New
-            </Link>
+            </a>
           )}
         </div>
 
@@ -81,7 +82,7 @@ export default function CompetitionsManageList() {
             <Lock className="w-4 h-4 text-amber-600 mt-0.5 shrink-0" />
             <p className="text-sm text-amber-800">
               Hosting a competition is a Plus or Pro feature.{' '}
-              <Link to="/plans" className="font-semibold underline hover:text-amber-900">See Plans</Link>
+              <a href={MASTER_PLANS_URL} target="_blank" rel="noopener noreferrer" className="font-semibold underline hover:text-amber-900">See Plans</a>
               {' '}to host your first tournament, league or festival.
             </p>
           </div>
@@ -104,10 +105,10 @@ export default function CompetitionsManageList() {
             ) : (
               <>
                 <p className="text-slate-500 text-sm mb-6 max-w-xs mx-auto leading-relaxed">Hosting a competition requires a Plus or Pro plan.</p>
-                <Link to="/plans"
+                <a href={MASTER_PLANS_URL} target="_blank" rel="noopener noreferrer"
                   className="inline-flex items-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-sm uppercase tracking-wider rounded-xl px-6 py-3 transition-colors">
                   See Plans
-                </Link>
+                </a>
               </>
             )}
           </div>
