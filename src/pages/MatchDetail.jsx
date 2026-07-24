@@ -20,10 +20,10 @@ import { playerUrl, matchUrl } from '../lib/slugify'
 import { gameMinuteLabel, periodRemainingMs, formatCountdown } from '../lib/matchClock'
 import { useSeoMeta } from '../lib/useSeoMeta'
 
-const GOAL_TYPE_LABEL = { open: 'Action', pp: 'Power Play', pen: 'Penalty', og: 'Own Goal' }
-// Water polo discipline tiers (keys shared with the stats engine):
-//   green → Exclusion, yellow → Misconduct, red → Brutality.
-const CARD_LABEL      = { green: 'Exclusion', yellow: 'Misconduct', red: 'Brutality' }
+const GOAL_TYPE_LABEL = { open: 'Action', pp: 'Power Play', counter: 'Counter', pen: 'Penalty', og: 'Own Goal' }
+// Water polo player sanctions (keys shared with the stats engine):
+//   green → Exclusion (20s), yellow → Match exclusion, red → Brutality.
+const CARD_LABEL      = { green: 'Exclusion', yellow: 'Match exclusion', red: 'Brutality' }
 const CARD_COLOR      = { green: '#16a34a', yellow: '#ca8a04', red: '#dc2626' }
 
 // Player attribution is secondary — never surface "Unknown" placeholders.
@@ -35,8 +35,8 @@ function cleanName(name) {
 }
 
 function cardDurationText(card) {
-  if (card.cardType === 'red')    return 'Sent off · 4-minute man-down'
-  if (card.cardType === 'yellow') return 'Excluded for the game'
+  if (card.cardType === 'red')    return 'Brutality — ejected, penalty + 4-minute man-down'
+  if (card.cardType === 'yellow') return 'Excluded for the rest of the match'
   return '20-second exclusion'
 }
 
