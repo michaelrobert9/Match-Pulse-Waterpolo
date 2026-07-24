@@ -1,6 +1,7 @@
 import { Outlet, Link } from 'react-router-dom'
 import Nav from './Nav'
 import InstallBanner from './InstallBanner'
+import LazyBoundary from './LazyBoundary'
 
 export default function Layout() {
   const year = new Date().getFullYear()
@@ -8,7 +9,7 @@ export default function Layout() {
     <div className="min-h-screen bg-canvas flex flex-col">
       <Nav />
       <InstallBanner />
-      <main className="flex-1"><Outlet /></main>
+      <main className="flex-1"><LazyBoundary><Outlet /></LazyBoundary></main>
       <footer className="border-t border-slate-200 bg-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-3">
           <div className="flex flex-col sm:flex-row items-center justify-between gap-3">

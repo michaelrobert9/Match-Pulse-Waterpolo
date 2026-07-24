@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { NavLink, Link, Outlet, useLocation } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
+import LazyBoundary from './LazyBoundary'
 import { Home, Trophy, Shield, User, KeyRound, Search, CreditCard, ArrowLeft, Menu, X, Link2, CalendarDays, Inbox } from 'lucide-react'
 
 export default function AdminLayout() {
@@ -110,7 +111,7 @@ export default function AdminLayout() {
         )}
 
         <main className="flex-1 pb-8">
-          <Outlet />
+          <LazyBoundary><Outlet /></LazyBoundary>
         </main>
       </div>
     </div>
