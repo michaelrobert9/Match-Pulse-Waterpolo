@@ -12,6 +12,7 @@ import {
   createCompetition, fetchCompetitionsForOrg, addFixtureToCompetition,
   createTeam, updateTeam, deleteTeam,
   createMatch, deleteMatch,
+  ensureCreatorOwnership,
   fetchOrgStaff, removeOrgStaff,
   propagateTeamNameToMatches, propagateOrgNameToMatches,
   redeemEntitlementToken,
@@ -1521,7 +1522,7 @@ export default function OrgManage() {
   const { id } = useParams()
   const navigate = useNavigate()
   const { state: locationState } = useLocation()
-  const { uid, isPlatformAdmin, isOrgMember, orgRoles, canDo } = useAuth()
+  const { uid, isPlatformAdmin, isOrgMember, orgRoles, canDo, refreshUserData } = useAuth()
 
   const [org,             setOrg]             = useState(null)
   const [competitions,    setCompetitions]    = useState([])
@@ -1553,6 +1554,16 @@ export default function OrgManage() {
     ]).then(async ([orgData, comps, teamList]) => {
       setOrg(orgData)
       setCompetitions(comps)
+      // Self-heal: if you created this org but aren't registered as a member
+      // (interrupted self-create, or data created against another database),
+      // write the owner staff doc so team creation is authorised, then refresh
+      // the role mirror. Guarded on non-membership because the staff doc is
+      // unreadable to a non-member (so we assert rather than check first).
+      if (!isPlatformAdmin && !isOrgMember(id) && orgData?.createdBy === uid) {
+        ensureCreatorOwnership(id, orgData)
+          .then(repaired => { if (repaired) refreshUserData?.() })
+          .catch(() => {})
+      }
       // Teams are org assets — competition membership lives in
       // competitions/{id}/teams, never on the team doc itself.
       setTeams(teamList)

@@ -125,14 +125,40 @@ export async function selfCreateOrganization(data) {
   batch.set(doc(db, 'organizations', orgRef.id, 'staff', userId), {
     role: 'owner', teamId: null, grantedBy: userId, grantedAt: serverTimestamp(),
   })
-  // Use a field-path update so the single new entry is merged into the
-  // existing orgRoles map without replacing the whole field.
-  batch.update(doc(db, 'users', userId), {
-    [`orgRoles.${orgRef.id}`]: { role: 'owner', teamId: null },
-  })
+  // set(merge) rather than update: a brand-new database may not have this
+  // user's profile doc yet, and update() throws on a missing document — which
+  // would abort the batch and leave the org WITHOUT its owner (the exact cause
+  // of "org created but can't add a team"). merge deep-merges the single new
+  // entry into any existing orgRoles map without replacing it.
+  batch.set(doc(db, 'users', userId), {
+    orgRoles: { [orgRef.id]: { role: 'owner', teamId: null } },
+  }, { merge: true })
   await batch.commit()
 
   return orgRef
+}
+
+// Repair helper: if the signed-in user CREATED this org but has no owner staff
+// doc (e.g. the two-step self-create was interrupted after step 1, or the data
+// was created against a different Firestore database), write the owner staff
+// doc and orgRoles mirror. The bootstrap rule permits this precisely because
+// the org's createdBy == the caller.
+//
+// The caller must only invoke this when the user is NOT already a member — the
+// staff doc is unreadable to a non-member, so we cannot check existence first;
+// we simply (re)assert the bootstrap create. Returns true when the write ran.
+export async function ensureCreatorOwnership(orgId, org) {
+  const userId = uid()
+  if (!userId || !org || org.createdBy !== userId) return false
+  const batch = writeBatch(db)
+  batch.set(doc(db, 'organizations', orgId, 'staff', userId), {
+    role: 'owner', teamId: null, grantedBy: userId, grantedAt: serverTimestamp(),
+  })
+  batch.set(doc(db, 'users', userId), {
+    orgRoles: { [orgId]: { role: 'owner', teamId: null } },
+  }, { merge: true })
+  await batch.commit()
+  return true
 }
 export async function updateOrganization(id, data) {
   return updateDoc(doc(db, 'organizations', id), { ...data, updatedAt: serverTimestamp() })
