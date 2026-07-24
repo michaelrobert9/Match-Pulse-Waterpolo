@@ -1113,7 +1113,7 @@ function EligibilityCard({ competition, onSaved }) {
             </div>
             <div>
               <label className="micro-label block mb-1.5">Team level (optional)</label>
-              <Input value={form.teamLevel} onChange={e => set('teamLevel', e.target.value)} placeholder="e.g. 1st team" />
+              <Input value={form.teamLevel} onChange={e => set('teamLevel', e.target.value)} placeholder="e.g. 1st, U16A" />
             </div>
           </div>
           <div>
@@ -1878,7 +1878,7 @@ function TeamsTab({ competition, teams, setTeams }) {
               <div>
                 <label className="micro-label block mb-1.5">Team name</label>
                 <Input value={namedName} onChange={e => setNamedName(e.target.value)}
-                  placeholder="e.g. Crusaders 1st XI" required />
+                  placeholder="e.g. Crusaders 1st" required />
               </div>
               <div className="grid grid-cols-[auto,1fr] gap-3 items-end">
                 <div>

@@ -21,7 +21,7 @@ import { DeleteOrgModal } from '../admin/Organizations'
 import { toDate } from '../../lib/queries'
 import { userDisplayName, userInitial } from '../../lib/names'
 import {
-  SCHOOL_GENDER_PROFILES, SCHOOL_GENDER_LABEL, CLUB_DIVISIONS, TEAM_LEVELS,
+  SCHOOL_GENDER_PROFILES, SCHOOL_GENDER_LABEL, CLUB_DIVISIONS, TEAM_LEVELS, TEAM_LEVEL_CHIPS,
   schoolGenderProfile, schoolTeamName, clubTeamName, divisionLabel, generatedTeamName,
 } from '../../lib/teamNaming'
 import { DEFAULT_PERIODS, DEFAULT_PERIOD_MINUTES, DEFAULT_BREAK_MINUTES } from '../../lib/matchClock'
@@ -445,14 +445,8 @@ function RecentResultsSection({ matches, setMatches, loading }) {
 
 // ── Teams section ─────────────────────────────────────────────────────────────
 
-const SCHOOL_CHIPS = [
-  '1st XI', '2nd XI',
-  'U18A',  'U18B',
-  'U16A',  'U16B',
-  'U15A',  'U15B',
-  'U14A',  'U14B',
-  'U13A',  'U13B',
-]
+// Quick-pick team designations — senior ordinals + age groups, no player counts.
+const SCHOOL_CHIPS = TEAM_LEVEL_CHIPS
 
 function TeamsSection({ orgId, org, competitions, teams, setTeams, defaultOpen, canManage }) {
   const [showAdd,          setShowAdd]          = useState(false)
@@ -690,7 +684,7 @@ function TeamsSection({ orgId, org, competitions, teams, setTeams, defaultOpen, 
                 </div>
                 <input
                   className="w-full bg-white border border-slate-200 rounded-lg px-3 py-2.5 text-slate-900 text-sm placeholder-slate-400 focus:outline-none focus:border-emerald-500 transition-colors"
-                  placeholder="Custom team (e.g. U16C, 3rd XI)"
+                  placeholder="Custom team (e.g. U16C, Vets)"
                   value={dispName}
                   onChange={e => setDispName(e.target.value)}
                 />
@@ -880,7 +874,7 @@ function TeamsSection({ orgId, org, competitions, teams, setTeams, defaultOpen, 
                       </div>
                       <input
                         className="w-full bg-white border border-slate-200 rounded-lg px-3 py-2.5 text-slate-900 text-sm placeholder-slate-400 focus:outline-none focus:border-emerald-500 transition-colors"
-                        placeholder="Custom team (e.g. U16C, 3rd XI)"
+                        placeholder="Custom team (e.g. U16C, Vets)"
                         value={editLabel}
                         onChange={e => setEditLabel(e.target.value)}
                         onKeyDown={e => { if (e.key === 'Escape') setEditId(null) }}

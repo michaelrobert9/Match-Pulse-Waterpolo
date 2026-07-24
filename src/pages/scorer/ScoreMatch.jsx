@@ -1867,22 +1867,6 @@ export default function ScoreMatch() {
                 placeholder="e.g. Main pool"
                 className={`w-full rounded-xl border px-3 py-2.5 text-sm focus:outline-none focus:border-emerald-500 transition-colors ${t.neutralBtn}`} />
             </div>
-            <div>
-              <div className={`text-[10px] font-bold uppercase tracking-widest ${t.muted} mb-1.5`}>Game type</div>
-              <div className="grid grid-cols-2 gap-2">
-                {[{ v: false, label: 'Outdoor' }, { v: true, label: 'Indoor' }].map(opt => (
-                  <button type="button" key={opt.label}
-                    onClick={() => setEditForm(f => ({ ...f, indoor: opt.v }))}
-                    className={`text-sm font-bold py-2.5 rounded-xl border transition-colors ${
-                      (editForm.indoor === true) === opt.v
-                        ? 'bg-emerald-600 border-emerald-600 text-white'
-                        : t.neutralBtn
-                    }`}>
-                    {opt.label}
-                  </button>
-                ))}
-              </div>
-            </div>
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <div className={`text-[10px] font-bold uppercase tracking-widest ${t.muted} mb-1.5`}>Periods</div>

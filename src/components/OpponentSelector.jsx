@@ -2,7 +2,7 @@ import { useRef, useState } from 'react'
 import { X, Plus, ChevronDown } from 'lucide-react'
 import { createManualOpponent, searchOpponents } from '../lib/adminQueries'
 import { monogram } from '../lib/names'
-import { CLUB_DIVISIONS, schoolTeamName, clubTeamName } from '../lib/teamNaming'
+import { CLUB_DIVISIONS, TEAM_LEVEL_CHIPS, schoolTeamName, clubTeamName } from '../lib/teamNaming'
 
 function computeOpponentName(form) {
   const org = form.orgName.trim()
@@ -23,7 +23,6 @@ const BLANK_FORM = {
   gender:           'girls',
   division:         'men',
   teamLabel:        '',
-  shortCode:        '',
 }
 
 export default function OpponentSelector({ orgTeams = [], excludeTeamId, orgId, excludeOrgId, value, onChange }) {
@@ -77,7 +76,7 @@ export default function OpponentSelector({ orgTeams = [], excludeTeamId, orgId, 
     try {
       const ref = await createManualOpponent({
         name:             computedName,
-        shortCode:        newForm.shortCode || null,
+        shortCode:        null,
         type:             newForm.orgType,
         orgName:          newForm.orgName.trim(),
         orgGenderProfile: newForm.orgType === 'school' ? newForm.orgGenderProfile : null,
@@ -88,7 +87,7 @@ export default function OpponentSelector({ orgTeams = [], excludeTeamId, orgId, 
       onChange({
         id:               null,
         displayName:      computedName,
-        shortCode:        newForm.shortCode || null,
+        shortCode:        null,
         primaryColor:     null,
         organizationId:   null,
         manualOpponentId: ref.id,
@@ -302,27 +301,28 @@ export default function OpponentSelector({ orgTeams = [], excludeTeamId, orgId, 
             </div>
           )}
 
-          {/* Team label */}
+          {/* Team — tap a designation, or type a custom one */}
           <div>
             <label className="text-[10px] font-bold uppercase tracking-widest text-slate-500 block mb-1.5">Team</label>
+            <div className="grid grid-cols-4 gap-1.5 mb-2">
+              {TEAM_LEVEL_CHIPS.map(chip => (
+                <button type="button" key={chip}
+                  onClick={() => setNewForm(f => ({ ...f, teamLabel: chip }))}
+                  className={`text-[10px] font-bold uppercase tracking-widest px-2 py-1.5 rounded-lg border transition-colors ${
+                    newForm.teamLabel === chip
+                      ? 'bg-sky-600 border-sky-600 text-white'
+                      : 'border-slate-200 text-slate-600 hover:border-slate-400'
+                  }`}>
+                  {chip}
+                </button>
+              ))}
+            </div>
             <input
               className="w-full bg-white border border-slate-200 rounded-lg px-3 py-2.5 text-slate-900 text-sm placeholder-slate-400 focus:outline-none focus:border-sky-500 transition-colors"
               value={newForm.teamLabel}
-              placeholder="e.g. 1st Team, U16A"
+              placeholder="Custom team (e.g. U16C, Vets)"
               onChange={e => setNewForm(f => ({ ...f, teamLabel: e.target.value }))}
               onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); handleCreate() } }}
-            />
-          </div>
-
-          {/* Short code */}
-          <div>
-            <label className="text-[10px] font-bold uppercase tracking-widest text-slate-500 block mb-1.5">
-              Short code <span className="text-slate-400 normal-case tracking-normal font-normal">optional</span>
-            </label>
-            <input
-              className="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-slate-900 text-sm placeholder-slate-400 focus:outline-none focus:border-sky-500 transition-colors"
-              placeholder="e.g. WBH" value={newForm.shortCode} maxLength={6}
-              onChange={e => setNewForm(f => ({ ...f, shortCode: e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '') }))}
             />
           </div>
 
