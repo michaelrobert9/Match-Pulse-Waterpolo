@@ -721,8 +721,11 @@ exports.rebuildAllCareerStats = onCall(
 // catch-all rewrite in firebase.json. Non-bots get the SPA shell; bots get
 // the same shell with per-route title/description/OG/JSON-LD injected.
 // Does NOT require Puppeteer — just Firestore reads + string injection.
+// minInstances: 1 keeps one warm instance so the very first request to a URL
+// (before the 5-min edge cache is populated) doesn't pay a multi-second cold
+// start. Small always-on cost; set back to 0 to trade latency for zero idle cost.
 exports.renderer = onRequest(
-  { region: 'europe-west1', timeoutSeconds: 30, memory: '256MiB', minInstances: 0 },
+  { region: 'europe-west1', timeoutSeconds: 30, memory: '256MiB', minInstances: 1 },
   rendererHandler
 )
 

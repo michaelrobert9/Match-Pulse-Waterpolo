@@ -32,36 +32,46 @@ import LegalPage from './pages/legal/LegalPage'
 import Contact from './pages/Contact'
 import NotFound from './pages/NotFound'
 
-// Manage pages (org owners, staff, self-service)
-import ManageHub  from './pages/manage/Hub'
-import CompetitionManage from './pages/manage/competitions/CompetitionManage'
-import CompetitionsManageList from './pages/manage/competitions/CompetitionsList'
-import CreateCompetition from './pages/manage/competitions/CreateCompetition'
-import OrgManage  from './pages/manage/OrgManage'
-import CreateOrg  from './pages/manage/CreateOrg'
-import NewFixture from './pages/fixtures/NewFixture'
-
-// Admin pages
-import AdminDashboard from './pages/admin/Dashboard'
-import { OrganizationsList, NewOrganization, EditOrganization } from './pages/admin/Organizations'
-import { PeopleList, NewPerson, EditPerson } from './pages/admin/PeopleAdmin'
-import { CompetitionsList as AdminCompetitionsList } from './pages/admin/Competitions'
-import { FixturesList as AdminFixturesList } from './pages/admin/Fixtures'
-import ResultQueue from './pages/admin/ResultQueue'
 import InstallHelp from './pages/InstallHelp'
-import Permissions from './pages/admin/Permissions'
-import UserAccess from './pages/admin/UserAccess'
-import SeoSettings from './pages/admin/SeoSettings'
+
+// Authenticated route groups (manage, scorer, admin) are lazy-loaded so the
+// initial bundle a public visitor downloads doesn't include the large manager/
+// admin/scoring screens. Each ships as its own chunk, fetched on first visit.
+// Manage pages (org owners, staff, self-service)
+const ManageHub  = lazy(() => import('./pages/manage/Hub'))
+const CompetitionManage = lazy(() => import('./pages/manage/competitions/CompetitionManage'))
+const CompetitionsManageList = lazy(() => import('./pages/manage/competitions/CompetitionsList'))
+const CreateCompetition = lazy(() => import('./pages/manage/competitions/CreateCompetition'))
+const OrgManage  = lazy(() => import('./pages/manage/OrgManage'))
+const CreateOrg  = lazy(() => import('./pages/manage/CreateOrg'))
+const NewFixture = lazy(() => import('./pages/fixtures/NewFixture'))
+const MyPlayers  = lazy(() => import('./pages/MyPlayers'))
+
+// Scorer
+const ScoreList  = lazy(() => import('./pages/scorer/ScoreList'))
+const ScoreMatch = lazy(() => import('./pages/scorer/ScoreMatch'))
+
+// Admin pages (named exports resolved to a default for React.lazy)
+const AdminDashboard = lazy(() => import('./pages/admin/Dashboard'))
+const OrganizationsList = lazy(() => import('./pages/admin/Organizations').then(m => ({ default: m.OrganizationsList })))
+const NewOrganization   = lazy(() => import('./pages/admin/Organizations').then(m => ({ default: m.NewOrganization })))
+const EditOrganization  = lazy(() => import('./pages/admin/Organizations').then(m => ({ default: m.EditOrganization })))
+const PeopleList = lazy(() => import('./pages/admin/PeopleAdmin').then(m => ({ default: m.PeopleList })))
+const NewPerson  = lazy(() => import('./pages/admin/PeopleAdmin').then(m => ({ default: m.NewPerson })))
+const EditPerson = lazy(() => import('./pages/admin/PeopleAdmin').then(m => ({ default: m.EditPerson })))
+const AdminCompetitionsList = lazy(() => import('./pages/admin/Competitions').then(m => ({ default: m.CompetitionsList })))
+const AdminFixturesList = lazy(() => import('./pages/admin/Fixtures').then(m => ({ default: m.FixturesList })))
+const ResultQueue = lazy(() => import('./pages/admin/ResultQueue'))
+const Permissions = lazy(() => import('./pages/admin/Permissions'))
+const UserAccess  = lazy(() => import('./pages/admin/UserAccess'))
+const SeoSettings = lazy(() => import('./pages/admin/SeoSettings'))
+const BillingSettings = lazy(() => import('./pages/admin/BillingSettings'))
 
 // Support Centre — lazy so the article content ships as its own chunk.
 const SupportIndex   = lazy(() => import('./pages/support/SupportIndex'))
 const SupportArticle = lazy(() => import('./pages/support/SupportArticle'))
-import BillingSettings from './pages/admin/BillingSettings'
-import MyPlayers from './pages/MyPlayers'
 
 // Scorer pages
-import ScoreList  from './pages/scorer/ScoreList'
-import ScoreMatch from './pages/scorer/ScoreMatch'
 
 // The Competition Manager is the single admin interface for a competition —
 // old admin competition detail/edit URLs land there instead.
@@ -223,7 +233,7 @@ export default function App() {
             the /score list lives inside the main Layout shell above. */}
         <Route path="/score/:id" element={
           <ProtectedRoute require="scorer">
-            <ScoreMatch />
+            <LazyBoundary><ScoreMatch /></LazyBoundary>
           </ProtectedRoute>
         } />
       </Routes>
