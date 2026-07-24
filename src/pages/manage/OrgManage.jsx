@@ -5,6 +5,7 @@ import { collection, getDocs, query, where } from 'firebase/firestore'
 import { db } from '../../firebase'
 import { useAuth } from '../../contexts/AuthContext'
 import { roleLabel, grantLabel, grantOf } from '../../lib/capabilities'
+import { MASTER_PLANS_URL } from '../../lib/externalLinks'
 import InviteUserForm from '../../components/InviteUserForm'
 import { fetchOrganization } from '../../lib/queries'
 import {
@@ -1061,10 +1062,10 @@ function CompetitionsSection({ orgId, org, isPlatformAdmin, competitions, setCom
               Host a tournament, league or festival. Purchase a plan and MatchPulse activates your competition access manually within one business day.
             </p>
           </div>
-          <Link to="/plans"
+          <a href={MASTER_PLANS_URL} target="_blank" rel="noopener noreferrer"
             className="inline-flex items-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-sm uppercase tracking-wider rounded-xl px-5 py-2.5 transition-colors">
             See plans
-          </Link>
+          </a>
         </div>
       )}
 
