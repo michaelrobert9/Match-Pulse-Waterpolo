@@ -13,10 +13,16 @@ the **IAM permissions** the CI service account needs to deploy Firestore rules.
 
 | Artifact | Source | Deploy target |
 |---|---|---|
-| Static site | `dist/` (from `npm run build`) | Firebase Hosting |
-| Firestore security rules | `firestore.rules` | Cloud Firestore |
-| Firestore composite indexes | `firestore.indexes.json` | Cloud Firestore |
-| Storage rules | `storage.rules` | Cloud Storage |
+| Static site | `dist/` (from `npm run build`) | Firebase Hosting — site `match-pulse-waterpolo-f9b4c` |
+| Firestore security rules | `firestore.rules` | Cloud Firestore — database `waterpolo` |
+| Firestore composite indexes | `firestore.indexes.json` | Cloud Firestore — database `waterpolo` |
+| Storage rules | `storage.rules` | Cloud Storage — bucket `match-pulse-waterpolo-f9b4c` |
+
+> **Shared project, isolated per sport.** The Match Pulse apps share the
+> `match-pulse-4560e` project. Water Polo is scoped to its own Firestore
+> database (`waterpolo`), Storage bucket (`match-pulse-waterpolo-f9b4c`) and
+> Hosting site (`match-pulse-waterpolo-f9b4c`) — all pinned in `firebase.json`,
+> so a deploy from this repo can never overwrite another sport's data or site.
 
 The hosting deploy and the **Firestore rules/indexes deploy are separate steps.** Hosting
 can succeed while the rules deploy fails — always confirm both.

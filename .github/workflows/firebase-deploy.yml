@@ -65,7 +65,11 @@ jobs:
       # The hosting action above only deploys hosting. Firestore rules and the
       # composite indexes (required by the matches status+scheduledAt queries on
       # the home page) must be deployed separately, or those queries fail with
-      # a "query requires an index" error.
+      # a "query requires an index" error. Storage rules ship here too — an
+      # un-ruled bucket is default-deny, so every crest/photo upload would fail.
+      # firebase.json pins both targets to this sport (the `waterpolo` database
+      # and the match-pulse-waterpolo-f9b4c bucket), so this can never write
+      # rules to another sport's database or bucket in the shared project.
       #
       # IAM: the FIREBASE_SERVICE_ACCOUNT used below must have these roles, or this
       # step fails with a serviceusage.googleapis.com permission-denied error:
@@ -73,18 +77,18 @@ jobs:
       #   - Cloud Datastore Owner (roles/datastore.owner)
       #   - Service Usage Viewer  (roles/serviceusage.serviceUsageViewer)
       # See DEPLOYMENT.md -> "CI service account - required IAM roles".
-      - name: Deploy Firestore rules & indexes
+      - name: Deploy Firestore & Storage rules
         env:
           GOOGLE_APPLICATION_CREDENTIALS: ${{ runner.temp }}/firebase-sa.json
           FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
         run: |
           if [ -z "$FIREBASE_SERVICE_ACCOUNT" ]; then
-            echo "FIREBASE_SERVICE_ACCOUNT not set — skipping Firestore rules & indexes deploy."
+            echo "FIREBASE_SERVICE_ACCOUNT not set — skipping Firestore & Storage rules deploy."
             exit 0
           fi
           printf '%s' "$FIREBASE_SERVICE_ACCOUNT" > "$GOOGLE_APPLICATION_CREDENTIALS"
           npx --yes firebase-tools@latest deploy \
-            --only firestore:rules,firestore:indexes \
+            --only firestore:rules,firestore:indexes,storage \
             --project match-pulse-4560e \
             --non-interactive
           rm -f "$GOOGLE_APPLICATION_CREDENTIALS"
