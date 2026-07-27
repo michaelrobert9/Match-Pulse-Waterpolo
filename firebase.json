@@ -18,9 +18,12 @@
       { "source": "**",            "function": { "functionId": "renderer",   "region": "europe-west1" } }
     ]
   },
-  "storage": {
-    "rules": "storage.rules"
-  },
+  "storage": [
+    {
+      "bucket": "match-pulse-waterpolo-f9b4c",
+      "rules": "storage.rules"
+    }
+  ],
   "functions": [
     {
       "source": "functions",
