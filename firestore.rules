@@ -411,32 +411,33 @@ service cloud.firestore {
     }
 
     // ── Entitlement helper ────────────────────────────────────────────────────
-    // Returns true when the org has an active paid entitlement that authorises
-    // creating a competition. Pro = active subscription; event = credit >= 1.
-    function orgHasCompetitionEntitlement(orgId) {
-      let org = get(/databases/$(database)/documents/organizations/$(orgId)).data;
-      let e = org.get('entitlement', 'none');
-      // Pro: active subscription whose expiry timestamp is in the future.
-      // Event: at least one credit remaining. Rules functions allow only a
-      // single return expression — no imperative `if` statements.
-      return (e == 'pro'
-                && org.get('entitlementExpiresAt', null) != null
-                && org.get('entitlementExpiresAt', null) > request.time)
-          || (e == 'event' && org.get('eventCredits', 0) > 0);
+    // Plan state is read from the CUSTOM CLAIM on the Auth token, mirrored by
+    // the main site's syncUserClaims (platform brief §5). Firestore rules cannot
+    // read across databases, and the authoritative users/{uid} document lives in
+    // the central (default) database — so a cross-database get() is impossible
+    // here by design. The claim is the source of truth.
+    function entitlement() {
+      return request.auth != null
+        ? request.auth.token.get('entitlement', 'none')
+        : 'none';
     }
 
-    // Same check against an individual user's profile. PayFast purchases by an
-    // individual land entitlement on users/{uid}; this authorises that user to
-    // create a PERSONAL competition (no org). Entitlement fields are admin-SDK
-    // / platform-admin writable only (see the users/{uid} write rules), so a
-    // user cannot grant themselves access.
+    // Claim expiry is epoch MILLISECONDS (a number), not a Firestore timestamp.
+    function entitlementActive() {
+      return (entitlement() == 'pro'
+                && request.auth.token.get('entitlementExpiresAt', 0) > request.time.toMillis())
+          || (entitlement() == 'event'
+                && request.auth.token.get('eventCredits', 0) > 0);
+    }
+
+    // Competition creation is gated on the caller's own plan claim. The orgId /
+    // uid arguments are retained so call sites read unchanged.
+    function orgHasCompetitionEntitlement(orgId) {
+      return entitlementActive();
+    }
+
     function userHasCompetitionEntitlement(uid) {
-      let u = get(/databases/$(database)/documents/users/$(uid)).data;
-      let e = u.get('entitlement', 'none');
-      return (e == 'pro'
-                && u.get('entitlementExpiresAt', null) != null
-                && u.get('entitlementExpiresAt', null) > request.time)
-          || (e == 'event' && u.get('eventCredits', 0) > 0);
+      return entitlementActive();
     }
 
     // ── Competitions ──────────────────────────────────────────────────────────
@@ -885,5 +886,16 @@ service cloud.firestore {
         && request.resource.data.contactEmail is string
         && request.resource.data.contactEmail.size() > 0;
     }
+
+    // ── Water polo sport profile ──────────────────────────────────────────────
+    // waterpoloProfiles/{uid} — this sport's own profile, keyed by the CENTRAL
+    // uid (platform brief §3). Sport-specific fields live here, never in the
+    // shared central users/{uid} document. Readable by anyone (positions appear
+    // on public player pages); writable only by the owner.
+    match /waterpoloProfiles/{uid} {
+      allow read: if true;
+      allow write: if request.auth != null && request.auth.uid == uid;
+    }
+
   }
 }

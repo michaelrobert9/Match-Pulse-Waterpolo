@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { Check, X, Trophy, LogIn, AlertTriangle, Loader2 } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
+import { goSignIn } from '../lib/mainSite'
 import {
   fetchCompetition, fetchCompetitionInvite, fetchCompetitionMember,
 } from '../lib/queries'
@@ -154,10 +155,10 @@ export default function AcceptInvite() {
                 <p className="text-[12px] text-slate-500 leading-relaxed mb-3">
                   Sign in as an owner or staff member of the invited team’s school or club to view and respond to this invitation.
                 </p>
-                <Link to="/login"
+                <button type="button" onClick={() => goSignIn()}
                   className="flex items-center justify-center gap-2 w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-sm uppercase tracking-wider rounded-xl py-3.5 transition-colors">
                   <LogIn className="w-4 h-4" /> Sign in to respond
-                </Link>
+                </button>
               </div>
             ) : (
               <div className="mt-5 bg-amber-50 border border-amber-200 rounded-lg px-4 py-3 text-sm text-amber-700">

@@ -9,7 +9,6 @@ import SiteSettingsProvider from './components/SiteSettingsProvider'
 
 // Public pages
 import Home from './pages/Home'
-import Signup from './pages/Signup'
 import CompetitionsListPage from './pages/CompetitionsList'
 import OrgList from './pages/OrgList'
 import OrgDetail from './pages/OrgDetail'
@@ -25,8 +24,7 @@ import CompetitionPools from './pages/CompetitionPools'
 import CompetitionKnockout from './pages/CompetitionKnockout'
 import CompetitionFestivalStats from './pages/CompetitionFestivalStats'
 import TeamDetail from './pages/TeamDetail'
-import Login from './pages/Login'
-import Portal from './pages/Portal'
+import AuthHandoff from './pages/AuthHandoff'
 import Profile from './pages/Profile'
 import LegalPage from './pages/legal/LegalPage'
 import Contact from './pages/Contact'
@@ -65,7 +63,6 @@ const ResultQueue = lazy(() => import('./pages/admin/ResultQueue'))
 const Permissions = lazy(() => import('./pages/admin/Permissions'))
 const UserAccess  = lazy(() => import('./pages/admin/UserAccess'))
 const SeoSettings = lazy(() => import('./pages/admin/SeoSettings'))
-const BillingSettings = lazy(() => import('./pages/admin/BillingSettings'))
 
 // Support Centre — lazy so the article content ships as its own chunk.
 const SupportIndex   = lazy(() => import('./pages/support/SupportIndex'))
@@ -196,10 +193,10 @@ export default function App() {
           <Route path="*"                               element={<NotFound />} />
         </Route>
 
-        {/* Auth */}
-        <Route path="/login"   element={<Login />} />
-        <Route path="/signup"  element={<Signup />} />
-        <Route path="/portal"  element={<Portal />} />
+        {/* Auth handoff from the main site. Identity lives on the main site;
+            this route exchanges its single-use ticket for a Firebase session.
+            It must stay OUTSIDE the auth guard. */}
+        <Route path="/auth/handoff" element={<AuthHandoff />} />
 
         {/* Admin — requires platform admin */}
         <Route path="/admin" element={
@@ -217,7 +214,6 @@ export default function App() {
           <Route path="permissions"                 element={<Permissions />} />
           <Route path="user-access"                 element={<UserAccess />} />
           <Route path="seo"                         element={<SeoSettings />} />
-          <Route path="billing"                     element={<BillingSettings />} />
           <Route path="competitions"                element={<AdminCompetitionsList />} />
           <Route path="fixtures"                    element={<AdminFixturesList />} />
           <Route path="result-queue"                element={<ResultQueue />} />

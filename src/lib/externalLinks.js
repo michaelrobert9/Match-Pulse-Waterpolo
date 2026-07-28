@@ -1,5 +1,4 @@
-// Marketing pages (plans/pricing, "Why MatchPulse") live on the master
-// MatchPulse site, not inside each per-sport app. In-app upgrade prompts link
-// out to the master plans page. Change MASTER_SITE if the master domain differs.
-export const MASTER_SITE = 'https://matchpulse.co.za'
-export const MASTER_PLANS_URL = `${MASTER_SITE}/plans`
+// Deprecated shim. Plans/pricing live on the main MatchPulse site and the
+// canonical constants now live in lib/mainSite.js (platform brief §2/§7a).
+// Kept so existing imports keep working; prefer MAIN_PLANS_URL directly.
+export { MAIN_SITE as MASTER_SITE, MAIN_PLANS_URL as MASTER_PLANS_URL } from './mainSite'

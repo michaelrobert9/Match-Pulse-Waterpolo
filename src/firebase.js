@@ -1,10 +1,11 @@
 import { initializeApp } from 'firebase/app'
 import {
   initializeFirestore,
+  getFirestore,
   persistentLocalCache,
   persistentSingleTabManager,
 } from 'firebase/firestore'
-import { getAuth, GoogleAuthProvider } from 'firebase/auth'
+import { getAuth } from 'firebase/auth'
 import { getStorage } from 'firebase/storage'
 import { getFunctions } from 'firebase/functions'
 
@@ -30,11 +31,16 @@ const firebaseConfig = {
 // Named Firestore database for this sport within the shared project.
 const FIRESTORE_DB = import.meta.env.VITE_FIRESTORE_DATABASE || 'waterpolo'
 
+// Region where the MAIN SITE's Cloud Functions are deployed. The auth handoff
+// calls redeemHandoffTicket there, and a wrong region fails only at CALL time
+// with an opaque error — never at build or deploy. Kept in ONE constant so a
+// correction is a one-line change. NOTE: this is the Functions region, which is
+// independent of the Firestore region (africa-south1).
+export const FUNCTIONS_REGION = import.meta.env.VITE_FUNCTIONS_REGION || 'europe-west1'
+
 export const configured = !!firebaseConfig.apiKey
 
-let app, db, auth, storage, functions
-
-export const googleProvider = new GoogleAuthProvider()
+let app, db, identityDb, auth, storage, functions
 
 if (configured) {
   app = initializeApp(firebaseConfig)
@@ -44,12 +50,14 @@ if (configured) {
   db = initializeFirestore(app, {
     localCache: persistentLocalCache({ tabManager: persistentSingleTabManager() }),
   }, FIRESTORE_DB)
-  auth      = getAuth(app)
-  storage   = getStorage(app)
-  // Functions are deployed to europe-west1 (africa-south1 is the Firestore
-  // region; Functions default to europe-west1 for lower-latency from ZA).
-  functions = getFunctions(app, 'europe-west1')
+  // Central identity/plan/organisation data lives in the (default) database,
+  // owned by the main site. READ-ONLY from here: never write plan or billing
+  // fields — the central rules reject it.
+  identityDb = getFirestore(app)
+  auth       = getAuth(app)
+  storage    = getStorage(app)
+  functions  = getFunctions(app, FUNCTIONS_REGION)
 }
 
-export { db, auth, storage, functions }
+export { db, identityDb, auth, storage, functions }
 export default app

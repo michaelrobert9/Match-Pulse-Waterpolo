@@ -21,7 +21,7 @@ export const SITE = {
   ogImage:       'https://matchpulse.co.za/og-default.png', // export og-default.svg → PNG before deploy
   twitterCard:   'summary_large_image',
   twitterSite:   '@matchpulse',
-  themeColor:    '#008C5A',
+  themeColor:    '#059669',
 }
 
 // Google truncates titles ~60 chars and descriptions ~160. Clamp on a word
