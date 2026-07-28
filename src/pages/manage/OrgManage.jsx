@@ -6,6 +6,7 @@ import { db } from '../../firebase'
 import { useAuth } from '../../contexts/AuthContext'
 import { roleLabel, grantLabel, grantOf } from '../../lib/capabilities'
 import { MASTER_PLANS_URL } from '../../lib/externalLinks'
+import { MAIN_PLANS_URL } from '../../lib/mainSite'
 import InviteUserForm from '../../components/InviteUserForm'
 import { fetchOrganization } from '../../lib/queries'
 import {
@@ -16,7 +17,6 @@ import {
   ensureCreatorOwnership,
   fetchOrgStaff, removeOrgStaff,
   propagateTeamNameToMatches, propagateOrgNameToMatches,
-  redeemEntitlementToken,
 } from '../../lib/adminQueries'
 import { DeleteOrgModal } from '../admin/Organizations'
 import { toDate } from '../../lib/queries'
@@ -1419,68 +1419,32 @@ function SettingsSection({ org, onSaved }) {
   )
 }
 
-function PlanActivationPanel({ org, onActivated }) {
+function PlanActivationPanel({ org }) {
   const { tier, canCreate, credits } = orgEntitlementStatus(org)
-  const [code,    setCode]    = useState('')
-  const [saving,  setSaving]  = useState(false)
-  const [success, setSuccess] = useState('')
-  const [error,   setError]   = useState('')
-
-  async function handleRedeem(e) {
-    e.preventDefault()
-    if (!code.trim()) return
-    setSaving(true); setError(''); setSuccess('')
-    try {
-      const plan = await redeemEntitlementToken(code.trim(), org.id)
-      const label = plan === 'pro' ? 'Pro plan' : 'event credit'
-      setSuccess(`${label} activated! Refresh the page to see your updated access.`)
-      setCode('')
-      onActivated?.({ ...org })
-    } catch (err) {
-      setError(err.message || 'Redemption failed.')
-    } finally {
-      setSaving(false)
-    }
-  }
-
+  const label = tier === 'pro' ? 'Pro' : tier === 'event' ? 'Event' : 'Free'
+  // Plans are purchased and activated on the MAIN SITE (platform brief §2/§7a).
+  // This app only shows the current plan and links out.
   return (
     <div className="border-t border-slate-100 px-4 py-4 space-y-3">
-      {/* Current plan status */}
       <div>
         <p className="text-[10px] font-bold uppercase tracking-widest text-slate-500 mb-1.5">Plan</p>
-        {tier === 'none' ? (
-          <p className="text-sm text-slate-500">Free plan — competitions are a paid feature.</p>
-        ) : tier === 'pro' ? (
-          <p className="text-sm font-semibold text-emerald-700">Pro — unlimited competitions</p>
-        ) : (
-          <p className="text-sm font-semibold text-amber-700">Plus — {credits ?? 0} event credit{credits !== 1 ? 's' : ''} remaining</p>
-        )}
+        <p className="text-sm text-slate-900 font-semibold">
+          {label}
+          {tier === 'event' && <span className="text-slate-400 font-normal"> · {credits} credit{credits === 1 ? '' : 's'} remaining</span>}
+        </p>
       </div>
-
-      {/* Redemption form */}
-      <form onSubmit={handleRedeem} className="space-y-2">
-        <p className="text-[10px] font-bold uppercase tracking-widest text-slate-500">Activate a plan</p>
-        <p className="text-[11px] text-slate-500">Enter the activation code from your invoice email to unlock your purchased plan.</p>
-        <div className="flex gap-2">
-          <input
-            value={code}
-            onChange={e => setCode(e.target.value.toUpperCase())}
-            placeholder="MP-2026-XXXX-XXXX"
-            className="flex-1 bg-white border border-slate-200 rounded-lg px-3 py-2 text-slate-900 text-sm font-mono placeholder-slate-300 focus:outline-none focus:border-emerald-500 transition-colors uppercase"
-          />
-          <button type="submit" disabled={saving || !code.trim()}
-            className="bg-emerald-600 hover:bg-emerald-500 disabled:opacity-40 text-white font-bold text-sm rounded-lg px-4 py-2 transition-colors shrink-0">
-            {saving ? '…' : 'Activate'}
-          </button>
-        </div>
-        {error   && <p className="text-red-600 text-xs">{error}</p>}
-        {success && <p className="text-emerald-600 text-xs">{success}</p>}
-      </form>
+      {!canCreate && (
+        <p className="text-[11px] text-slate-500 leading-relaxed">
+          Hosting a competition needs a paid plan.
+        </p>
+      )}
+      <a href={MAIN_PLANS_URL} target="_blank" rel="noopener noreferrer"
+        className="inline-flex items-center gap-2 text-emerald-600 hover:text-emerald-500 text-sm font-semibold transition-colors">
+        Manage plan on MatchPulse →
+      </a>
     </div>
   )
 }
-
-// ── Quick actions row ─────────────────────────────────────────────────────────
 
 function QuickActions({ teams, org, onFixture, onTeam, onCompetition, canManage }) {
   const disableFixture = org?.type === 'school' && teams.length === 0
