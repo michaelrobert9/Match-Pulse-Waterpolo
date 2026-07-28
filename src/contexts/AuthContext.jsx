@@ -1,26 +1,27 @@
 import { createContext, useContext, useEffect, useState } from 'react'
 import {
   onAuthStateChanged,
-  signInWithEmailAndPassword,
-  signInWithPopup,
-  createUserWithEmailAndPassword,
-  updateProfile as fbUpdateProfile,
   signOut as fbSignOut,
 } from 'firebase/auth'
 import { doc, getDoc, setDoc, updateDoc, serverTimestamp } from 'firebase/firestore'
-import { auth, db, configured, googleProvider } from '../firebase'
+import { auth, db, configured } from '../firebase'
 import { canAdministerCompetition as canAdminComp } from '../lib/competitionAuth'
 import { resolveScopedCapability, grantOf } from '../lib/capabilities'
 import { userEntitlementStatus } from '../lib/entitlement'
 
 const AuthContext = createContext(null)
 
-// Pull just the entitlement-bearing fields out of a users/{uid} doc.
-function entitlementFieldsOf(data) {
+// Plan state is mirrored onto the Auth token as CUSTOM CLAIMS by the main
+// site's syncUserClaims function (platform brief §5). Firestore rules cannot
+// read across databases, so the claim — not a document — is the source of
+// truth here. Claims travel with the user, so they are already present after
+// the handoff. They refresh about hourly; call getIdToken(true) after a
+// purchase to pick a new plan up immediately.
+function entitlementFieldsOfClaims(claims) {
   return {
-    entitlement:          data?.entitlement ?? 'none',
-    eventCredits:         data?.eventCredits ?? 0,
-    entitlementExpiresAt: data?.entitlementExpiresAt ?? null,
+    entitlement:          claims?.entitlement ?? 'none',
+    eventCredits:         claims?.eventCredits ?? 0,
+    entitlementExpiresAt: claims?.entitlementExpiresAt ?? null,
   }
 }
 
@@ -39,6 +40,16 @@ export function AuthProvider({ children }) {
     return onAuthStateChanged(auth, async (u) => {
       if (u) {
         setUser(u)
+        // Plan + platform-admin state come from the token's custom claims,
+        // mirrored centrally by the main site (brief §5) — not from a document.
+        try {
+          const tok = await u.getIdTokenResult()
+          setIsPlatformAdmin(tok.claims.platformAdmin === true)
+          setUserEntitlement(entitlementFieldsOfClaims(tok.claims))
+        } catch {
+          setIsPlatformAdmin(false)
+          setUserEntitlement(null)
+        }
         try {
           const userRef = doc(db, 'users', u.uid)
           const snap    = await getDoc(userRef)
@@ -72,11 +83,9 @@ export function AuthProvider({ children }) {
               updateDoc(userRef, { displayName: u.displayName, updatedAt: serverTimestamp() }).catch(() => {})
               setDoc(doc(db, 'userProfiles', u.uid), { displayName: u.displayName }, { merge: true }).catch(() => {})
             }
-            setIsPlatformAdmin(data.platformAdmin === true)
             setOrgRoles(data.orgRoles ?? {})
             setCompetitionRoles(data.competitionRoles ?? {})
             setOverrides(data.permissionOverrides ?? {})
-            setUserEntitlement(entitlementFieldsOf(data))
           }
         } catch {
           setIsPlatformAdmin(false)
@@ -102,48 +111,28 @@ export function AuthProvider({ children }) {
   // self-creating an org so the new orgRoles mirror is reflected without signing out.
   async function refreshUserData() {
     if (!auth?.currentUser) return
+    // force:true re-mints the token so a just-granted plan is visible without
+    // waiting for the ~hourly refresh (brief §5).
+    try {
+      const tok = await auth.currentUser.getIdTokenResult(true)
+      setIsPlatformAdmin(tok.claims.platformAdmin === true)
+      setUserEntitlement(entitlementFieldsOfClaims(tok.claims))
+    } catch { /* keep the current claim state */ }
     try {
       const snap = await getDoc(doc(db, 'users', auth.currentUser.uid))
       if (snap.exists()) {
         const data = snap.data()
-        setIsPlatformAdmin(data.platformAdmin === true)
         setOrgRoles(data.orgRoles ?? {})
         setCompetitionRoles(data.competitionRoles ?? {})
         setOverrides(data.permissionOverrides ?? {})
-        setUserEntitlement(entitlementFieldsOf(data))
       }
     } catch { /* silently ignore — will pick up on next sign-in */ }
   }
 
-  function login(email, password) {
-    return signInWithEmailAndPassword(auth, email, password)
-  }
-
-  async function signUp(email, password, displayName) {
-    const cred = await createUserWithEmailAndPassword(auth, email, password)
-    if (displayName) await fbUpdateProfile(cred.user, { displayName })
-    // Persist the name to the Firestore profile at account creation, so it shows
-    // on the back end (User Access / Administrators) even if the user never
-    // completes the optional profile step. Merge so it coexists with whatever the
-    // onAuthStateChanged bootstrap or the profile step writes.
-    await setDoc(doc(db, 'users', cred.user.uid), {
-      email:         (email ?? '').toLowerCase(),
-      displayName:   displayName ?? '',
-      platformAdmin: false,
-      orgRoles:      {},
-      updatedAt:     serverTimestamp(),
-    }, { merge: true }).catch(() => {})
-    setDoc(doc(db, 'userProfiles', cred.user.uid), {
-      email:       (email ?? '').toLowerCase(),
-      displayName: displayName ?? '',
-    }, { merge: true }).catch(() => {})
-    return cred
-  }
-
-  function signInWithGoogle() {
-    return signInWithPopup(auth, googleProvider)
-  }
-
+  // Sign-in / sign-up / password reset live on the MAIN SITE (platform brief
+  // §2). This app never authenticates a user itself — it receives a session via
+  // the /auth/handoff ticket exchange. Only sign-out is local, and note it is
+  // per-origin: signing out here does not sign the user out of the main site.
   const logout = () => fbSignOut(auth)
 
   // True if the user owns or is staff at the given org, or is a platform admin.
@@ -187,7 +176,7 @@ export function AuthProvider({ children }) {
       user, uid: user?.uid ?? null, isPlatformAdmin, orgRoles, competitionRoles, permissionOverrides: overrides,
       userEntitlement,
       isOrgMember, canScore, canAdministerCompetition, canDo, grantFor, loading,
-      login, logout, signUp, signInWithGoogle, refreshUserData,
+      logout, refreshUserData,
     }}>
       {children}
     </AuthContext.Provider>

@@ -21,7 +21,6 @@ export default function AdminLayout() {
     { to: '/admin/permissions',   label: 'Administrators', Icon: KeyRound           },
     { to: '/admin/user-access',   label: 'User Access',    Icon: Link2              },
     { to: '/admin/seo',           label: 'SEO',            Icon: Search             },
-    { to: '/admin/billing',       label: 'Billing',        Icon: CreditCard         },
   ]
 
   const initials = user?.displayName?.[0]?.toUpperCase() ?? user?.email?.[0]?.toUpperCase() ?? '?'

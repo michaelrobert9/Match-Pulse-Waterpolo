@@ -40,13 +40,17 @@ export function userEntitlementStatus(user) {
 
 // Decrement one event credit after successfully creating a competition.
 // Call immediately after createManagedCompetition() succeeds for event-tier orgs.
-export async function consumeEventCredit(orgId) {
-  await updateDoc(doc(db, 'organizations', orgId), { eventCredits: increment(-1) })
+// Credit consumption is CENTRAL (platform brief §2): this app must never write
+// entitlement / eventCredits / entitlementExpiresAt — the central rules reject
+// it. These remain as explicit no-ops so callers keep working and the intent is
+// documented; the main site owns decrementing a credit on competition creation.
+export async function consumeEventCredit(_orgId) {
+  return
 }
 
 // Decrement one event credit on a USER's profile (personal competitions).
-export async function consumeUserEventCredit(uid) {
-  await updateDoc(doc(db, 'users', uid), { eventCredits: increment(-1) })
+export async function consumeUserEventCredit(_uid) {
+  return
 }
 
 // Fetch an org doc and return its entitlement status.

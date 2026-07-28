@@ -6,6 +6,7 @@ import { doc, getDoc, setDoc, updateDoc, serverTimestamp } from 'firebase/firest
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage'
 import { useAuth } from '../contexts/AuthContext'
 import { auth, db, storage } from '../firebase'
+import { fetchSportProfile, saveSportProfile, WATERPOLO_POSITIONS } from '../lib/sportProfile'
 import { fetchOrganization } from '../lib/queries'
 import { monogram } from '../lib/names'
 import { grantOf, grantLabel } from '../lib/capabilities'
@@ -22,12 +23,9 @@ const ROLES = [
   { value: 'manager',       label: 'Manager' },
 ]
 
-const POSITIONS = [
-  { value: 'goalkeeper', label: 'Goalkeeper' },
-  { value: 'defence',    label: 'Defence' },
-  { value: 'midfield',   label: 'Midfield' },
-  { value: 'forward',    label: 'Forward' },
-]
+// Water polo positions — sourced from the sport profile module so the stored
+// values and the UI can never drift apart.
+const POSITIONS = WATERPOLO_POSITIONS
 
 // ── Org summary chip ──────────────────────────────────────────────────────────
 
@@ -108,9 +106,14 @@ export default function Profile() {
       setProvince(data.province ?? '')
       setPhone(data.phone ?? '')
       setRole(data.role ?? '')
-      setPosition(data.position ?? '')
-      setSahaNumber(data.sahaNumber ?? '')
     }).catch(() => {})
+    // Sport-specific fields live in THIS sport's database (brief §3), never in
+    // the shared central users/{uid} doc.
+    fetchSportProfile(user.uid).then(sp => {
+      if (!sp) return
+      setPosition(sp.position ?? '')
+      setSahaNumber(sp.wpsaNumber ?? '')
+    })
   }, [user])
 
   async function handlePhotoUpload(e) {
@@ -149,9 +152,12 @@ export default function Profile() {
         province,
         phone,
         role,
-        position: role === 'player' ? position : '',
-        sahaNumber,
         updatedAt: serverTimestamp(),
+      })
+      // Water polo position + WPSA number → waterpoloProfiles/{uid}.
+      await saveSportProfile(user.uid, {
+        position: role === 'player' ? position : '',
+        wpsaNumber: sahaNumber,
       })
       setDoc(doc(db, 'userProfiles', user.uid), {
         displayName,
