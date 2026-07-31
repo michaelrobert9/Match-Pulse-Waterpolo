@@ -5,7 +5,14 @@ import {
   persistentLocalCache,
   persistentSingleTabManager,
 } from 'firebase/firestore'
-import { getAuth } from 'firebase/auth'
+import {
+  initializeAuth,
+  GoogleAuthProvider,
+  indexedDBLocalPersistence,
+  browserLocalPersistence,
+  browserSessionPersistence,
+  inMemoryPersistence,
+} from 'firebase/auth'
 import { getStorage } from 'firebase/storage'
 import { getFunctions } from 'firebase/functions'
 
@@ -31,14 +38,15 @@ const firebaseConfig = {
 // Named Firestore database for this sport within the shared project.
 const FIRESTORE_DB = import.meta.env.VITE_FIRESTORE_DATABASE || 'waterpolo'
 
-// Region where the MAIN SITE's Cloud Functions are deployed. The auth handoff
-// calls redeemHandoffTicket there, and a wrong region fails only at CALL time
-// with an opaque error — never at build or deploy. Kept in ONE constant so a
-// correction is a one-line change. NOTE: this is the Functions region, which is
-// independent of the Firestore region (africa-south1).
+// Region where the Cloud Functions this app CALLS are deployed (e.g. the
+// callable contact form). A wrong region fails only at CALL time with an opaque
+// error — never at build or deploy — so it is kept in ONE constant. NOTE: the
+// Functions region is independent of the Firestore region (africa-south1).
 export const FUNCTIONS_REGION = import.meta.env.VITE_FUNCTIONS_REGION || 'europe-west1'
 
 export const configured = !!firebaseConfig.apiKey
+
+export const googleProvider = new GoogleAuthProvider()
 
 let app, db, identityDb, auth, storage, functions
 
@@ -54,7 +62,20 @@ if (configured) {
   // owned by the main site. READ-ONLY from here: never write plan or billing
   // fields — the central rules reject it.
   identityDb = getFirestore(app)
-  auth       = getAuth(app)
+  // Auth persistence fallback chain (platform brief v2 §3.2): some browsers
+  // (private mode, locked-down iOS, storage disabled) REFUSE IndexedDB and the
+  // SDK can silently fall back to in-memory, which drops the session on the next
+  // navigation and looks like "signed in, then signed out". initializeAuth with
+  // an ordered list tries each in turn; a refusal of one does not take down app
+  // init. Ordered strongest → weakest.
+  auth = initializeAuth(app, {
+    persistence: [
+      indexedDBLocalPersistence,
+      browserLocalPersistence,
+      browserSessionPersistence,
+      inMemoryPersistence,
+    ],
+  })
   storage    = getStorage(app)
   functions  = getFunctions(app, FUNCTIONS_REGION)
 }

@@ -1,10 +1,15 @@
 import { createContext, useContext, useEffect, useState } from 'react'
 import {
   onAuthStateChanged,
+  signInWithEmailAndPassword,
+  signInWithPopup,
+  createUserWithEmailAndPassword,
+  sendPasswordResetEmail,
+  updateProfile as fbUpdateProfile,
   signOut as fbSignOut,
 } from 'firebase/auth'
 import { doc, getDoc, setDoc, updateDoc, serverTimestamp } from 'firebase/firestore'
-import { auth, db, configured } from '../firebase'
+import { auth, db, configured, googleProvider } from '../firebase'
 import { canAdministerCompetition as canAdminComp } from '../lib/competitionAuth'
 import { resolveScopedCapability, grantOf } from '../lib/capabilities'
 import { userEntitlementStatus } from '../lib/entitlement'
@@ -129,10 +134,45 @@ export function AuthProvider({ children }) {
     } catch { /* silently ignore — will pick up on next sign-in */ }
   }
 
-  // Sign-in / sign-up / password reset live on the MAIN SITE (platform brief
-  // §2). This app never authenticates a user itself — it receives a session via
-  // the /auth/handoff ticket exchange. Only sign-out is local, and note it is
-  // per-origin: signing out here does not sign the user out of the main site.
+  // Sign-in happens LOCALLY, on this origin, against the shared Firebase Auth
+  // project (platform brief v2 §1/§2). No redirect to the main site: an
+  // installed iOS home-screen app can't be redirected back into. Every origin
+  // gets its own valid session for the same underlying account the moment it
+  // signs in. Account settings, password/email change and billing still live on
+  // the main site (goAccount) — only the login form is local.
+  function login(email, password) {
+    return signInWithEmailAndPassword(auth, email, password)
+  }
+
+  async function signUp(email, password, displayName) {
+    const cred = await createUserWithEmailAndPassword(auth, email, password)
+    if (displayName) await fbUpdateProfile(cred.user, { displayName })
+    // Seed the central identity doc so back-office panels show the name even if
+    // the user never completes the optional profile step. Merge so it coexists
+    // with the onAuthStateChanged bootstrap. NOTE: never write plan/billing
+    // fields here — those are central and rules reject them.
+    await setDoc(doc(db, 'users', cred.user.uid), {
+      email:         (email ?? '').toLowerCase(),
+      displayName:   displayName ?? '',
+      updatedAt:     serverTimestamp(),
+    }, { merge: true }).catch(() => {})
+    setDoc(doc(db, 'userProfiles', cred.user.uid), {
+      email:       (email ?? '').toLowerCase(),
+      displayName: displayName ?? '',
+    }, { merge: true }).catch(() => {})
+    return cred
+  }
+
+  function signInWithGoogle() {
+    return signInWithPopup(auth, googleProvider)
+  }
+
+  function resetPassword(email) {
+    return sendPasswordResetEmail(auth, email)
+  }
+
+  // Sign-out is per-origin by design — it does not sign the user out of the
+  // main site or another sport.
   const logout = () => fbSignOut(auth)
 
   // True if the user owns or is staff at the given org, or is a platform admin.
@@ -176,7 +216,7 @@ export function AuthProvider({ children }) {
       user, uid: user?.uid ?? null, isPlatformAdmin, orgRoles, competitionRoles, permissionOverrides: overrides,
       userEntitlement,
       isOrgMember, canScore, canAdministerCompetition, canDo, grantFor, loading,
-      logout, refreshUserData,
+      login, signUp, signInWithGoogle, resetPassword, logout, refreshUserData,
     }}>
       {children}
     </AuthContext.Provider>

@@ -24,7 +24,8 @@ import CompetitionPools from './pages/CompetitionPools'
 import CompetitionKnockout from './pages/CompetitionKnockout'
 import CompetitionFestivalStats from './pages/CompetitionFestivalStats'
 import TeamDetail from './pages/TeamDetail'
-import AuthHandoff from './pages/AuthHandoff'
+import Login from './pages/Login'
+import Signup from './pages/Signup'
 import Profile from './pages/Profile'
 import LegalPage from './pages/legal/LegalPage'
 import Contact from './pages/Contact'
@@ -193,10 +194,10 @@ export default function App() {
           <Route path="*"                               element={<NotFound />} />
         </Route>
 
-        {/* Auth handoff from the main site. Identity lives on the main site;
-            this route exchanges its single-use ticket for a Firebase session.
-            It must stay OUTSIDE the auth guard. */}
-        <Route path="/auth/handoff" element={<AuthHandoff />} />
+        {/* Auth — sign-in/up happen locally on this origin against the shared
+            Firebase project (platform brief v2 §2). Outside the guard. */}
+        <Route path="/login"   element={<Login />} />
+        <Route path="/signup"  element={<Signup />} />
 
         {/* Admin — requires platform admin */}
         <Route path="/admin" element={
