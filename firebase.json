@@ -28,7 +28,7 @@
   "functions": [
     {
       "source": "functions",
-      "codebase": "default",
+      "codebase": "waterpolo",
       "runtime": "nodejs22",
       "ignore": [
         "node_modules",

@@ -26,7 +26,7 @@ const ROLE_DISPLAY = {
 // top-level `invites` collection. The Resend API key is supplied at runtime by
 // the RESEND_API_KEY secret (Google Cloud Secret Manager) and read from
 // process.env — never committed or hard-coded.
-exports.sendInviteEmail = onDocumentCreated(
+exports.waterpoloSendInviteEmail = onDocumentCreated(
   { document: 'invites/{inviteId}', secrets: ['RESEND_API_KEY'] },
   async (event) => {
     const snap = event.data
@@ -142,7 +142,7 @@ async function verifyTurnstile(token, remoteip) {
   return { skipped: false, ok: result.success === true }
 }
 
-exports.submitContactForm = onCall(
+exports.waterpoloSubmitContactForm = onCall(
   { region: 'europe-west1', secrets: ['RESEND_API_KEY', 'TURNSTILE_SECRET_KEY'] },
   async (request) => {
     const d = request.data ?? {}
@@ -295,7 +295,7 @@ function toMillis(val) {
 // fixture in the database into Live → Awaiting result and flood the queue.
 const AUTOFLIP_WINDOW_HOURS = 6
 
-exports.autoFlipScheduledMatches = onSchedule(
+exports.waterpoloAutoFlipScheduledMatches = onSchedule(
   { schedule: 'every 15 minutes', region: 'europe-west1' },
   async () => {
     const db = admin.firestore()
@@ -338,7 +338,7 @@ exports.autoFlipScheduledMatches = onSchedule(
 // finalised, NEVER given an invented score. tracked matches keep their
 // provisional live score (already on homeScore/awayScore) for the admin to
 // confirm; untracked matches present a blank form (driven by tracked downstream).
-exports.dailyFixtureSweep = onSchedule(
+exports.waterpoloDailyFixtureSweep = onSchedule(
   { schedule: '0 * * * *', region: 'europe-west1' },
   async () => {
     const db = admin.firestore()
@@ -414,7 +414,7 @@ function statsRelevantChanged(before, after) {
 // Scoped competition recompute on finalisation. Fires on the transition INTO
 // final, and on any stat-affecting edit to an already-final fixture. Writes only
 // `players` slices (never the match doc) so it cannot re-trigger itself.
-exports.recomputeCompetitionStatsOnFinal = onDocumentUpdated(
+exports.waterpoloRecomputeCompetitionStatsOnFinal = onDocumentUpdated(
   { document: 'matches/{matchId}', region: 'europe-west1' },
   async (event) => {
     const before = event.data?.before?.data()
@@ -458,7 +458,7 @@ exports.recomputeCompetitionStatsOnFinal = onDocumentUpdated(
 // Wholesale career recompute — daily at 03:00 Africa/Johannesburg. Rebuilds every
 // competition's slices from origin, then re-derives every person's career totals
 // and competitionIds as the sum/union of their fresh slices. Idempotent.
-exports.dailyCareerStatsRecompute = onSchedule(
+exports.waterpoloDailyCareerStatsRecompute = onSchedule(
   { schedule: '0 3 * * *', timeZone: 'Africa/Johannesburg', region: 'europe-west1' },
   async () => {
     try {
@@ -496,7 +496,7 @@ async function assertCanAdministerCompetition(db, competitionId, auth) {
 // as a competition admin, then runs the same scoped engine the finalisation
 // trigger uses. Career totals are not touched here — they refresh on the nightly
 // run. Writes an immutable audit entry.
-exports.recalculateCompetitionStats = onCall(
+exports.waterpoloRecalculateCompetitionStats = onCall(
   { region: 'europe-west1' },
   async (request) => {
     if (!request.auth) throw new HttpsError('unauthenticated', 'Must be signed in.')
@@ -526,7 +526,7 @@ exports.recalculateCompetitionStats = onCall(
 // career totals + competitionIds immediately rather than waiting for 03:00) and
 // as an operator escape hatch. Wholesale cost is fine for a deliberate one-off;
 // it is the per-finalisation case that the nightly schedule exists to avoid.
-exports.rebuildAllCareerStats = onCall(
+exports.waterpoloRebuildAllCareerStats = onCall(
   { region: 'europe-west1', timeoutSeconds: 540, memory: '1GiB' },
   async (request) => {
     if (!request.auth) throw new HttpsError('unauthenticated', 'Must be signed in.')
@@ -547,14 +547,14 @@ exports.rebuildAllCareerStats = onCall(
 // minInstances: 1 keeps one warm instance so the very first request to a URL
 // (before the 5-min edge cache is populated) doesn't pay a multi-second cold
 // start. Small always-on cost; set back to 0 to trade latency for zero idle cost.
-exports.renderer = onRequest(
+exports.waterpoloRenderer = onRequest(
   { region: 'europe-west1', timeoutSeconds: 30, memory: '256MiB', minInstances: 1 },
   rendererHandler
 )
 
 // Dynamic sitemap.xml — generated live from Firestore. Served at /sitemap.xml
 // via a Hosting rewrite (firebase.json). Public, cached at the edge for an hour.
-exports.sitemap = onRequest(
+exports.waterpoloSitemap = onRequest(
   { region: 'europe-west1', timeoutSeconds: 120, memory: '512MiB' },
   async (req, res) => {
     try {

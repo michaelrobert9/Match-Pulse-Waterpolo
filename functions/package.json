@@ -1,6 +1,6 @@
 {
-  "name": "matchpulse-functions",
-  "description": "Cloud Functions for MatchPulse",
+  "name": "matchpulse-waterpolo-functions",
+  "description": "Cloud Functions for MatchPulse Water Polo",
   "private": true,
   "main": "index.js",
   "engines": {
