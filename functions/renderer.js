@@ -19,8 +19,12 @@
 // The /index.html static file serves directly from Firebase Hosting (exact path
 // match takes priority over rewrites), so the internal fetch never loops.
 
-const admin = require('firebase-admin')
+const { getFirestore } = require('firebase-admin/firestore')
 const logger = require('firebase-functions/logger')
+
+// This app's data lives in the `waterpolo` NAMED Firestore database, not
+// (default); bind the renderer's reads to it (mirrors functions/index.js DB_ID).
+const RENDERER_DB_ID = 'waterpolo'
 
 // Static Support Centre content (built from markdown by
 // scripts/build-support-content.mjs). Used to render real head + body HTML for
@@ -680,7 +684,7 @@ async function rendererHandler(req, res) {
   // Bot: build and inject per-route metadata.
   try {
     const route  = parseRoute(path)
-    const db     = admin.firestore()
+    const db     = getFirestore(RENDERER_DB_ID)
     const entity = await fetchEntity(db, route)
     const meta   = buildMeta({ kind: route.kind, entity, path })
     const ldStr  = jsonLd(route.kind, entity, path)

@@ -43,7 +43,7 @@ export default function Contact() {
     setSending(true)
     setError('')
     try {
-      const call = httpsCallable(functions, 'submitContactForm')
+      const call = httpsCallable(functions, 'waterpoloSubmitContactForm')
       await call({
         name: form.name.trim(),
         email: form.email.trim(),
