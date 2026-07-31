@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Navigate, useParams } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
-import { goSignIn } from '../lib/mainSite'
 import { fetchCompetition, fetchCompetitionBySlugSeason } from '../lib/queries'
 import { competitionUrl } from '../lib/slugify'
 
@@ -41,7 +40,7 @@ export default function CompetitionAdminRoute({ children }) {
     )
   }
 
-  if (!user) { goSignIn(); return null }
+  if (!user) return <Navigate to="/login" replace />
 
   // Unknown competition → 404 fallthrough handled by the public page.
   if (!competition) return <Navigate to="/competitions" replace />
