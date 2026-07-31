@@ -4,12 +4,23 @@ const { onSchedule } = require('firebase-functions/v2/scheduler')
 const logger = require('firebase-functions/logger')
 const { Resend } = require('resend')
 const admin = require('firebase-admin')
+const { getFirestore } = require('firebase-admin/firestore')
 const crypto = require('crypto')
 const { recomputeCompetitionStats, recomputeAllCareerStats, recomputeFriendlyStatsForTeams } = require('./statsEngine')
 const { buildSitemap } = require('./sitemap')
 const { rendererHandler } = require('./renderer')
 
 admin.initializeApp()
+
+// This app's Firestore data lives in the `waterpolo` NAMED database, not
+// (default). Bind every function's Firestore access — and the `database` option
+// on the document triggers below — to it; otherwise reads/writes silently hit
+// the wrong database and the triggers never fire for this sport. Mirrors
+// firebase.json's `"database": "waterpolo"` and the client's VITE_FIRESTORE_DATABASE.
+// VERIFY ON LIVE: the build workspace has no Firebase credentials to exercise
+// this against the real database.
+const DB_ID = 'waterpolo'
+const db = getFirestore(DB_ID)
 
 // Human-readable role labels, mirroring src/lib/capabilities.js ROLE_DISPLAY.
 // Falls back to the raw role string for anything not listed.
@@ -27,7 +38,7 @@ const ROLE_DISPLAY = {
 // the RESEND_API_KEY secret (Google Cloud Secret Manager) and read from
 // process.env — never committed or hard-coded.
 exports.waterpoloSendInviteEmail = onDocumentCreated(
-  { document: 'invites/{inviteId}', secrets: ['RESEND_API_KEY'] },
+  { document: 'invites/{inviteId}', database: DB_ID, secrets: ['RESEND_API_KEY'] },
   async (event) => {
     const snap = event.data
     if (!snap) return
@@ -298,7 +309,6 @@ const AUTOFLIP_WINDOW_HOURS = 6
 exports.waterpoloAutoFlipScheduledMatches = onSchedule(
   { schedule: 'every 15 minutes', region: 'europe-west1' },
   async () => {
-    const db = admin.firestore()
     const serverTs = admin.firestore.FieldValue.serverTimestamp
     const now = Date.now()
     const windowStart = now - AUTOFLIP_WINDOW_HOURS * 60 * 60 * 1000
@@ -341,7 +351,6 @@ exports.waterpoloAutoFlipScheduledMatches = onSchedule(
 exports.waterpoloDailyFixtureSweep = onSchedule(
   { schedule: '0 * * * *', region: 'europe-west1' },
   async () => {
-    const db = admin.firestore()
     const serverTs = admin.firestore.FieldValue.serverTimestamp
     const cfg = await readSweepConfig(db)
     const cutoffHour = Number(String(cfg.cutoffTime).split(':')[0])
@@ -415,7 +424,7 @@ function statsRelevantChanged(before, after) {
 // final, and on any stat-affecting edit to an already-final fixture. Writes only
 // `players` slices (never the match doc) so it cannot re-trigger itself.
 exports.waterpoloRecomputeCompetitionStatsOnFinal = onDocumentUpdated(
-  { document: 'matches/{matchId}', region: 'europe-west1' },
+  { document: 'matches/{matchId}', database: DB_ID, region: 'europe-west1' },
   async (event) => {
     const before = event.data?.before?.data()
     const after  = event.data?.after?.data()
@@ -432,7 +441,7 @@ exports.waterpoloRecomputeCompetitionStatsOnFinal = onDocumentUpdated(
       // stats so friendlies count toward player records too.
       try {
         const res = await recomputeFriendlyStatsForTeams(
-          [after.homeTeamId, after.awayTeamId], admin.firestore())
+          [after.homeTeamId, after.awayTeamId], db)
         logger.info('Friendly stats recomputed', { matchId: event.params.matchId, ...res })
       } catch (err) {
         logger.error('Failed to recompute friendly stats', {
@@ -443,7 +452,7 @@ exports.waterpoloRecomputeCompetitionStatsOnFinal = onDocumentUpdated(
     }
 
     try {
-      const res = await recomputeCompetitionStats(competitionId, admin.firestore())
+      const res = await recomputeCompetitionStats(competitionId, db)
       logger.info('Competition stats recomputed', {
         matchId: event.params.matchId, competitionId, transition: !wasFinal, ...res,
       })
@@ -462,7 +471,7 @@ exports.waterpoloDailyCareerStatsRecompute = onSchedule(
   { schedule: '0 3 * * *', timeZone: 'Africa/Johannesburg', region: 'europe-west1' },
   async () => {
     try {
-      const res = await recomputeAllCareerStats(admin.firestore())
+      const res = await recomputeAllCareerStats(db)
       logger.info('Daily career stats recompute complete', res)
     } catch (err) {
       logger.error('Daily career stats recompute failed', { message: err.message })
@@ -503,7 +512,6 @@ exports.waterpoloRecalculateCompetitionStats = onCall(
     const { competitionId } = request.data ?? {}
     if (!competitionId) throw new HttpsError('invalid-argument', 'competitionId is required.')
 
-    const db = admin.firestore()
     await assertCanAdministerCompetition(db, competitionId, request.auth)
 
     const res = await recomputeCompetitionStats(competitionId, db)
@@ -530,11 +538,11 @@ exports.waterpoloRebuildAllCareerStats = onCall(
   { region: 'europe-west1', timeoutSeconds: 540, memory: '1GiB' },
   async (request) => {
     if (!request.auth) throw new HttpsError('unauthenticated', 'Must be signed in.')
-    const userSnap = await admin.firestore().doc(`users/${request.auth.uid}`).get()
+    const userSnap = await db.doc(`users/${request.auth.uid}`).get()
     if (!(userSnap.exists && userSnap.data().platformAdmin === true)) {
       throw new HttpsError('permission-denied', 'Platform admin only.')
     }
-    const res = await recomputeAllCareerStats(admin.firestore())
+    const res = await recomputeAllCareerStats(db)
     logger.info('Manual wholesale career rebuild', { uid: request.auth.uid, ...res })
     return res
   }
@@ -558,7 +566,7 @@ exports.waterpoloSitemap = onRequest(
   { region: 'europe-west1', timeoutSeconds: 120, memory: '512MiB' },
   async (req, res) => {
     try {
-      const xml = await buildSitemap(admin.firestore(), logger)
+      const xml = await buildSitemap(db, logger)
       res.set('Content-Type', 'application/xml; charset=utf-8')
       res.set('Cache-Control', 'public, max-age=3600, s-maxage=3600')
       res.status(200).send(xml)
