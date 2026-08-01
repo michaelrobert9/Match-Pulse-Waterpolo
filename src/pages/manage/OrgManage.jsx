@@ -2,7 +2,8 @@ import { useEffect, useRef, useState } from 'react'
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom'
 import { ChevronRight, X, Plus, ChevronLeft, Clipboard, Users, Pencil, UserPlus, Lock } from 'lucide-react'
 import { collection, getDocs, query, where } from 'firebase/firestore'
-import { db } from '../../firebase'
+import { ref as storageRef, uploadBytes, getDownloadURL } from 'firebase/storage'
+import { db, storage } from '../../firebase'
 import { useAuth } from '../../contexts/AuthContext'
 import { roleLabel, grantLabel, grantOf } from '../../lib/capabilities'
 import { MASTER_PLANS_URL } from '../../lib/externalLinks'
@@ -1240,6 +1241,32 @@ function SettingsSection({ org, onSaved }) {
   const [saving, setSaving] = useState(false)
   const [saved,  setSaved]  = useState(false)
   const [error,  setError]  = useState('')
+  const [uploading,   setUploading]   = useState(false)
+  const [uploadError, setUploadError] = useState('')
+
+  async function uploadImage(file, key, path) {
+    if (!file || !storage) return
+    setUploading(true)
+    setUploadError('')
+    try {
+      const r = storageRef(storage, path)
+      await uploadBytes(r, file)
+      const url = await getDownloadURL(r)
+      setForm(f => ({ ...f, [key]: url }))
+    } catch (err) {
+      setUploadError(err.message || 'Upload failed.')
+    } finally {
+      setUploading(false)
+    }
+  }
+  function handleLogoUpload(e) {
+    uploadImage(e.target.files?.[0], 'logoUrl', `org-logos/${org.id}`)
+    e.target.value = ''
+  }
+  function handleBannerUpload(e) {
+    uploadImage(e.target.files?.[0], 'bannerUrl', `org-banners/${org.id}`)
+    e.target.value = ''
+  }
 
   async function handleSave(e) {
     e.preventDefault()
@@ -1328,7 +1355,7 @@ function SettingsSection({ org, onSaved }) {
           </div>
         </div>
         <div>
-          <label className="text-[10px] font-bold uppercase tracking-widest text-slate-500 block mb-1.5">Profile photo URL</label>
+          <label className="text-[10px] font-bold uppercase tracking-widest text-slate-500 block mb-1.5">Logo / crest</label>
           <div className="flex items-center gap-3">
             <div className="w-12 h-12 rounded-xl flex items-center justify-center shrink-0 overflow-hidden"
               style={{ backgroundColor: form.primaryColor + '25', border: `2px solid ${form.primaryColor}` }}>
@@ -1339,18 +1366,35 @@ function SettingsSection({ org, onSaved }) {
                 : <span className="text-xs font-bold font-mono" style={{ color: form.primaryColor }}>{monogram(form.name)}</span>
               }
             </div>
-            <input value={form.logoUrl} onChange={e => setForm(f => ({ ...f, logoUrl: e.target.value }))}
-              type="url" placeholder="https://…"
-              className="flex-1 bg-white border border-slate-200 rounded-lg px-3 py-2.5 text-slate-900 text-sm placeholder-slate-400 focus:outline-none focus:border-emerald-500 transition-colors" />
+            <div className="flex-1 min-w-0 space-y-2">
+              <label className={`inline-flex items-center justify-center gap-1.5 cursor-pointer text-[11px] font-bold uppercase tracking-wider rounded-lg px-3 py-2 transition-colors ${uploading ? 'bg-slate-100 text-slate-400' : 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100'}`}>
+                {uploading ? 'Uploading…' : 'Upload image'}
+                <input type="file" accept="image/*" className="hidden" disabled={uploading} onChange={handleLogoUpload} />
+              </label>
+              <input value={form.logoUrl} onChange={e => setForm(f => ({ ...f, logoUrl: e.target.value }))}
+                type="url" placeholder="…or paste an image URL"
+                className="w-full bg-white border border-slate-200 rounded-lg px-3 py-2.5 text-slate-900 text-sm placeholder-slate-400 focus:outline-none focus:border-emerald-500 transition-colors" />
+            </div>
           </div>
-          <p className="text-[11px] text-slate-500 mt-1">Logo or crest. Falls back to the {entityLabel.toLowerCase()}'s initials when empty.</p>
+          <p className="text-[11px] text-slate-500 mt-1">Square image, at least 400 × 400 px (up to 2 MB). Falls back to the {entityLabel.toLowerCase()}'s initials when empty.</p>
         </div>
         <div>
-          <label className="text-[10px] font-bold uppercase tracking-widest text-slate-500 block mb-1.5">Card / banner image URL</label>
-          <input value={form.bannerUrl} onChange={e => setForm(f => ({ ...f, bannerUrl: e.target.value }))}
-            type="url" placeholder="https://…"
-            className="w-full bg-white border border-slate-200 rounded-lg px-3 py-2.5 text-slate-900 text-sm placeholder-slate-400 focus:outline-none focus:border-emerald-500 transition-colors" />
-          <p className="text-[11px] text-slate-500 mt-1">Displayed as the banner on the listing card. Recommended size: 1200 × 630 px.</p>
+          <label className="text-[10px] font-bold uppercase tracking-widest text-slate-500 block mb-1.5">Card / banner image</label>
+          {form.bannerUrl.trim() && (
+            <img src={form.bannerUrl.trim()} alt=""
+              className="w-full h-28 object-cover rounded-xl border border-slate-200 mb-2" />
+          )}
+          <div className="flex items-center gap-2">
+            <label className={`inline-flex items-center justify-center gap-1.5 cursor-pointer text-[11px] font-bold uppercase tracking-wider rounded-lg px-3 py-2 transition-colors shrink-0 ${uploading ? 'bg-slate-100 text-slate-400' : 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100'}`}>
+              {uploading ? 'Uploading…' : 'Upload image'}
+              <input type="file" accept="image/*" className="hidden" disabled={uploading} onChange={handleBannerUpload} />
+            </label>
+            <input value={form.bannerUrl} onChange={e => setForm(f => ({ ...f, bannerUrl: e.target.value }))}
+              type="url" placeholder="…or paste a banner image URL"
+              className="flex-1 bg-white border border-slate-200 rounded-lg px-3 py-2.5 text-slate-900 text-sm placeholder-slate-400 focus:outline-none focus:border-emerald-500 transition-colors" />
+          </div>
+          <p className="text-[11px] text-slate-500 mt-1">Wide image shown on the listing card — 1200 × 630 px works best (up to 5 MB).</p>
+          {uploadError && <p className="text-red-600 text-[11px] mt-1">{uploadError}</p>}
         </div>
         <div>
           <div className="flex items-center justify-between mb-1.5">

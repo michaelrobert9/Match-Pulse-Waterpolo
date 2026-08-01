@@ -824,6 +824,7 @@ function BasicCard({ competition, onSaved }) {
                 />
               </div>
             </div>
+            <p className="text-[11px] text-slate-400 mt-1.5">Square image, at least 400 × 400 px (up to 2 MB).</p>
           </div>
           <div>
             <label className="micro-label block mb-1.5">Card / banner image</label>
@@ -842,7 +843,7 @@ function BasicCard({ competition, onSaved }) {
                 placeholder="…or paste a banner image URL"
               />
             </div>
-            <p className="text-[11px] text-slate-400 mt-1.5">Wide image shown on the competition page and cards (≈ 1200×400).</p>
+            <p className="text-[11px] text-slate-400 mt-1.5">Wide image shown on the competition page and cards — 1200 × 400 px works best (up to 5 MB).</p>
           </div>
           {uploadError && <p className="text-red-600 text-xs">{uploadError}</p>}
           <SaveRow saving={saving || uploading} disabled={!form.name.trim()} onSave={save} />
