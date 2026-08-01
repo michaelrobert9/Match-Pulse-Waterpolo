@@ -297,8 +297,8 @@ export default function Signup() {
                 </div>
               </button>
               <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={handlePhotoUpload} />
-              <span className="text-[10px] text-slate-400">
-                {uploading ? 'Uploading…' : storage ? 'Tap to add a photo' : 'Photo upload — coming soon'}
+              <span className="text-[10px] text-slate-400 text-center">
+                {uploading ? 'Uploading…' : storage ? 'Tap to add a photo · square, ≈400px' : 'Photo upload — coming soon'}
               </span>
             </div>
 

@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
+import { Camera } from 'lucide-react'
 import { isScheduled } from '../lib/fixtureStatus'
 import {
   fetchPersonBySlug, fetchCareerForPerson, fetchOrganization,
@@ -9,7 +10,7 @@ import { matchUrl } from '../lib/slugify'
 import { monogram } from '../lib/names'
 import { useAuth } from '../contexts/AuthContext'
 import { managesPlayerProfile } from '../lib/capabilities'
-import { removeSelfFromFixture, updatePersonBanner, claimPlayerProfile, isProfileClaimed } from '../lib/adminQueries'
+import { removeSelfFromFixture, updatePersonBanner, updatePersonPhoto, claimPlayerProfile, isProfileClaimed } from '../lib/adminQueries'
 import { storage } from '../firebase'
 import { ref as storageRef, uploadBytes, getDownloadURL } from 'firebase/storage'
 import { useSeoMeta } from '../lib/useSeoMeta'
@@ -348,11 +349,8 @@ export default function PlayerProfile() {
           onSaved={url => setPerson(p => ({ ...p, bannerUrl: url }))} />
         <div className="h-2 bg-gradient-to-r from-emerald-500 to-emerald-400" />
         <div className="p-5 flex items-start gap-4">
-          <div className="w-16 h-16 rounded-xl bg-slate-100 border border-slate-200 flex items-center justify-center shrink-0 overflow-hidden">
-            {person.photoUrl
-              ? <img src={person.photoUrl} alt={person.fullName} className="w-full h-full object-cover object-top" />
-              : <span className="text-lg font-bold font-mono text-slate-500">{initials}</span>}
-          </div>
+          <ProfilePhoto person={person} canEdit={canEditBanner} initials={initials}
+            onSaved={url => setPerson(p => ({ ...p, photoUrl: url }))} />
           <div className="flex-1 min-w-0 pt-0.5">
             {person.roles?.length > 0 && (
               <div className="flex flex-wrap gap-1 mb-2">
@@ -483,6 +481,53 @@ function ClaimCard({ person, onClaimed }) {
   )
 }
 
+// Profile photo: the square headshot in the hero. The player
+// (owner/guardian/manager) or a platform admin can upload one — stored at
+// player-avatars/{personId}, attached to the person doc as photoUrl. Displayed
+// at 64px; a square image (≈400×400) crops cleanly.
+function ProfilePhoto({ person, canEdit, initials, onSaved }) {
+  const [busy, setBusy] = useState(false)
+  const [err, setErr]   = useState('')
+
+  async function handleUpload(e) {
+    const file = e.target.files?.[0]
+    e.target.value = ''
+    if (!file || !storage) return
+    setBusy(true); setErr('')
+    try {
+      const r = storageRef(storage, `player-avatars/${person.id}`)
+      await uploadBytes(r, file)
+      const url = await getDownloadURL(r)
+      await updatePersonPhoto(person.id, url)
+      onSaved(url)
+    } catch (e2) {
+      setErr(e2.message || 'Upload failed.')
+    } finally { setBusy(false) }
+  }
+
+  return (
+    <div className="shrink-0">
+      <div className="relative w-16 h-16 rounded-xl bg-slate-100 border border-slate-200 flex items-center justify-center overflow-hidden">
+        {person.photoUrl
+          ? <img src={person.photoUrl} alt={person.fullName} className="w-full h-full object-cover object-top" />
+          : <span className="text-lg font-bold font-mono text-slate-500">{initials}</span>}
+        {canEdit && (
+          <label className="absolute inset-0 flex items-center justify-center bg-slate-900/0 hover:bg-slate-900/40 text-transparent hover:text-white transition-colors cursor-pointer"
+            title={person.photoUrl ? 'Change photo' : 'Add photo'}>
+            <Camera className="w-4 h-4" />
+            <input type="file" accept="image/*" className="hidden" disabled={busy} onChange={handleUpload} />
+          </label>
+        )}
+      </div>
+      {canEdit && (
+        <p className="text-[9px] text-slate-400 text-center mt-1">
+          {busy ? 'Uploading…' : err ? <span className="text-red-600">{err}</span> : 'Square · ≈400px'}
+        </p>
+      )}
+    </div>
+  )
+}
+
 // Profile banner: a wide hero image at the top of the player card. The player
 // (owner/guardian/manager) or a platform admin can upload one — stored at
 // player-banners/{personId}, attached to the person doc as bannerUrl.
@@ -513,8 +558,9 @@ function ProfileBanner({ person, canEdit, onSaved }) {
       {person.bannerUrl ? (
         <img src={person.bannerUrl} alt="" className="w-full h-32 sm:h-44 object-cover" loading="lazy" />
       ) : (
-        <label className={`flex items-center justify-center h-16 border-b border-dashed border-slate-200 text-[11px] font-bold uppercase tracking-widest cursor-pointer transition-colors ${busy ? 'text-slate-300' : 'text-slate-400 hover:text-emerald-600 hover:bg-emerald-50/50'}`}>
-          {busy ? 'Uploading…' : '+ Add banner image'}
+        <label className={`flex flex-col items-center justify-center gap-0.5 h-16 border-b border-dashed border-slate-200 cursor-pointer transition-colors ${busy ? 'text-slate-300' : 'text-slate-400 hover:text-emerald-600 hover:bg-emerald-50/50'}`}>
+          <span className="text-[11px] font-bold uppercase tracking-widest">{busy ? 'Uploading…' : '+ Add banner image'}</span>
+          {!busy && <span className="text-[9px] text-slate-400">Wide banner · ≈1600×400px (up to 5 MB)</span>}
           <input type="file" accept="image/*" className="hidden" disabled={busy} onChange={handleUpload} />
         </label>
       )}

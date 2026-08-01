@@ -9,6 +9,38 @@ service firebase.storage {
         && request.resource.contentType.matches('image/.*');
     }
 
+    // Player (person) profile photos. Same model as the other public images:
+    // the blob is public-readable and size/type constrained; attaching it to the
+    // profile requires a Firestore write on people/{id}, which only the
+    // owner/guardians/managers (or a platform admin) may make.
+    match /player-avatars/{personId} {
+      allow read:  if true;
+      allow write: if request.auth != null
+        && request.resource.size < 2 * 1024 * 1024
+        && request.resource.contentType.matches('image/.*');
+    }
+
+    // Organisation logos / crests. Public-readable; any signed-in user may upload
+    // (size/type constrained). Attaching the logo to an org still requires an
+    // org-owner write to the Firestore organisation doc (gated by
+    // firestore.rules), so an uploaded blob alone has no effect until saved.
+    match /org-logos/{orgId} {
+      allow read:  if true;
+      allow write: if request.auth != null
+        && request.resource.size < 2 * 1024 * 1024
+        && request.resource.contentType.matches('image/.*');
+    }
+
+    // Organisation card / banner images (wide). Same model as org logos —
+    // public-readable; any signed-in user may upload; attaching it requires an
+    // org-owner Firestore write.
+    match /org-banners/{orgId} {
+      allow read:  if true;
+      allow write: if request.auth != null
+        && request.resource.size < 5 * 1024 * 1024
+        && request.resource.contentType.matches('image/.*');
+    }
+
     // Competition logos. The blob is public-readable; any signed-in user may
     // upload an image (size/type constrained). Attaching the logo to a
     // competition still requires a competition-admin write to the Firestore

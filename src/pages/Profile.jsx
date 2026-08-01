@@ -240,7 +240,7 @@ export default function Profile() {
         </button>
         <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={handlePhotoUpload} />
         {uploading && <span className="text-xs text-slate-500">Uploading…</span>}
-        {storage && !uploading && <span className="text-[10px] text-slate-400">Tap to change photo</span>}
+        {storage && !uploading && <span className="text-[10px] text-slate-400">Tap to change photo · square, ≈400px</span>}
       </div>
 
       {/* Edit form */}

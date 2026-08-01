@@ -725,6 +725,16 @@ export async function updatePersonBanner(personId, bannerUrl) {
   })
 }
 
+// Set (or clear) a person's profile photo. Same permission surface as the
+// banner (owner/guardians/managers and platform admins) — photoUrl is a
+// non-control field on people/{id}.
+export async function updatePersonPhoto(personId, photoUrl) {
+  return updateDoc(doc(db, 'people', personId), {
+    photoUrl: photoUrl || null,
+    updatedAt: serverTimestamp(),
+  })
+}
+
 export async function deleteTeam(id) {
   return deleteDoc(doc(db, 'teams', id))
 }
