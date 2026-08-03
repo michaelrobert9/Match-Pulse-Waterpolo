@@ -119,11 +119,11 @@ export default function Nav() {
 
   return (
     <header ref={headerRef} className={`border-b border-slate-200 sticky top-0 z-20 transition-all duration-200 ${scrolled ? 'bg-white/95 backdrop-blur-md shadow-md' : 'bg-white shadow-sm'}`}>
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center gap-4">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-24 flex items-center gap-4">
 
         {/* Logo — always links home. Uses the supplied brand lockup as-is. */}
         <Link to="/" className="flex items-center shrink-0">
-          <img src="/logo.png" alt="MatchPulse Waterpolo" className="h-7 sm:h-8 w-auto" />
+          <img src="/logo.png" alt="MatchPulse Waterpolo" className="h-14 sm:h-16 w-auto" />
         </Link>
 
         {/* Desktop nav links */}
