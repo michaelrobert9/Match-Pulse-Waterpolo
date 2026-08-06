@@ -29,6 +29,7 @@ import { useAuth } from '../../../contexts/AuthContext'
 import { matchSlug as buildMatchSlug } from '../../../lib/slugify'
 import { fetchCompetitionPools, fetchCompetitionKnockout, fetchCompetitionFixtureMembers, fetchAwaitingResultMatchesForCompetition, fetchCompetitionAuditLog, toDate } from '../../../lib/queries'
 import { POINTS_PRESETS, competitionLifecycle } from '../../../lib/competitionRules'
+import { POTM_DEFAULT_COLOR } from '../../../lib/POTM'
 import { isScheduled } from '../../../lib/fixtureStatus'
 import StatusBadge from '../../../components/StatusBadge'
 import CompetitionStatusBadge from '../../../components/CompetitionStatusBadge'
@@ -1134,24 +1135,31 @@ function EligibilityCard({ competition, onSaved }) {
 
 function POTMCard({ competition, onSaved }) {
   const rules   = competition.rules ?? {}
-  const enabled = rules.potm?.enabled ?? false
+  const potm    = rules.potm ?? {}
+  const enabled = potm.enabled ?? false
+  const perTeam = potm.perTeam ?? false
+  const color   = potm.color   ?? ''
   const [saving, setSaving] = useState(false)
 
-  async function toggle(next) {
+  // Always write the whole merged potm object so a partial update never drops
+  // a sibling field (e.g. enabling perTeam mustn't erase color).
+  async function patchPotm(next) {
     setSaving(true)
     try {
-      const newRules = { ...rules, potm: { ...(rules.potm ?? {}), enabled: next } }
+      const newRules = { ...rules, potm: { ...potm, ...next } }
       await updateCompetition(competition.id, { rules: newRules })
       onSaved({ ...competition, rules: newRules })
     } finally { setSaving(false) }
   }
+
+  const disabledClass = enabled ? '' : 'opacity-50 cursor-not-allowed'
 
   return (
     <Card title="Player of the Match"
       subtitle="Recognise outstanding individual performances">
       <label className="flex items-start gap-3 cursor-pointer">
         <input type="checkbox" checked={enabled} disabled={saving}
-          onChange={e => toggle(e.target.checked)}
+          onChange={e => patchPotm({ enabled: e.target.checked })}
           className="accent-emerald-600 w-4 h-4 mt-0.5" />
         <div>
           <span className="text-sm font-medium text-slate-700">Show Player of the Match stats</span>
@@ -1161,6 +1169,47 @@ function POTMCard({ competition, onSaved }) {
           </p>
         </div>
       </label>
+
+      {/* Per-team sub-toggle */}
+      <label className={`flex items-start gap-3 pl-6 mt-3 ${enabled ? 'cursor-pointer' : disabledClass}`}>
+        <input type="checkbox" checked={perTeam} disabled={saving || !enabled}
+          onChange={e => patchPotm({ perTeam: e.target.checked })}
+          className="accent-emerald-600 w-4 h-4 mt-0.5" />
+        <div>
+          <span className="text-sm font-medium text-slate-700">One Player of the Match per team</span>
+          <p className="text-[11px] text-slate-400 mt-0.5">
+            Recognise one player from each side instead of a single overall winner. The end-of-match
+            sheet asks for both home and away.
+          </p>
+        </div>
+      </label>
+
+      {/* Highlight colour */}
+      <div className={`pl-6 mt-3 ${enabled ? '' : disabledClass}`}>
+        <div className="text-sm font-medium text-slate-700">POTM highlight colour</div>
+        <p className="text-[11px] text-slate-400 mt-0.5 mb-2">
+          Colour used for the POTM tag and highlighted row on match pages. Match a special POTM
+          colour your competition uses, or leave as the default.
+        </p>
+        <div className="flex items-center gap-2">
+          <input type="color" disabled={saving || !enabled}
+            value={color || POTM_DEFAULT_COLOR}
+            onChange={e => patchPotm({ color: e.target.value })}
+            className="w-10 h-10 rounded cursor-pointer border-0 bg-transparent p-0" />
+          <input type="text" disabled={saving || !enabled}
+            value={color}
+            placeholder={POTM_DEFAULT_COLOR}
+            onChange={e => patchPotm({ color: e.target.value })}
+            className="w-28 bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 text-sm font-mono text-slate-900 placeholder-slate-400 focus:outline-none focus:border-emerald-500 transition-colors disabled:bg-slate-50" />
+          {color && (
+            <button type="button" disabled={saving || !enabled}
+              onClick={() => patchPotm({ color: '' })}
+              className="text-[11px] font-bold uppercase tracking-widest text-slate-400 hover:text-slate-700 transition-colors">
+              Reset to default
+            </button>
+          )}
+        </div>
+      </div>
     </Card>
   )
 }

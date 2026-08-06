@@ -183,9 +183,10 @@ export async function fetchCompetitionTopPOTM(competitionId, limit = 5) {
       where('status', '==', 'final'))
   )
   const counts = new Map()
-  snap.docs.forEach(d => {
-    const data = d.data()
-    const potm = data.playerOfMatch
+  // Shared accumulator — must count BOTH storage shapes on the same board so
+  // per-team awards accrue to the season table alongside legacy single POTMs.
+  // See src/lib/POTM.js for the two shapes.
+  const addPotm = (potm, data) => {
     if (!potm?.name) return
     const key = potm.personId ?? potm.name
     const entry = counts.get(key)
@@ -202,6 +203,12 @@ export async function fetchCompetitionTopPOTM(competitionId, limit = 5) {
         count: 1,
       })
     }
+  }
+  snap.docs.forEach(d => {
+    const data = d.data()
+    addPotm(data.playerOfMatch, data)
+    addPotm(data.playersOfMatch?.home, data)
+    addPotm(data.playersOfMatch?.away, data)
   })
   return [...counts.values()]
     .sort((a, b) => b.count - a.count)
