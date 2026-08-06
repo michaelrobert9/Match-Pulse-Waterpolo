@@ -8,12 +8,13 @@ import {
   startMatch, pauseMatch, resumeMatch, endPeriod, startPeriod, finalizeMatch,
   addGoal, enrichGoal, addCard, reverseGoal, reverseCard, recordShootout,
   addPersonToMatchLineup, removePersonFromMatchLineup, toggleLineupStarter, updateMatchLineupEntry, updateMatch,
-  setPlayerOfMatch, syncFixtureMembership, swapFixtureSides, resetMatch,
+  setPlayerOfMatch, setPlayersOfMatch, syncFixtureMembership, swapFixtureSides, resetMatch,
   setFixtureNotPlayed, setFixtureWalkover, abandonMatch, letAbandonedStand, revertFixtureOutcome,
   submitFixtureResult,
 } from '../../lib/adminQueries'
 import { fetchCompetition } from '../../lib/queries'
 import { walkoverScore, outcomeBanner } from '../../lib/fixtureResult'
+import { POTMColor } from '../../lib/POTM'
 import FixtureBanner from '../../components/FixtureBanner'
 import {
   getElapsedMs, formatClock, nextPeriodAction,
@@ -230,6 +231,19 @@ export default function ScoreMatch() {
   // POTM step: shown between finalization and the full-time screen when there
   // are lineup players to choose from.
   const [potmStep, setPotmStep] = useState(false)
+  // Per-team POTM mode + display colour, loaded once from the competition's
+  // rules.potm. Fall back to legacy single mode + default colour otherwise.
+  const [potmPerTeam, setPotmPerTeam] = useState(false)
+  const [potmColor,   setPotmColor]   = useState('')
+  // In per-team mode we walk sides sequentially. potmStartSide is the side we
+  // began on; potmSide is the side currently on screen; potmDraft accumulates
+  // picks until we commit. When potmSide !== potmStartSide, we're on the
+  // second side and the next action (pick or skip) commits — using "we're on
+  // side two" is what makes a double-skip commit instead of looping (a null
+  // slot means "skipped", not "not visited").
+  const [potmStartSide, setPotmStartSide] = useState('home')
+  const [potmSide,      setPotmSide]      = useState('home')
+  const [potmDraft,     setPotmDraft]     = useState({ home: null, away: null })
   // Shootout: optional, only relevant when regulation ends level.
   const [shootoutEnabled, setShootoutEnabled] = useState(false)
   const [shootoutHome,    setShootoutHome]    = useState('')
@@ -413,6 +427,19 @@ export default function ScoreMatch() {
       .then(c => { if (c) setWkDefault(walkoverScore(c)) })
       .catch(() => {})
   }, [outcomeOpen, match?.competitionId])
+
+  // Load POTM rules (per-team mode + highlight colour) once per match so the
+  // POTM sheet and the write path never need to re-fetch the competition.
+  // Competition-less matches (friendlies) keep the defaults: single mode, no
+  // colour override.
+  useEffect(() => {
+    if (!match?.competitionId) return
+    fetchCompetition(match.competitionId).then(c => {
+      if (!c) return
+      setPotmPerTeam(c.rules?.potm?.perTeam === true)
+      setPotmColor(c.rules?.potm?.color || '')
+    }).catch(() => {})
+  }, [match?.competitionId])
 
   if (loading) return (
     <div className={`min-h-screen ${t.root} flex items-center justify-center`}>
@@ -631,19 +658,56 @@ export default function ScoreMatch() {
           await recordShootout(id, sh, sa)
         }
       }
-      const hasPlayers = (match?.homeLineup?.length ?? 0) + (match?.awayLineup?.length ?? 0) > 0
-      if (hasPlayers) {
-        setPotmStep(true)
-      } else {
-        setJustFinalized(true)
-      }
+      openPOTMSheetIfPlayers()
     })
   }
 
+  // Open the POTM sheet if either side has anyone in the lineup. In per-team
+  // mode start on the side WITH players (prefer home) so an empty-side match
+  // walks the scorer straight to the side that has picks. A skipped side is
+  // stored as null (not omitted) so the reader can tell "no award" from
+  // "no data".
+  function openPOTMSheetIfPlayers() {
+    const homeCount = match?.homeLineup?.length ?? 0
+    const awayCount = match?.awayLineup?.length ?? 0
+    if (homeCount + awayCount === 0) { setJustFinalized(true); return }
+    const start = homeCount > 0 ? 'home' : 'away'
+    setPotmDraft({ home: null, away: null })
+    setPotmStartSide(start)
+    setPotmSide(start)
+    setPotmStep(true)
+  }
+
+  // Attach the competition's chosen POTM colour to every award at write time so
+  // match pages never need to re-fetch the competition. Legacy records without
+  // color fall back to POTM_DEFAULT_COLOR via src/lib/POTM.js#POTMColor.
+  function decoratePotm(player) {
+    if (!player) return null
+    return potmColor ? { ...player, color: potmColor } : player
+  }
+
   async function handleSelectPOTM(player) {
-    if (player) {
-      await setPlayerOfMatch(id, player).catch(() => {})
+    // Single mode (legacy): one tap picks the overall winner, one write, close.
+    if (!potmPerTeam) {
+      if (player) await setPlayerOfMatch(id, decoratePotm(player)).catch(() => {})
+      setPotmStep(false)
+      setJustFinalized(true)
+      return
     }
+    // Per-team mode: accumulate the pick for the current side. If we're on the
+    // starting side and the other side has players, advance to it; otherwise
+    // commit. A skipped side is stored as null (not omitted) so the reader can
+    // tell "no award" from "no data".
+    const nextDraft = { ...potmDraft, [potmSide]: decoratePotm(player) }
+    const otherSide = potmSide === 'home' ? 'away' : 'home'
+    const otherHasPlayers = ((otherSide === 'home' ? match?.homeLineup : match?.awayLineup)?.length ?? 0) > 0
+    const onStartingSide = potmSide === potmStartSide
+    if (onStartingSide && otherHasPlayers) {
+      setPotmDraft(nextDraft)
+      setPotmSide(otherSide)
+      return
+    }
+    await setPlayersOfMatch(id, nextDraft).catch(() => {})
     setPotmStep(false)
     setJustFinalized(true)
   }
@@ -728,9 +792,15 @@ export default function ScoreMatch() {
     } finally { setLineupSaving(false) }
   }
 
-  async function runOutcome(fn) {
+  async function runOutcome(fn, { openPOTMAfter = false } = {}) {
     setOutcomeBusy(true); setOutcomeError('')
-    try { await fn(); setOutcomeOpen(false) }
+    try {
+      await fn()
+      setOutcomeOpen(false)
+      // The entered-result path lands here — offer POTM the same way the live
+      // "End match" flow does, so an entered result also captures the award.
+      if (openPOTMAfter) openPOTMSheetIfPlayers()
+    }
     catch (e) { setOutcomeError(e.message || 'Action failed.') }
     finally { setOutcomeBusy(false) }
   }
@@ -1398,8 +1468,14 @@ export default function ScoreMatch() {
         </Sheet>
       )}
 
-      {/* Player of the Match selection — shown after finalization when players exist */}
-      {potmStep && (
+      {/* Player of the Match selection — shown after finalization when players exist.
+          Single mode shows both sides in one sheet. Per-team mode shows one side
+          at a time (state: potmSide), sequential home → away, own skip per side. */}
+      {potmStep && (() => {
+        // In per-team mode the sheet renders ONLY the current side; in single
+        // mode it renders both together, as before.
+        const visibleSides = potmPerTeam ? [potmSide] : ['home', 'away']
+        return (
         <div className="fixed inset-0 z-50 flex items-end justify-center"
           style={{ background: 'rgba(0,0,0,0.6)' }}>
           <div className={`w-full max-w-md ${t.sheet} rounded-t-2xl border-t flex flex-col overflow-hidden`}
@@ -1407,14 +1483,17 @@ export default function ScoreMatch() {
             {/* Header */}
             <div className={`px-5 py-4 border-b ${bright ? 'border-slate-200' : 'border-slate-700'} shrink-0`}>
               <div className="flex items-center gap-2 mb-0.5">
-                <Star className="w-4 h-4 text-amber-400" />
-                <span className="text-[10px] font-bold uppercase tracking-widest text-amber-400">Player of the Match</span>
+                <Star className="w-4 h-4" style={{ color: POTMColor({ color: potmColor }) }} />
+                <span className="text-[10px] font-bold uppercase tracking-widest" style={{ color: POTMColor({ color: potmColor }) }}>
+                  Player of the Match
+                  {potmPerTeam && ` · ${potmSide === 'home' ? (match.homeTeamName ?? 'Home') : (match.awayTeamName ?? 'Away')}`}
+                </span>
               </div>
               <p className={`text-sm ${t.muted}`}>Tap a player to award the honour, or skip.</p>
             </div>
             {/* Player list */}
             <div className="overflow-y-auto flex-1">
-              {(['home', 'away']).map(side => {
+              {visibleSides.map(side => {
                 const players = side === 'home' ? (match.homeLineup ?? []) : (match.awayLineup ?? [])
                 const teamName  = side === 'home' ? match.homeTeamName  : match.awayTeamName
                 const teamColor = side === 'home' ? match.homeTeamColor : match.awayTeamColor
@@ -1452,16 +1531,18 @@ export default function ScoreMatch() {
                 )
               })}
             </div>
-            {/* Skip */}
+            {/* Skip — per-team mode skips only THIS side (null stored for it);
+                single mode skips the whole award. */}
             <div className={`px-4 py-4 border-t shrink-0 ${bright ? 'border-slate-200' : 'border-slate-700'}`}>
               <button onClick={() => handleSelectPOTM(null)}
                 className={`w-full border font-bold text-sm rounded-xl py-3 ${t.neutralBtn}`}>
-                Skip — no award today
+                {potmPerTeam ? `Skip ${potmSide === 'home' ? (match.homeTeamName ?? 'home') : (match.awayTeamName ?? 'away')}` : 'Skip — no award today'}
               </button>
             </div>
           </div>
         </div>
-      )}
+        )
+      })()}
 
       {/* Post-match: Full-time confirmation — stays open until dismissed */}
       {justFinalized && (
@@ -1772,7 +1853,10 @@ export default function ScoreMatch() {
             match={match} t={t} busy={outcomeBusy} error={outcomeError} wkDefault={wkDefault}
             homeName={match.homeTeamName} awayName={match.awayTeamName}
             homePlayers={home} awayPlayers={away}
-            onEnterResult={(payload) => runOutcome(() => submitFixtureResult(match.id, { ...payload, method: 'submitted' }))}
+            onEnterResult={(payload) => runOutcome(
+              () => submitFixtureResult(match.id, { ...payload, method: 'submitted' }),
+              { openPOTMAfter: true },
+            )}
             onNotPlayed={(reason) => runOutcome(() => setFixtureNotPlayed(match.id, { reason }))}
             onWalkover={(payload) => runOutcome(() => setFixtureWalkover(match.id, payload))}
             onAbandon={(reason) => runOutcome(() => abandonMatch(match.id, { minute: Math.floor(getElapsedMs(match) / 60000), reason }))}

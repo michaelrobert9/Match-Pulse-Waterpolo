@@ -17,6 +17,7 @@ import FixtureBanner from '../components/FixtureBanner'
 import { MatchTeamIdentity, MatchTeamCrest } from '../components/TeamIdentity'
 import PersonAvatar from '../components/PersonAvatar'
 import { playerUrl, matchUrl } from '../lib/slugify'
+import { POTMForSide, POTMColor, POTMBgTint, isLineupEntryPOTM } from '../lib/POTM'
 import { gameMinuteLabel, periodRemainingMs, formatCountdown } from '../lib/matchClock'
 import { useSeoMeta } from '../lib/useSeoMeta'
 
@@ -574,31 +575,54 @@ export default function MatchDetail() {
         </div>
       )}
 
-      {/* Player of the Match */}
-      {match.status === 'final' && match.playerOfMatch?.name && (
-        <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm">
-          <div className="flex items-center gap-2 mb-3">
-            <Star className="w-4 h-4 text-amber-400" />
-            <div className="text-[10px] font-bold uppercase tracking-widest text-amber-500">Player of the Match</div>
-          </div>
-          <div className="flex items-center gap-3">
-            <PersonAvatar
-              name={match.playerOfMatch.name}
-              photoUrl={match.playerOfMatch.photoUrl}
-              size={40} />
-            <div>
-              <div className="text-slate-900 font-semibold text-sm">{match.playerOfMatch.name}</div>
-              <div className="text-[11px] text-slate-500 mt-0.5">
-                {match.playerOfMatch.side === 'home' ? match.homeTeamName : match.awayTeamName}
-                {match.playerOfMatch.shirtNumber ? ` · #${match.playerOfMatch.shirtNumber}` : ''}
+      {/* Player of the Match — reads both storage shapes via POTMForSide.
+          Renders one row if only one side has an award, a two-column grid if
+          both. The header colour follows whichever side's award is present
+          (matches a competition's chosen POTM colour). */}
+      {match.status === 'final' && (() => {
+        const homePOTM = POTMForSide(match, 'home')
+        const awayPOTM = POTMForSide(match, 'away')
+        if (!homePOTM && !awayPOTM) return null
+        const anyPOTM = homePOTM || awayPOTM
+        const both    = homePOTM && awayPOTM
+        const items   = [
+          homePOTM ? { potm: homePOTM, teamName: match.homeTeamName } : null,
+          awayPOTM ? { potm: awayPOTM, teamName: match.awayTeamName } : null,
+        ].filter(Boolean)
+        return (
+          <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm">
+            <div className="flex items-center gap-2 mb-3">
+              <Star className="w-4 h-4" style={{ color: POTMColor(anyPOTM) }} />
+              <div className="text-[10px] font-bold uppercase tracking-widest"
+                style={{ color: POTMColor(anyPOTM) }}>
+                {both ? 'Players of the Match' : 'Player of the Match'}
               </div>
             </div>
+            <div className={both ? 'grid grid-cols-2 gap-4' : 'flex'}>
+              {items.map(({ potm, teamName }) => (
+                <div key={potm.side} className="flex items-center gap-3 min-w-0">
+                  <PersonAvatar name={potm.name} photoUrl={potm.photoUrl} size={40} />
+                  <div className="min-w-0">
+                    <div className="text-slate-900 font-semibold text-sm truncate">{potm.name}</div>
+                    <div className="text-[11px] text-slate-500 mt-0.5 truncate">
+                      {teamName}
+                      {potm.shirtNumber ? ` · #${potm.shirtNumber}` : ''}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
-        </div>
-      )}
+        )
+      })()}
 
-      {/* Lineups */}
-      {(homeSelection.length > 0 || awaySelection.length > 0) && (
+      {/* Lineups — the POTM row is highlighted using the competition's chosen
+          POTM colour (falls back to amber via POTMColor). Captain © stays
+          amber-600 regardless — it's independent of POTM. */}
+      {(homeSelection.length > 0 || awaySelection.length > 0) && (() => {
+        const homePOTM = POTMForSide(match, 'home')
+        const awayPOTM = POTMForSide(match, 'away')
+        return (
         <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm">
           <div className="text-[10px] font-bold uppercase tracking-widest text-slate-500 mb-4">Lineups</div>
           <div className="grid grid-cols-2 gap-4">
@@ -609,16 +633,26 @@ export default function MatchDetail() {
                   nameClass="text-[10px] font-bold uppercase tracking-widest text-slate-500 truncate" />
               </div>
               <div className="space-y-2">
-                {homeSelection.map(p => (
-                  <div key={p.id} className="flex items-center gap-2">
-                    <span className="font-mono text-[11px] text-slate-400 w-5 text-right shrink-0">{p.shirtNumber ?? '–'}</span>
-                    <PersonAvatar name={p.personName} photoUrl={p.photoUrl} size={20} />
-                    {p.personId
-                      ? <Link to={playerUrl({ id: p.personId, slug: p.personSlug })} className="text-xs text-slate-700 truncate flex-1 hover:text-emerald-600 transition-colors">{p.personName}</Link>
-                      : <span className="text-xs text-slate-700 truncate flex-1">{p.personName}</span>}
-                    {p.isCaptain && <span className="text-[9px] text-amber-600 font-bold shrink-0">©</span>}
-                  </div>
-                ))}
+                {homeSelection.map(p => {
+                  const isPOTM = isLineupEntryPOTM(homePOTM, p)
+                  const rowStyle  = isPOTM ? { backgroundColor: POTMBgTint(homePOTM) } : undefined
+                  const nameStyle = isPOTM ? { color: POTMColor(homePOTM) } : undefined
+                  const nameCls   = `text-xs truncate flex-1 ${isPOTM ? 'font-semibold' : 'text-slate-700'} ${p.personId ? 'hover:text-emerald-600 transition-colors' : ''}`
+                  return (
+                    <div key={p.id} className={`flex items-center gap-2 ${isPOTM ? '-mx-2 px-2 py-1 rounded' : ''}`} style={rowStyle}>
+                      <span className="font-mono text-[11px] text-slate-400 w-5 text-right shrink-0">{p.shirtNumber ?? '–'}</span>
+                      <PersonAvatar name={p.personName} photoUrl={p.photoUrl} size={20} />
+                      {p.personId
+                        ? <Link to={playerUrl({ id: p.personId, slug: p.personSlug })} className={nameCls} style={nameStyle}>{p.personName}</Link>
+                        : <span className={nameCls} style={nameStyle}>{p.personName}</span>}
+                      {isPOTM && (
+                        <span className="text-[9px] font-bold uppercase tracking-widest shrink-0"
+                          style={{ color: POTMColor(homePOTM) }}>POTM</span>
+                      )}
+                      {p.isCaptain && <span className="text-[9px] text-amber-600 font-bold shrink-0">©</span>}
+                    </div>
+                  )
+                })}
               </div>
             </div>
 
@@ -629,21 +663,32 @@ export default function MatchDetail() {
                 <MatchTeamCrest match={match} side="away" size={20} />
               </div>
               <div className="space-y-2">
-                {awaySelection.map(p => (
-                  <div key={p.id} className="flex items-center gap-2 justify-end">
-                    {p.isCaptain && <span className="text-[9px] text-amber-600 font-bold shrink-0">©</span>}
-                    {p.personId
-                      ? <Link to={playerUrl({ id: p.personId, slug: p.personSlug })} className="text-xs text-slate-700 truncate flex-1 text-right hover:text-emerald-600 transition-colors">{p.personName}</Link>
-                      : <span className="text-xs text-slate-700 truncate flex-1 text-right">{p.personName}</span>}
-                    <PersonAvatar name={p.personName} photoUrl={p.photoUrl} size={20} />
-                    <span className="font-mono text-[11px] text-slate-400 w-5 shrink-0">{p.shirtNumber ?? '–'}</span>
-                  </div>
-                ))}
+                {awaySelection.map(p => {
+                  const isPOTM = isLineupEntryPOTM(awayPOTM, p)
+                  const rowStyle  = isPOTM ? { backgroundColor: POTMBgTint(awayPOTM) } : undefined
+                  const nameStyle = isPOTM ? { color: POTMColor(awayPOTM) } : undefined
+                  const nameCls   = `text-xs truncate flex-1 text-right ${isPOTM ? 'font-semibold' : 'text-slate-700'} ${p.personId ? 'hover:text-emerald-600 transition-colors' : ''}`
+                  return (
+                    <div key={p.id} className={`flex items-center gap-2 justify-end ${isPOTM ? '-mx-2 px-2 py-1 rounded' : ''}`} style={rowStyle}>
+                      {p.isCaptain && <span className="text-[9px] text-amber-600 font-bold shrink-0">©</span>}
+                      {isPOTM && (
+                        <span className="text-[9px] font-bold uppercase tracking-widest shrink-0"
+                          style={{ color: POTMColor(awayPOTM) }}>POTM</span>
+                      )}
+                      {p.personId
+                        ? <Link to={playerUrl({ id: p.personId, slug: p.personSlug })} className={nameCls} style={nameStyle}>{p.personName}</Link>
+                        : <span className={nameCls} style={nameStyle}>{p.personName}</span>}
+                      <PersonAvatar name={p.personName} photoUrl={p.photoUrl} size={20} />
+                      <span className="font-mono text-[11px] text-slate-400 w-5 shrink-0">{p.shirtNumber ?? '–'}</span>
+                    </div>
+                  )
+                })}
               </div>
             </div>
           </div>
         </div>
-      )}
+        )
+      })()}
     </div>
   )
 }
