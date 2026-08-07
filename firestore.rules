@@ -502,10 +502,15 @@ service cloud.firestore {
 
         allow create: if canAdministerCompetition(competitionId);
 
+        // Team org members (coaches/managers — §3 of the bulk team sheets
+        // brief) may also write their own squad + staff, scoped to their team
+        // by isTeamOrgMember. Organisers and competition scorers go through
+        // canAdministerCompetition and may paste for any team.
         allow update: if canAdministerCompetition(competitionId)
           || (isTeamOrgMember(teamId)
               && request.resource.data.diff(resource.data).affectedKeys()
-                   .hasOnly(['status', 'acceptedBy', 'acceptedAt']));
+                   .hasOnly(['status', 'acceptedBy', 'acceptedAt',
+                             'squad', 'staff', 'squadUpdatedAt', 'squadUpdatedBy']));
 
         allow delete: if canAdministerCompetition(competitionId);
       }

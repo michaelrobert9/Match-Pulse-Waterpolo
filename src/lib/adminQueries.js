@@ -12,6 +12,7 @@ import { defaultRulesForType, rulesHash } from './competitionRules'
 import { assertCanAdministerCompetition } from './competitionAuth'
 import { schedulePoolFixtures } from './scheduler'
 import { PLAYER_CONSENT_VERSION } from './consent'
+import { resolveSideLineup } from './lineupResolve'
 
 function uid() { return auth?.currentUser?.uid ?? null }
 function userEmail() { return auth?.currentUser?.email ?? null }
@@ -847,6 +848,10 @@ function controlEntry(type, period, matchTimestamp) {
 }
 
 export async function startMatch(id, { matchTimestamp = 0, periods } = {}) {
+  // Tournament/festival fixtures with a pasted squad freeze their derived
+  // line-up at the moment scoring starts (brief §4). Best-effort: a freeze
+  // failure must never block the scorer from starting the match.
+  await freezeFixtureLineupIfNeeded(id).catch(() => {})
   const firstPeriod = periodLabels(periods)[0]
   // The "Start match" tap is the single moment a fixture becomes `tracked` — a
   // human is now live-scoring it. `tracked` drives the live disclaimer, exempts
@@ -1076,6 +1081,11 @@ export async function submitFixtureResult(matchId, {
     throw new Error('Enter a valid score for both teams.')
   }
   const before = { status: m.status, homeScore: m.homeScore ?? null, awayScore: m.awayScore ?? null }
+
+  // An entered result also freezes a derived line-up (brief §4: freeze on the
+  // first tracked event or transition to live — result entry is the terminal
+  // equivalent for fixtures nobody live-scored). Best-effort, never blocks.
+  await freezeFixtureLineupIfNeeded(matchId, m).catch(() => {})
 
   // Build normalised event objects from the caller-supplied stat arrays. Only
   // written when the caller provides them (untracked submissions); tracked
@@ -1688,6 +1698,135 @@ export async function updateCompetitionMemberName(competitionId, teamId, name) {
     updatedAt: serverTimestamp(),
   })
   await addCompetitionAuditEvent(competitionId, { eventType: 'team_name_edited', after: { teamId, name: clean } })
+}
+
+// ── Bulk team sheets (tournaments & festivals) ───────────────────────────────
+// The competition squad lives on the membership doc
+// (competitions/{id}/teams/{teamId}.squad) — this platform's equivalent of the
+// brief's competitionTeams record. Fixture line-ups are DERIVED from it
+// (squad − exceptions) until frozen; see src/lib/lineupResolve.js.
+
+// Save the pasted-and-confirmed squad + optional staff onto the membership
+// doc. squad: [{ playerId, name, capNumber, isCaptain }] (name is a display
+// snapshot so line-ups render without N person reads). staff: [{ role, name }]
+// — names only, no accounts, no linking (§8).
+export async function saveCompetitionTeamSheet(competitionId, teamId, { squad = [], staff = [] } = {}) {
+  await setDoc(doc(db, 'competitions', competitionId, 'teams', teamId), {
+    squad, staff,
+    squadUpdatedAt: serverTimestamp(),
+    squadUpdatedBy: uid(),
+  }, { merge: true })
+  // competitionIds maintenance — committed here so the stats chain's
+  // before-state check passes when a career stat is later written for these
+  // players (same maintenance addPersonToMatchLineup does one at a time).
+  await Promise.all(squad.map(s =>
+    s.playerId
+      ? updateDoc(doc(db, 'people', s.playerId), { competitionIds: arrayUnion(competitionId) }).catch(() => {})
+      : Promise.resolve()
+  ))
+}
+
+export async function fetchCompetitionTeamSheet(competitionId, teamId) {
+  const snap = await getDoc(doc(db, 'competitions', competitionId, 'teams', teamId))
+  if (!snap.exists()) return { squad: [], staff: [] }
+  const d = snap.data()
+  return { squad: d.squad ?? [], staff: d.staff ?? [] }
+}
+
+// Mark a player absent (or present again) for ONE fixture. Stored as an
+// exception on the match doc — the squad and every other fixture are
+// untouched. A skipped/absent player is an explicit record, not an omission.
+export async function setFixtureAbsence(matchId, { playerId, side, absent }) {
+  const snap = await getDoc(doc(db, 'matches', matchId))
+  if (!snap.exists()) throw new Error('Match not found')
+  const current = (snap.data().exceptions ?? [])
+    .filter(e => !(e.playerId === playerId && e.side === side && e.type === 'absent'))
+  const exceptions = absent
+    ? [...current, { playerId, side, type: 'absent' }]
+    : current
+  return updateDoc(doc(db, 'matches', matchId), {
+    exceptions, updatedBy: uid(), updatedAt: serverTimestamp(),
+  })
+}
+
+// Per-fixture cap override (§9): an 'added' exception for a player already in
+// the squad overrides their cap for this fixture only. capNumber null clears
+// the override. Caps are usually stable across a festival.
+export async function setFixtureCapOverride(matchId, { playerId, side, capNumber }) {
+  const snap = await getDoc(doc(db, 'matches', matchId))
+  if (!snap.exists()) throw new Error('Match not found')
+  const current = (snap.data().exceptions ?? [])
+    .filter(e => !(e.playerId === playerId && e.side === side && e.type === 'added'))
+  const exceptions = capNumber != null
+    ? [...current, { playerId, side, type: 'added', capNumber }]
+    : current
+  return updateDoc(doc(db, 'matches', matchId), {
+    exceptions, updatedBy: uid(), updatedAt: serverTimestamp(),
+  })
+}
+
+// Freeze: materialise the derived line-ups into the match doc and flip
+// lineupMode to 'frozen'. Runs on the transition to live (startMatch) and on
+// result entry (submitFixtureResult); a no-op for leagues, standalone
+// fixtures, already-frozen matches and teams without a pasted squad — so
+// legacy behaviour is untouched. After freezing, every existing reader
+// (scoring, stats engine, match page) sees a normal stored line-up, and
+// historical fixtures never mutate when the squad is edited later (§4).
+export async function freezeFixtureLineupIfNeeded(matchId, matchData = null) {
+  const m = matchData ?? (await getDoc(doc(db, 'matches', matchId))).data()
+  if (!m || !m.competitionId || m.lineupMode === 'frozen') return
+  const compSnap = await getDoc(doc(db, 'competitions', m.competitionId))
+  if (!compSnap.exists()) return
+  const type = compSnap.data().type
+  if (type !== 'tournament' && type !== 'festival') return
+
+  const [homeMem, awayMem] = await Promise.all([
+    m.homeTeamId ? getDoc(doc(db, 'competitions', m.competitionId, 'teams', m.homeTeamId)).catch(() => null) : null,
+    m.awayTeamId ? getDoc(doc(db, 'competitions', m.competitionId, 'teams', m.awayTeamId)).catch(() => null) : null,
+  ])
+  const homeSquad = homeMem?.exists() ? (homeMem.data().squad ?? []) : []
+  const awaySquad = awayMem?.exists() ? (awayMem.data().squad ?? []) : []
+  if (homeSquad.length === 0 && awaySquad.length === 0) return
+
+  const exceptions = m.exceptions ?? []
+  // A side without a squad keeps whatever was added manually — the resolver
+  // only replaces sides that actually inherit.
+  const homeResolved = homeSquad.length > 0
+    ? resolveSideLineup({ squad: homeSquad, exceptions, side: 'home' }) : (m.homeLineup ?? [])
+  const awayResolved = awaySquad.length > 0
+    ? resolveSideLineup({ squad: awaySquad, exceptions, side: 'away' }) : (m.awayLineup ?? [])
+
+  // Best-effort person snapshots: controllerUids power self-removal rules,
+  // photoUrl powers avatars on non-line-up surfaces (e.g. the POTM sheet).
+  const ids = [...new Set([...homeResolved, ...awayResolved].map(e => e.personId).filter(Boolean))]
+  const peopleById = {}
+  await Promise.all(ids.map(async pid => {
+    try {
+      const p = await getDoc(doc(db, 'people', pid))
+      if (p.exists()) peopleById[pid] = p.data()
+    } catch { /* snapshot stays minimal */ }
+  }))
+  const enrich = e => {
+    const pd = peopleById[e.personId]
+    if (!pd) return { ...e, photoUrl: null, controllerUids: [] }
+    return {
+      ...e,
+      photoUrl: pd.photoUrl ?? null,
+      controllerUids: [pd.ownerUid, ...(pd.guardianUids ?? []), ...(pd.managerUids ?? [])].filter(Boolean),
+    }
+  }
+
+  const homeLineup = homeResolved.map(enrich)
+  const awayLineup = awayResolved.map(enrich)
+  const lineupPersonIds = [...new Set([
+    ...(m.lineupPersonIds ?? []),
+    ...ids,
+  ])]
+  await updateDoc(doc(db, 'matches', matchId), {
+    homeLineup, awayLineup, lineupPersonIds,
+    lineupMode: 'frozen', lineupFrozenAt: serverTimestamp(),
+    updatedBy: uid(), updatedAt: serverTimestamp(),
+  })
 }
 
 export async function inviteTeamToCompetition(competitionId, teamId, data = {}) {

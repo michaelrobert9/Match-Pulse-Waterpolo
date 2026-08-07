@@ -8,8 +8,11 @@ import {
   fetchMatchByMatchSlug, subscribeMatchByMatchSlug,
   fetchMatchBySeasonSlug, subscribeMatchBySeasonSlug,
   fetchMatchByCompetitionSlug, subscribeMatchByCompetitionSlug,
+  fetchCompetition,
   toDate,
 } from '../lib/queries'
+import { fetchCompetitionTeamSheet } from '../lib/adminQueries'
+import { resolveSideLineup, isInheritedLineup } from '../lib/lineupResolve'
 import { configured } from '../firebase'
 import ShareButton from '../components/ShareButton'
 import StatusBadge from '../components/StatusBadge'
@@ -284,6 +287,7 @@ export default function MatchDetail() {
   useSeoMeta({ type: 'match', entity: match })
   const [homePlayers, setHomePlayers] = useState([])
   const [awayPlayers, setAwayPlayers] = useState([])
+  const [derivedLineups, setDerivedLineups] = useState(null) // { home, away } for inherited fixtures
   const [loading,     setLoading]     = useState(true)
   const [, setTick]                   = useState(0)
   const lineupsLoaded = useRef(false)
@@ -336,6 +340,38 @@ export default function MatchDetail() {
       .then(([h, a]) => { setHomePlayers(h); setAwayPlayers(a) })
   }, [match?.homeTeamId, match?.awayTeamId])
 
+  // Derived line-ups for tournament/festival fixtures that have not frozen
+  // yet (bulk team sheets brief §4/§9): resolve competition squad − exceptions
+  // per side. Re-resolves when exceptions change (the match doc is
+  // subscribed). Frozen or legacy fixtures skip this entirely.
+  const exceptionsKey = JSON.stringify(match?.exceptions ?? [])
+  useEffect(() => {
+    if (!match?.competitionId || match.lineupMode === 'frozen') { setDerivedLineups(null); return }
+    let cancelled = false
+    ;(async () => {
+      try {
+        const comp = await fetchCompetition(match.competitionId)
+        if (!comp || !isInheritedLineup(match, comp.type)) { if (!cancelled) setDerivedLineups(null); return }
+        const [homeSheet, awaySheet] = await Promise.all([
+          match.homeTeamId ? fetchCompetitionTeamSheet(match.competitionId, match.homeTeamId) : { squad: [] },
+          match.awayTeamId ? fetchCompetitionTeamSheet(match.competitionId, match.awayTeamId) : { squad: [] },
+        ])
+        if (cancelled) return
+        if (homeSheet.squad.length === 0 && awaySheet.squad.length === 0) { setDerivedLineups(null); return }
+        const exceptions = match.exceptions ?? []
+        setDerivedLineups({
+          home: homeSheet.squad.length > 0
+            ? resolveSideLineup({ squad: homeSheet.squad, exceptions, side: 'home' })
+            : (match.homeLineup ?? []),
+          away: awaySheet.squad.length > 0
+            ? resolveSideLineup({ squad: awaySheet.squad, exceptions, side: 'away' })
+            : (match.awayLineup ?? []),
+        })
+      } catch { if (!cancelled) setDerivedLineups(null) }
+    })()
+    return () => { cancelled = true }
+  }, [match?.id, match?.competitionId, match?.lineupMode, exceptionsKey]) // eslint-disable-line react-hooks/exhaustive-deps
+
   // Advertise the canonical (clean) URL so search engines and link unfurlers
   // prefer it over any legacy id-based URL the visitor may have arrived through.
   useEffect(() => {
@@ -379,14 +415,20 @@ export default function MatchDetail() {
           photoUrl:    e.photoUrl ?? r?.photoUrl ?? null,
           shirtNumber: e.shirtNumber ?? r?.shirtNumber ?? null,
           personSlug:  r?.personSlug ?? null,
-          isCaptain:   r?.isCaptain ?? false,
+          // Captaincy reads from the LINE-UP ENTRY first — that is where the
+          // team sheet writes it. The roster is a legacy fallback only; a
+          // pasted captain would not appear if this joined the roster first.
+          isCaptain:   e.isCaptain ?? r?.isCaptain ?? false,
           isStarter:   !!e.isStarter,
         }
       })
       .sort((a, b) => (Number(b.isStarter) - Number(a.isStarter)) || ((a.shirtNumber || 99) - (b.shirtNumber || 99)))
   }
-  const homeSelection = buildSelection(match.homeLineup, homePlayers)
-  const awaySelection = buildSelection(match.awayLineup, awayPlayers)
+  // A tournament/festival fixture that has not frozen yet derives its line-ups
+  // from the competition squads (squad − exceptions); frozen and legacy
+  // fixtures read their stored arrays exactly as before.
+  const homeSelection = buildSelection(derivedLineups?.home ?? match.homeLineup, homePlayers)
+  const awaySelection = buildSelection(derivedLineups?.away ?? match.awayLineup, awayPlayers)
 
   // Running scoreboard clock — counts DOWN within the current period, exactly
   // as the scorer sees it (negative past 00:00). Hidden during the
@@ -639,9 +681,13 @@ export default function MatchDetail() {
                   const nameStyle = isPOTM ? { color: POTMColor(homePOTM) } : undefined
                   const nameCls   = `text-xs truncate flex-1 ${isPOTM ? 'font-semibold' : 'text-slate-700'} ${p.personId ? 'hover:text-emerald-600 transition-colors' : ''}`
                   return (
+                    // §9 row order: number slot → captain slot → name. The cap
+                    // slot is fixed-width and renders EMPTY when there is no
+                    // cap (not a dash, not a zero); the captain slot is
+                    // reserved on every row so names stay aligned. No avatar.
                     <div key={p.id} className={`flex items-center gap-2 ${isPOTM ? '-mx-2 px-2 py-1 rounded' : ''}`} style={rowStyle}>
-                      <span className="font-mono text-[11px] text-slate-400 w-5 text-right shrink-0">{p.shirtNumber ?? '–'}</span>
-                      <PersonAvatar name={p.personName} photoUrl={p.photoUrl} size={20} />
+                      <span className="font-mono tabular-nums text-[11px] text-slate-400 w-5 text-right shrink-0">{p.shirtNumber ?? ''}</span>
+                      <span className="w-4 text-center text-[14px] font-bold text-amber-600 shrink-0 leading-none">{p.isCaptain ? '©' : ''}</span>
                       {p.personId
                         ? <Link to={playerUrl({ id: p.personId, slug: p.personSlug })} className={nameCls} style={nameStyle}>{p.personName}</Link>
                         : <span className={nameCls} style={nameStyle}>{p.personName}</span>}
@@ -649,7 +695,6 @@ export default function MatchDetail() {
                         <span className="text-[9px] font-bold uppercase tracking-widest shrink-0"
                           style={{ color: POTMColor(homePOTM) }}>POTM</span>
                       )}
-                      {p.isCaptain && <span className="text-[9px] text-amber-600 font-bold shrink-0">©</span>}
                     </div>
                   )
                 })}
@@ -669,8 +714,9 @@ export default function MatchDetail() {
                   const nameStyle = isPOTM ? { color: POTMColor(awayPOTM) } : undefined
                   const nameCls   = `text-xs truncate flex-1 text-right ${isPOTM ? 'font-semibold' : 'text-slate-700'} ${p.personId ? 'hover:text-emerald-600 transition-colors' : ''}`
                   return (
+                    // Mirrored §9 order for the right column: name ← captain
+                    // slot ← number slot. Same reserved slots, no avatar.
                     <div key={p.id} className={`flex items-center gap-2 justify-end ${isPOTM ? '-mx-2 px-2 py-1 rounded' : ''}`} style={rowStyle}>
-                      {p.isCaptain && <span className="text-[9px] text-amber-600 font-bold shrink-0">©</span>}
                       {isPOTM && (
                         <span className="text-[9px] font-bold uppercase tracking-widest shrink-0"
                           style={{ color: POTMColor(awayPOTM) }}>POTM</span>
@@ -678,8 +724,8 @@ export default function MatchDetail() {
                       {p.personId
                         ? <Link to={playerUrl({ id: p.personId, slug: p.personSlug })} className={nameCls} style={nameStyle}>{p.personName}</Link>
                         : <span className={nameCls} style={nameStyle}>{p.personName}</span>}
-                      <PersonAvatar name={p.personName} photoUrl={p.photoUrl} size={20} />
-                      <span className="font-mono text-[11px] text-slate-400 w-5 shrink-0">{p.shirtNumber ?? '–'}</span>
+                      <span className="w-4 text-center text-[14px] font-bold text-amber-600 shrink-0 leading-none">{p.isCaptain ? '©' : ''}</span>
+                      <span className="font-mono tabular-nums text-[11px] text-slate-400 w-5 text-left shrink-0">{p.shirtNumber ?? ''}</span>
                     </div>
                   )
                 })}
