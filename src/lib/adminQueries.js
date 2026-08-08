@@ -1719,12 +1719,10 @@ export async function createTeamSheetPerson({ firstName, lastName, fullName }, c
   if (!name) throw new Error('A player name is required.')
   const slug = await generatePersonSlug(name)
   return addDoc(collection(db, 'people'), {
-    // firstName/lastName are canonical; `name` is the shared denormalised
-    // display string (addendum B6). fullName is kept alongside for this
-    // platform's existing readers (orderBy('fullName'), search, renderer) —
-    // the platform-wide fullName → name rename needs its own migration.
+    // Display name stays in this repo's existing field, `fullName` (Q3). The
+    // B6 rename to `name` is ON HOLD (resolution round Part 1b) — do NOT
+    // dual-write a second name field. firstName/lastName are canonical.
     fullName: name,
-    name,
     firstName: (firstName ?? '').trim() || null,
     lastName:  (lastName ?? '').trim() || null,
     slug,
@@ -1769,7 +1767,7 @@ export async function claimTeamSheetProfile(personId, relationship = 'player') {
   }
   // Snapshot the fields a claimer could later edit, so revocation restores them.
   const preClaimSnapshot = {
-    fullName: d.fullName ?? null, name: d.name ?? null,
+    fullName: d.fullName ?? null,
     firstName: d.firstName ?? null, lastName: d.lastName ?? null,
     photoUrl: d.photoUrl ?? null, bio: d.bio ?? null, dateOfBirth: d.dateOfBirth ?? null,
     position: d.position ?? null, nationality: d.nationality ?? null,

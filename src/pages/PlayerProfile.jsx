@@ -429,7 +429,9 @@ export default function PlayerProfile() {
               if (!window.confirm('Revoke this claim? The profile returns to unclaimed and the pre-claim details are restored.')) return
               try {
                 await revokeProfileClaim(person.id)
-                setPerson(p => ({ ...p, claimStatus: 'unclaimed', managerUids: [], ...(p.preClaimSnapshot ?? {}) }))
+                // Revocation empties ownerUid/guardianUids and restores the
+                // pre-claim snapshot; managerUids is left untouched.
+                setPerson(p => ({ ...p, claimStatus: 'unclaimed', ownerUid: null, guardianUids: [], ...(p.preClaimSnapshot ?? {}) }))
               } catch (e) { window.alert(e.message || 'Revocation failed.') }
             }}
             className="text-[10px] font-bold uppercase tracking-widest text-slate-500 hover:text-red-600 border border-slate-200 rounded-lg px-3 py-2 transition-colors shrink-0">

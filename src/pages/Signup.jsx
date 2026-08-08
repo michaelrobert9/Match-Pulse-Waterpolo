@@ -200,29 +200,26 @@ export default function Signup() {
           </div>
         </div>
 
-        {/* Step indicator — the claim step sits between account and profile */}
+        {/* Step indicator */}
         <div className="flex items-center mb-8">
-          {(() => {
-            const stepNum = step === 'claim' ? 1.5 : step
-            return [
-              { n: 1, label: 'Account' },
-              { n: 2, label: 'Profile' },
-            ].map(({ n, label }, i) => (
-              <div key={n} className="flex items-center flex-1">
-                {i > 0 && <div className={`flex-1 h-px mx-2 ${stepNum > i ? 'bg-emerald-300' : 'bg-slate-200'}`} />}
-                <div className="flex items-center gap-1.5 shrink-0">
-                  <div className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold transition-colors ${
-                    stepNum === n ? 'bg-emerald-600 text-white'
-                    : stepNum > n  ? 'bg-emerald-100 text-emerald-700'
-                    : 'bg-slate-100 text-slate-400'
-                  }`}>{n}</div>
-                  <span className={`text-[10px] font-bold uppercase tracking-widest transition-colors ${
-                    stepNum === n ? 'text-slate-900' : 'text-slate-400'
-                  }`}>{label}</span>
-                </div>
+          {[
+            { n: 1, label: 'Account' },
+            { n: 2, label: 'Profile' },
+          ].map(({ n, label }, i) => (
+            <div key={n} className="flex items-center flex-1">
+              {i > 0 && <div className={`flex-1 h-px mx-2 ${step > i ? 'bg-emerald-300' : 'bg-slate-200'}`} />}
+              <div className="flex items-center gap-1.5 shrink-0">
+                <div className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold transition-colors ${
+                  step === n ? 'bg-emerald-600 text-white'
+                  : step > n  ? 'bg-emerald-100 text-emerald-700'
+                  : 'bg-slate-100 text-slate-400'
+                }`}>{n}</div>
+                <span className={`text-[10px] font-bold uppercase tracking-widest transition-colors ${
+                  step === n ? 'text-slate-900' : 'text-slate-400'
+                }`}>{label}</span>
               </div>
-            ))
-          })()}
+            </div>
+          ))}
         </div>
 
         {/* ── STEP 1 ── */}

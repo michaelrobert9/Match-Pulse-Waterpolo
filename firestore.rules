@@ -269,12 +269,22 @@ service cloud.firestore {
               || (request.resource.data.keys().hasAny(['guardianUids'])
                 && request.auth.uid in request.resource.data.guardianUids)
               || (request.resource.data.keys().hasAny(['managerUids'])
-                && request.auth.uid in request.resource.data.managerUids)));
-      // NOTE (ownerless-profiles addendum A5): the ownerless team-sheet
-      // create/claim rules deliberately do NOT ship from this repo — people
-      // rules deploy centrally. See docs/PEOPLE_RULES_HANDOFF.md for the
-      // proposed text. Until the central ruleset lands, team-sheet creates
-      // are denied here and the feature stays behind the release gate.
+                && request.auth.uid in request.resource.data.managerUids)))
+        // OWNERLESS team-sheet creates (ownerless-profiles addendum A5): no
+        // owner, no manager, no consent record — nobody claims rights over
+        // anyone, so there is nothing to consent to at creation. The writer
+        // must hold squad-write authority on the competition team the sheet
+        // belongs to. createdByUid is AUDIT ONLY — it must never appear in a
+        // permission expression (that would quietly turn the ownerless model
+        // back into an ownership model).
+        || (isSignedIn()
+            && request.resource.data.get('createdVia', '') == 'teamSheet'
+            && request.resource.data.get('claimStatus', '') == 'unclaimed'
+            && request.resource.data.get('ownerUid', 'set') == null
+            && request.resource.data.get('managerUids', ['set']).size() == 0
+            && request.resource.data.get('guardianUids', ['set']).size() == 0
+            && (canAdministerCompetition(request.resource.data.get('createdInCompetitionId', ''))
+                || isTeamOrgMember(request.resource.data.get('createdInCompetitionTeamId', ''))));
 
       // Update: platform admin or owner/guardian (full control, including
       // transfer + manager grants); a delegated manager may edit everything
@@ -308,14 +318,16 @@ service cloud.firestore {
                  .hasOnly(['competitionIds'])
             && request.resource.data.get('competitionIds', [])
                  .hasAll(resource.data.get('competitionIds', [])))
-        // Self-service CLAIM: a signed-in user may claim an UNCLAIMED profile
-        // (no owner, no guardians) by making themselves the owner (player) OR the
-        // sole guardian (parent). Only the control fields change, and only to
-        // self. Once owner/guardian exists this fails — reassignment then goes
-        // through the controller or a platform admin.
-        // (The email-verified claim transition for team-sheet profiles ships
-        // CENTRALLY — see docs/PEOPLE_RULES_HANDOFF.md.)
+        // LEGACY self-service claim: a signed-in user may claim an unclaimed
+        // roster profile (no owner, no guardians) by making themselves the
+        // owner (player) OR the sole guardian (parent). This branch does NOT
+        // require email_verified, so it MUST be scoped away from team-sheet
+        // profiles — those carry createdVia == 'teamSheet' and may only be
+        // claimed through the email-verified branch below (resolution round
+        // Part 3A). Keyed on createdVia, not the claimStatus proxy.
         || (isSignedIn()
+            && resource.data.get('createdVia', '') != 'teamSheet'
+            && resource.data.get('claimStatus', '') == ''
             && resource.data.get('ownerUid', null) == null
             && resource.data.get('guardianUids', []).size() == 0
             && request.resource.data.diff(resource.data).affectedKeys()
@@ -325,7 +337,29 @@ service cloud.firestore {
                    && request.resource.data.get('guardianUids', []).size() == 0)
                  || (request.resource.data.get('ownerUid', null) == null
                    && request.resource.data.get('guardianUids', []) == [request.auth.uid])
-               ));
+               ))
+        // Email-verified CLAIM of a team-sheet profile (resolution round
+        // Part 1.1 — three-field ownership): the doc must be unclaimed, the
+        // caller's email verified, the caller not on the block list. A player
+        // claim sets ownerUid to EXACTLY the caller; a parent claim sets
+        // guardianUids to EXACTLY [caller]. managerUids is NEVER written by a
+        // claim (it must be unchanged). A claim naming any other uid is
+        // rejected; a claimed profile is not claimable again.
+        || (isSignedIn()
+            && request.auth.token.get('email_verified', false) == true
+            && resource.data.get('claimStatus', '') == 'unclaimed'
+            && !(request.auth.uid in resource.data.get('claimBlockedUids', []))
+            && request.resource.data.get('claimStatus', '') == 'claimed'
+            && request.resource.data.get('managerUids', []) == resource.data.get('managerUids', [])
+            && (
+                 (request.resource.data.get('ownerUid', null) == request.auth.uid
+                   && request.resource.data.get('guardianUids', []).size() == 0)
+                 || (request.resource.data.get('ownerUid', null) == null
+                   && request.resource.data.get('guardianUids', []) == [request.auth.uid])
+               )
+            && request.resource.data.diff(resource.data).affectedKeys()
+                 .hasOnly(['ownerUid', 'guardianUids', 'claimStatus', 'preClaimSnapshot',
+                           'claimedBy', 'claimedAt', 'updatedAt', 'updatedBy']));
 
       allow delete: if isPlatformAdmin() || controlsPerson(resource.data);
     }

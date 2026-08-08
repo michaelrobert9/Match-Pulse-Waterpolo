@@ -1,9 +1,17 @@
 # People rules handoff — water polo
 
-**Per the ownerless-profiles addendum §A5:** `people` rules ship centrally, not from a
-sport repo. This document is water polo's proposed rule text for the central ruleset,
-to be reconciled with hockey's `docs/PEOPLE_RULES_HANDOFF.md` and netball's proposed
-text and deployed from the main site.
+**STATUS — ON HOLD (resolution round Part 1b).** The "where `people` rules ship"
+decision is being re-made with the census in. **This repo has NOT moved or deleted
+its people rules**; they remain in `firestore.rules` and deploy locally, because —
+unlike the addendum assumed — water polo's `people` lives in the sport's own
+`waterpolo` database alongside `competitions`/`teams`/`organizations`, so the
+create-authority reads resolve in-database with no cross-database read. This document
+is retained (not deleted) as water polo's proposed text should the platform still
+decide to centralise. It is not an instruction to deploy from here.
+
+**Per the ownerless-profiles addendum §A5 (superseded by Part 1b above):** `people`
+rules were to ship centrally. This document is water polo's proposed rule text for the
+central ruleset, to be reconciled with hockey's and netball's.
 
 **Release gate:** until the central rules deploy, every gate in the ownerless-profiles
 feature is UX rather than security — and in this repo, team-sheet *creates* are
@@ -65,6 +73,8 @@ allow create: if isSignedIn()
 // claim sets ownerUid to EXACTLY the caller; a parent claim sets
 // guardianUids to EXACTLY [caller]. managerUids is never touched by a claim.
 // Only the claim fields may change; a claimed profile is not claimable again.
+// Three-field ownership (resolution round Part 1.1): player claim → ownerUid,
+// parent claim → guardianUids, managerUids NEVER written by a claim.
 allow update: if isSignedIn()
   && request.auth.token.get('email_verified', false) == true
   && resource.data.get('claimStatus', '') == 'unclaimed'
