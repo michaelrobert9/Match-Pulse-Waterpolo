@@ -2,6 +2,7 @@ import { Outlet, Link } from 'react-router-dom'
 import Nav from './Nav'
 import InstallBanner from './InstallBanner'
 import LazyBoundary from './LazyBoundary'
+import ClaimSearchPrompt from './ClaimSearchPrompt'
 
 export default function Layout() {
   const year = new Date().getFullYear()
@@ -9,6 +10,9 @@ export default function Layout() {
     <div className="min-h-screen bg-canvas flex flex-col">
       <Nav />
       <InstallBanner />
+      {/* One-time claim search for unclaimed team-sheet profiles — session
+          level, so provider sign-ins get it too (addendum A4 step 2). */}
+      <ClaimSearchPrompt />
       <main className="flex-1"><LazyBoundary><Outlet /></LazyBoundary></main>
       <footer className="border-t border-slate-200 bg-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-3">

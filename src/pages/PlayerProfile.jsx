@@ -503,11 +503,13 @@ function ClaimCard({ person, onClaimed }) {
     setBusy(true); setErr('')
     try {
       if (person.claimStatus === 'unclaimed') {
-        // Team-sheet profile (ownerless-profiles addendum A4): the claim is
-        // email-verified and sets the claimer as the sole manager. A parent
-        // claiming for an under-18 uses the same flow, same rules.
-        await claimTeamSheetProfile(person.id)
-        onClaimed({ claimStatus: 'claimed', managerUids: ['me'] })
+        // Team-sheet profile (ownerless-profiles addendum A4): email-verified
+        // claim. A player becomes the owner; a parent becomes a guardian.
+        // managerUids is never written by a claim.
+        await claimTeamSheetProfile(person.id, relationship)
+        onClaimed(relationship === 'parent'
+          ? { claimStatus: 'claimed', guardianUids: ['me'] }
+          : { claimStatus: 'claimed', ownerUid: 'me' })
       } else {
         await claimPlayerProfile(person.id, relationship)
         onClaimed(relationship === 'parent'

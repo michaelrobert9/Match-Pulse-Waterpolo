@@ -21,6 +21,7 @@ import { MatchTeamIdentity, MatchTeamCrest } from '../components/TeamIdentity'
 import PersonAvatar from '../components/PersonAvatar'
 import { playerUrl, matchUrl } from '../lib/slugify'
 import { pomForSide, pomColor, pomBgTint, isLineupEntryPOM } from '../lib/pom'
+import { teamAccent } from '../lib/teamAccent'
 import { gameMinuteLabel, periodRemainingMs, formatCountdown } from '../lib/matchClock'
 import { useSeoMeta } from '../lib/useSeoMeta'
 
@@ -629,9 +630,9 @@ export default function MatchDetail() {
         const both    = homePOTM && awayPOTM
         // General fixtures take the awarded (anchor) team's colour; a
         // competition-set POM colour on the record still wins inside pomColor.
-        const anchorCol = anyPOTM === homePOTM
-          ? (match.homeTeamColor ?? '#64748b')
-          : (match.awayTeamColor ?? '#64748b')
+        // Every team colour passes through teamAccent (brief §3): contrast
+        // and live-red clamps, slate fallback.
+        const anchorCol = teamAccent(anyPOTM === homePOTM ? match.homeTeamColor : match.awayTeamColor)
         const items   = [
           homePOTM ? { potm: homePOTM, teamName: match.homeTeamName } : null,
           awayPOTM ? { potm: awayPOTM, teamName: match.awayTeamName } : null,
@@ -671,8 +672,9 @@ export default function MatchDetail() {
       {(homeSelection.length > 0 || awaySelection.length > 0) && (() => {
         const homePOTM = pomForSide(match, 'home')
         const awayPOTM = pomForSide(match, 'away')
-        const homeCol  = match.homeTeamColor ?? '#64748b'
-        const awayCol  = match.awayTeamColor ?? '#64748b'
+        // teamAccent clamps unsafe colours (contrast / live-red) to slate.
+        const homeCol  = teamAccent(match.homeTeamColor)
+        const awayCol  = teamAccent(match.awayTeamColor)
         return (
         <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm">
           <div className="text-[10px] font-bold uppercase tracking-widest text-slate-500 mb-4">Lineups</div>
@@ -696,7 +698,7 @@ export default function MatchDetail() {
                     // captain slot is reserved on every row so names stay
                     // aligned, © in the team's colour at 14px. No avatar.
                     <div key={p.id} className={`flex items-center gap-2 ${isPOTM ? '-mx-2 px-2 py-1 rounded' : ''}`} style={rowStyle}>
-                      <span className="font-mono tabular-nums text-[11px] text-slate-400 w-5 text-right shrink-0">{p.shirtNumber ?? ''}</span>
+                      <span className="w-7 h-5 flex items-center justify-center rounded bg-slate-100 border border-slate-200 font-mono tabular-nums text-[10px] font-bold text-slate-500 shrink-0">{p.shirtNumber ?? ''}</span>
                       <span className="w-5 text-center text-sm font-bold leading-none shrink-0" style={{ color: homeCol }}>{p.isCaptain ? '©' : ''}</span>
                       {p.personId
                         ? <Link to={playerUrl({ id: p.personId, slug: p.personSlug })} className={nameCls} style={nameStyle}>{p.personName}</Link>
@@ -735,7 +737,7 @@ export default function MatchDetail() {
                         ? <Link to={playerUrl({ id: p.personId, slug: p.personSlug })} className={nameCls} style={nameStyle}>{p.personName}</Link>
                         : <span className={nameCls} style={nameStyle}>{p.personName}</span>}
                       <span className="w-5 text-center text-sm font-bold leading-none shrink-0" style={{ color: awayCol }}>{p.isCaptain ? '©' : ''}</span>
-                      <span className="font-mono tabular-nums text-[11px] text-slate-400 w-5 text-left shrink-0">{p.shirtNumber ?? ''}</span>
+                      <span className="w-7 h-5 flex items-center justify-center rounded bg-slate-100 border border-slate-200 font-mono tabular-nums text-[10px] font-bold text-slate-500 shrink-0">{p.shirtNumber ?? ''}</span>
                     </div>
                   )
                 })}
