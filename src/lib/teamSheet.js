@@ -48,13 +48,21 @@ export function normaliseName(name) {
   return trimmed.split(' ').map((w, i) => titleCaseWord(w, i === 0)).join(' ')
 }
 
-// Split on the last space: everything before is the first name, the last
-// token is the surname (§5 — literal rule, do not get clever with particles).
+// Particle-aware surname split (ownerless-profiles addendum B5, adopted from
+// rugby, replacing the original last-space rule): the surname is the last
+// token PLUS any run of particles immediately before it, so
+// "Pieter van der Merwe" splits as Pieter / van der Merwe. A name that is
+// nothing but particles + core ("van der Merwe" on its own) is all surname.
+// NOTE: rugby is circulating its exact rule set — reconcile this against it
+// when it lands so all four sports split identically.
 export function splitName(fullName) {
   const clean = (fullName ?? '').trim().replace(/\s+/g, ' ')
-  const idx = clean.lastIndexOf(' ')
-  if (idx === -1) return { firstName: clean, surname: '' }
-  return { firstName: clean.slice(0, idx), surname: clean.slice(idx + 1) }
+  if (!clean) return { firstName: '', surname: '' }
+  const tokens = clean.split(' ')
+  if (tokens.length === 1) return { firstName: clean, surname: '' }
+  let start = tokens.length - 1
+  while (start > 0 && PARTICLES.has(tokens[start - 1].toLowerCase())) start--
+  return { firstName: tokens.slice(0, start).join(' '), surname: tokens.slice(start).join(' ') }
 }
 
 // Parse ONE line into { parsedNumber, name, isCaptain, unreadable, raw }.

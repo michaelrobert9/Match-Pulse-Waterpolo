@@ -29,7 +29,7 @@ import { useAuth } from '../../../contexts/AuthContext'
 import { matchSlug as buildMatchSlug } from '../../../lib/slugify'
 import { fetchCompetitionPools, fetchCompetitionKnockout, fetchCompetitionFixtureMembers, fetchAwaitingResultMatchesForCompetition, fetchCompetitionAuditLog, toDate } from '../../../lib/queries'
 import { POINTS_PRESETS, competitionLifecycle } from '../../../lib/competitionRules'
-import { POTM_DEFAULT_COLOR } from '../../../lib/POTM'
+import { POM_DEFAULT_COLOR } from '../../../lib/pom'
 import TeamSheetEditor from '../../../components/TeamSheetEditor'
 import { isScheduled } from '../../../lib/fixtureStatus'
 import StatusBadge from '../../../components/StatusBadge'
@@ -1194,12 +1194,12 @@ function POTMCard({ competition, onSaved }) {
         </p>
         <div className="flex items-center gap-2">
           <input type="color" disabled={saving || !enabled}
-            value={color || POTM_DEFAULT_COLOR}
+            value={color || POM_DEFAULT_COLOR}
             onChange={e => patchPotm({ color: e.target.value })}
             className="w-10 h-10 rounded cursor-pointer border-0 bg-transparent p-0" />
           <input type="text" disabled={saving || !enabled}
             value={color}
-            placeholder={POTM_DEFAULT_COLOR}
+            placeholder={POM_DEFAULT_COLOR}
             onChange={e => patchPotm({ color: e.target.value })}
             className="w-28 bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 text-sm font-mono text-slate-900 placeholder-slate-400 focus:outline-none focus:border-emerald-500 transition-colors disabled:bg-slate-50" />
           {color && (

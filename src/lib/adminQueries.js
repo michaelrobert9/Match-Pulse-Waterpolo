@@ -1706,10 +1706,120 @@ export async function updateCompetitionMemberName(competitionId, teamId, name) {
 // brief's competitionTeams record. Fixture line-ups are DERIVED from it
 // (squad − exceptions) until frozen; see src/lib/lineupResolve.js.
 
+// Create an OWNERLESS player profile from a pasted team sheet (ownerless
+// profiles addendum, Part A). No manager, no consent record, no relationship
+// asserted between the confirmer and the player — nobody is claiming rights
+// over anyone. createdByUid / createdInCompetitionId are AUDIT ONLY: no rule
+// may ever read them to grant access. The profile is claimable later by the
+// player (or a parent) via the email-verified claim transition.
+export async function createTeamSheetPerson({ firstName, lastName, fullName }, competitionId, teamId = null) {
+  const userId = uid()
+  if (!userId) throw new Error('You must be signed in.')
+  const name = (fullName ?? `${firstName ?? ''} ${lastName ?? ''}`).trim().replace(/\s+/g, ' ')
+  if (!name) throw new Error('A player name is required.')
+  const slug = await generatePersonSlug(name)
+  return addDoc(collection(db, 'people'), {
+    fullName: name,
+    firstName: (firstName ?? '').trim() || null,
+    lastName:  (lastName ?? '').trim() || null,
+    slug,
+    roles: ['player'],
+    ownerUid: null, guardianUids: [], managerUids: [],   // empty at creation, always
+    claimStatus: 'unclaimed',
+    createdVia: 'teamSheet',
+    createdByUid: userId,                                 // audit only
+    createdInCompetitionId: competitionId ?? null,        // audit only
+    createdInCompetitionTeamId: teamId,                   // audit + rules scoping for coach creates
+    careerCaps: 0, careerGoals: 0,
+    careerCards: { green: 0, yellow: 0, red: 0 },
+    createdBy: userId, createdAt: serverTimestamp(),
+  })
+}
+
+// A player claims their own unclaimed team-sheet profile (or a parent claims
+// for an under-18 — same flow, same rules). Verification is the account's
+// verified email and nothing more; firestore.rules enforce email_verified,
+// the unclaimed state, the exact-uid manager write and the block list. A
+// pre-claim snapshot is stored so a master-admin revocation can restore it.
+export async function claimTeamSheetProfile(personId) {
+  const user = auth?.currentUser
+  if (!user) throw new Error('You must be signed in to claim a profile.')
+  if (!user.emailVerified) {
+    const e = new Error('Verify your email address first — check your inbox for the confirmation link.')
+    e.code = 'claim/email-unverified'; throw e
+  }
+  const ref = doc(db, 'people', personId)
+  const snap = await getDoc(ref)
+  if (!snap.exists()) throw new Error('Profile not found.')
+  const d = snap.data()
+  if (d.claimStatus !== 'unclaimed') {
+    const e = new Error('This profile has already been claimed.')
+    e.code = 'profile/already-claimed'; throw e
+  }
+  if ((d.claimBlockedUids ?? []).includes(user.uid)) {
+    const e = new Error('This profile cannot be claimed from this account.')
+    e.code = 'claim/blocked'; throw e
+  }
+  // Snapshot the fields a claimer could later edit, so revocation restores them.
+  const preClaimSnapshot = {
+    fullName: d.fullName ?? null, firstName: d.firstName ?? null, lastName: d.lastName ?? null,
+    photoUrl: d.photoUrl ?? null, bio: d.bio ?? null, dateOfBirth: d.dateOfBirth ?? null,
+    position: d.position ?? null, nationality: d.nationality ?? null,
+  }
+  return updateDoc(ref, {
+    managerUids: [user.uid],
+    claimStatus: 'claimed',
+    preClaimSnapshot,
+    claimedBy: user.uid, claimedAt: serverTimestamp(),
+    updatedBy: user.uid, updatedAt: serverTimestamp(),
+  })
+}
+
+// Master-admin revocation of a claim (addendum A4): returns the profile to
+// unclaimed, blocks the revoked uid from re-claiming, restores the pre-claim
+// snapshot so nothing the wrong claimer added survives, and audits the event.
+export async function revokeProfileClaim(personId) {
+  const ref = doc(db, 'people', personId)
+  const snap = await getDoc(ref)
+  if (!snap.exists()) throw new Error('Profile not found.')
+  const d = snap.data()
+  const revokedUid = d.claimedBy ?? (d.managerUids ?? [])[0] ?? null
+  const restore = d.preClaimSnapshot ?? {}
+  return updateDoc(ref, {
+    ...restore,
+    managerUids: [], ownerUid: null, guardianUids: [],
+    claimStatus: 'unclaimed',
+    ...(revokedUid ? { claimBlockedUids: arrayUnion(revokedUid) } : {}),
+    claimRevokedAt: serverTimestamp(), claimRevokedBy: uid(),
+    preClaimSnapshot: deleteField(), claimedBy: deleteField(), claimedAt: deleteField(),
+    updatedBy: uid(), updatedAt: serverTimestamp(),
+  })
+}
+
+// Unclaimed team-sheet profiles matching a name — the sign-up claim search
+// (addendum A4 step 3, not optional). Name-only matching, same bias as the
+// review grid. Never lists; only answers a direct name query.
+export async function searchUnclaimedProfiles(name) {
+  const target = (name ?? '').trim().toLowerCase()
+  if (!target) return []
+  const snap = await getDocs(query(collection(db, 'people'), where('claimStatus', '==', 'unclaimed')))
+  const all = snap.docs.map(d => ({ id: d.id, ...d.data() }))
+  const exact = all.filter(p => (p.fullName ?? '').trim().toLowerCase() === target)
+  if (exact.length > 0) return exact
+  const parts = target.split(/\s+/)
+  const surname = parts[parts.length - 1] ?? ''
+  if (!surname || parts.length < 2) return []
+  return all.filter(p => {
+    const pp = (p.fullName ?? '').trim().toLowerCase().split(/\s+/)
+    return pp.length > 1 && pp[pp.length - 1] === surname && pp[0][0] === parts[0][0]
+  })
+}
+
 // Save the pasted-and-confirmed squad + optional staff onto the membership
-// doc. squad: [{ playerId, name, capNumber, isCaptain }] (name is a display
-// snapshot so line-ups render without N person reads). staff: [{ role, name }]
-// — names only, no accounts, no linking (§8).
+// doc. squad: [{ playerId, name, capNumber, isCaptain, photoUrl }] (name and
+// photoUrl are display snapshots so line-ups render without N person reads —
+// addendum B5). staff: [{ role, name }] — names only, no accounts, no
+// linking (§8).
 export async function saveCompetitionTeamSheet(competitionId, teamId, { squad = [], staff = [] } = {}) {
   await setDoc(doc(db, 'competitions', competitionId, 'teams', teamId), {
     squad, staff,
@@ -1749,16 +1859,16 @@ export async function setFixtureAbsence(matchId, { playerId, side, absent }) {
   })
 }
 
-// Per-fixture cap override (§9): an 'added' exception for a player already in
-// the squad overrides their cap for this fixture only. capNumber null clears
-// the override. Caps are usually stable across a festival.
+// Per-fixture cap override (§9): stored as its OWN exception type — addendum
+// B2; never encoded as an 'added' entry. capNumber null clears the override.
+// Caps are usually stable across a festival.
 export async function setFixtureCapOverride(matchId, { playerId, side, capNumber }) {
   const snap = await getDoc(doc(db, 'matches', matchId))
   if (!snap.exists()) throw new Error('Match not found')
   const current = (snap.data().exceptions ?? [])
-    .filter(e => !(e.playerId === playerId && e.side === side && e.type === 'added'))
+    .filter(e => !(e.playerId === playerId && e.side === side && e.type === 'override'))
   const exceptions = capNumber != null
-    ? [...current, { playerId, side, type: 'added', capNumber }]
+    ? [...current, { playerId, side, type: 'override', capNumber }]
     : current
   return updateDoc(doc(db, 'matches', matchId), {
     exceptions, updatedBy: uid(), updatedAt: serverTimestamp(),
@@ -1823,7 +1933,11 @@ export async function freezeFixtureLineupIfNeeded(matchId, matchData = null) {
     ...ids,
   ])]
   await updateDoc(doc(db, 'matches', matchId), {
+    // The CANONICAL fields every reader consumes (stats engine, goal
+    // attribution, public renderer) — addendum B3 — plus a frozenLineup copy
+    // for the cross-sport contract.
     homeLineup, awayLineup, lineupPersonIds,
+    frozenLineup: { home: homeLineup, away: awayLineup },
     lineupMode: 'frozen', lineupFrozenAt: serverTimestamp(),
     updatedBy: uid(), updatedAt: serverTimestamp(),
   })

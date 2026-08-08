@@ -56,9 +56,11 @@ test('ALL CAPS normalises preserving McDonald, van der Merwe, O\'Brien, du Pless
   assert.equal(normaliseName('Pieter van der Merwe'), 'Pieter van der Merwe')
 })
 
-test('name splits on the last space: last token is surname', () => {
+test('particle-aware surname split (addendum B5): particles belong to the surname', () => {
   assert.deepEqual(splitName('John Smith'), { firstName: 'John', surname: 'Smith' })
-  assert.deepEqual(splitName('Pieter van der Merwe'), { firstName: 'Pieter van der', surname: 'Merwe' })
+  assert.deepEqual(splitName('Pieter van der Merwe'), { firstName: 'Pieter', surname: 'van der Merwe' })
+  assert.deepEqual(splitName('Jean du Plessis'), { firstName: 'Jean', surname: 'du Plessis' })
+  assert.deepEqual(splitName('van der Merwe'), { firstName: '', surname: 'van der Merwe' })
   assert.deepEqual(splitName('Cher'), { firstName: 'Cher', surname: '' })
 })
 
@@ -169,12 +171,12 @@ test('exceptions are side-scoped', () => {
   assert.equal(lineup.length, 4)
 })
 
-test('added exception joins the line-up; added for a squad player overrides the cap', () => {
+test('acceptance 12: a per-fixture cap change is type "override", not "added"', () => {
   const lineup = resolveSideLineup({
     squad: SQUAD,
     exceptions: [
-      { playerId: 'pNew', side: 'home', type: 'added', capNumber: 14, name: 'Late Addition' },
-      { playerId: 'p7',   side: 'home', type: 'added', capNumber: 2 }, // per-fixture cap override
+      { playerId: 'pNew', side: 'home', type: 'added',    capNumber: 14, name: 'Late Addition' },
+      { playerId: 'p7',   side: 'home', type: 'override', capNumber: 2 },
     ],
     side: 'home',
   })
@@ -182,6 +184,14 @@ test('added exception joins the line-up; added for a squad player overrides the 
   assert.equal(lineup.find(e => e.personId === 'pNew').shirtNumber, 14)
   assert.equal(lineup.find(e => e.personId === 'p7').shirtNumber, 2)
   assert.equal(lineup.find(e => e.personId === 'p7').isCaptain, true) // override keeps captaincy
+  // An 'added' entry for a player already in the squad is ignored — it is NOT
+  // an override channel (rugby's workaround, corrected by the addendum).
+  const ignored = resolveSideLineup({
+    squad: SQUAD,
+    exceptions: [{ playerId: 'p7', side: 'home', type: 'added', capNumber: 2 }],
+    side: 'home',
+  })
+  assert.equal(ignored.find(e => e.personId === 'p7').shirtNumber, 7)
 })
 
 test('acceptance 6/9: frozen fixtures and leagues never resolve from the squad', () => {

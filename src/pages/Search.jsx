@@ -62,7 +62,11 @@ export default function Search() {
   }, [loaded, q])
 
   const matchedComps  = loaded && q.length >= 2 ? comps.filter(c => c.name?.toLowerCase().includes(q)) : []
-  const matchedPeople = loaded && q.length >= 2 ? people.filter(p => p.fullName?.toLowerCase().includes(q)) : []
+  // Unclaimed team-sheet profiles never appear in browsable search (addendum
+  // A3) — they are reachable from a team sheet or a claim search only.
+  const matchedPeople = loaded && q.length >= 2
+    ? people.filter(p => p.fullName?.toLowerCase().includes(q) && p.claimStatus !== 'unclaimed')
+    : []
   const showEmpty     = loaded && q.length >= 2 && !loading && matchedComps.length === 0 && matchedPeople.length === 0
   const showIdle      = q.length < 2
 

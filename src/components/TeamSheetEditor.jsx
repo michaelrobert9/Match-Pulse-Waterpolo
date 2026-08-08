@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { X, Plus, AlertTriangle, Link2 } from 'lucide-react'
 import { fetchAllPeople } from '../lib/queries'
 import {
-  saveCompetitionTeamSheet, fetchCompetitionTeamSheet, createChildPlayerProfile,
+  saveCompetitionTeamSheet, fetchCompetitionTeamSheet, createTeamSheetPerson,
 } from '../lib/adminQueries'
 import {
   parseTeamSheet, applyNumbersMode, matchRowToPeople,
@@ -53,7 +53,6 @@ export default function TeamSheetEditor({ competitionId, team, onClose, onSaved 
   const [staff, setStaff]     = useState([])
   const [numbersAreCaps, setNumbersAreCaps] = useState(true)
   const [hadExisting, setHadExisting] = useState(false)
-  const [consent, setConsent] = useState(false)
   const [saving, setSaving]   = useState(false)
   const [saveError, setSaveError] = useState('')
   const [showAppend, setShowAppend] = useState(false)
@@ -178,15 +177,18 @@ export default function TeamSheetEditor({ competitionId, team, onClose, onSaved 
     setSaving(true)
     setSaveError('')
     try {
+      const photoById = new Map(people.map(p => [p.id, p.photoUrl ?? null]))
       const usable = rows.filter(r => `${r.firstName} ${r.surname}`.trim())
       const squad = []
       for (const r of usable) {
         const fullName = `${r.firstName} ${r.surname}`.trim().replace(/\s+/g, ' ')
         let playerId = r.chosen
         if (playerId === 'new' || !playerId) {
-          // Same live profiles the current flow creates (§1) — created under
-          // the confirmer's manager control with the platform's consent record.
-          const ref = await createChildPlayerProfile({ fullName }, 'manager', { consented: true })
+          // OWNERLESS creation (addendum Part A): no manager, no consent
+          // record, no relationship asserted between the confirmer and the
+          // player. Claimable later by the player (or a parent).
+          const ref = await createTeamSheetPerson(
+            { firstName: r.firstName, lastName: r.surname, fullName }, competitionId, team.id)
           playerId = ref.id
         }
         squad.push({
@@ -194,6 +196,7 @@ export default function TeamSheetEditor({ competitionId, team, onClose, onSaved 
           name: fullName,
           capNumber: r.capNumber ?? null,
           isCaptain: r.isCaptain === true,
+          photoUrl: photoById.get(playerId) ?? null,
         })
       }
       const cleanStaff = staff
@@ -209,9 +212,7 @@ export default function TeamSheetEditor({ competitionId, team, onClose, onSaved 
     }
   }
 
-  const confirmDisabled = saving
-    || rows.length === 0
-    || (newCount > 0 && !consent)
+  const confirmDisabled = saving || rows.length === 0
 
   return (
     <div className="fixed inset-0 z-50 bg-slate-900/60 flex items-stretch sm:items-center justify-center">
@@ -329,7 +330,7 @@ export default function TeamSheetEditor({ competitionId, team, onClose, onSaved 
                                 ? 'bg-amber-50 border-amber-300 text-amber-700'
                                 : 'bg-white border-slate-200 text-slate-400 hover:text-slate-600'
                             }`}>
-                            <span className="text-[14px] font-bold leading-none">©</span> Captain
+                            <span className="text-sm font-bold leading-none align-middle">©</span> Captain
                           </button>
                           <StatusChip row={row} />
                           {warnDupCap && (
@@ -421,16 +422,14 @@ export default function TeamSheetEditor({ competitionId, team, onClose, onSaved 
                 </button>
               </div>
 
-              {/* Consent — required only when new profiles will be created. */}
+              {/* No consent checkbox (addendum A1): profiles are created
+                  ownerless — nobody claims rights over anyone, so there is
+                  nothing to consent to at creation. */}
               {newCount > 0 && (
-                <label className="flex items-start gap-2.5 cursor-pointer bg-white border border-slate-200 rounded-xl p-3">
-                  <input type="checkbox" checked={consent} onChange={e => setConsent(e.target.checked)}
-                    className="accent-emerald-600 w-4 h-4 mt-0.5 shrink-0" />
-                  <span className="text-xs text-slate-600 leading-relaxed">
-                    {newCount} new player profile{newCount === 1 ? '' : 's'} will be created. I confirm I have
-                    each player's (or their parent or guardian's) consent to create and publish their profile.
-                  </span>
-                </label>
+                <p className="text-xs text-slate-500 leading-relaxed">
+                  {newCount} new player profile{newCount === 1 ? '' : 's'} will be created without an
+                  owner. A player (or their parent) can claim theirs at any time by signing up.
+                </p>
               )}
 
               {saveError && <p className="text-sm text-red-600">{saveError}</p>}

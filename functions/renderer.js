@@ -286,6 +286,9 @@ function buildMeta({ kind, entity = null, path = '' }) {
       canonical = entity?.slug ? abs(`/player/${entity.slug}`) : abs(`/players/${entity?.id ?? ''}`)
       ogImage   = entity?.photoUrl || ogImage
       ogType    = 'profile'
+      // Unclaimed team-sheet profiles are noindex (ownerless-profiles
+      // addendum A3): reachable, never in search results. Drops on claim.
+      if (entity?.claimStatus === 'unclaimed') robots = 'noindex,follow'
       break
     }
     case 'team_slug':

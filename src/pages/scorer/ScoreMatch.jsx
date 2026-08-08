@@ -17,7 +17,7 @@ import { resolveSideLineup, isInheritedLineup } from '../../lib/lineupResolve'
 import TeamSheetEditor from '../../components/TeamSheetEditor'
 import { fetchCompetition } from '../../lib/queries'
 import { walkoverScore, outcomeBanner } from '../../lib/fixtureResult'
-import { POTMColor } from '../../lib/POTM'
+import { pomColor } from '../../lib/pom'
 import FixtureBanner from '../../components/FixtureBanner'
 import {
   getElapsedMs, formatClock, nextPeriodAction,
@@ -707,7 +707,7 @@ export default function ScoreMatch() {
 
   // Attach the competition's chosen POTM colour to every award at write time so
   // match pages never need to re-fetch the competition. Legacy records without
-  // color fall back to POTM_DEFAULT_COLOR via src/lib/POTM.js#POTMColor.
+  // color fall back to POM_DEFAULT_COLOR via src/lib/POTM.js#pomColor.
   function decoratePotm(player) {
     if (!player) return null
     return potmColor ? { ...player, color: potmColor } : player
@@ -1510,8 +1510,8 @@ export default function ScoreMatch() {
             {/* Header */}
             <div className={`px-5 py-4 border-b ${bright ? 'border-slate-200' : 'border-slate-700'} shrink-0`}>
               <div className="flex items-center gap-2 mb-0.5">
-                <Star className="w-4 h-4" style={{ color: POTMColor({ color: potmColor }) }} />
-                <span className="text-[10px] font-bold uppercase tracking-widest" style={{ color: POTMColor({ color: potmColor }) }}>
+                <Star className="w-4 h-4" style={{ color: pomColor({ color: potmColor }) }} />
+                <span className="text-[10px] font-bold uppercase tracking-widest" style={{ color: pomColor({ color: potmColor }) }}>
                   Player of the Match
                   {potmPerTeam && ` · ${potmSide === 'home' ? (match.homeTeamName ?? 'Home') : (match.awayTeamName ?? 'Away')}`}
                 </span>
@@ -1695,7 +1695,7 @@ export default function ScoreMatch() {
                     {(entry.shirtNumber ?? entry.capNumber) ?? ''}
                   </button>
                 )}
-                <span className="w-4 text-center text-[14px] font-bold text-amber-600 shrink-0 leading-none">
+                <span className="w-4 text-center text-sm font-bold text-amber-600 shrink-0 leading-none">
                   {(entry.isCaptain === true) ? '©' : ''}
                 </span>
                 <span className="text-sm flex-1 truncate">{entry.personName ?? entry.name}</span>
