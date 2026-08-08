@@ -1967,6 +1967,52 @@ export async function freezeFixtureLineupIfNeeded(matchId, matchData = null) {
   })
 }
 
+// Write a whole side's fixture line-up directly from a confirmed team sheet —
+// leagues and standalone fixtures (team-sheets-everywhere §3). The paste grid
+// is the confirmed source for THIS fixture, so this REPLACES that side's
+// line-up wholesale. It never touches the competition squad, the other side,
+// or the exceptions array. It deliberately does NOT set lineupMode:'frozen' —
+// freeze stays the "a human was present at the match" signal (§4), applied at
+// start/result. `squad` rows are { playerId, playerName, capNumber, isCaptain,
+// photoUrl }, the same shape the editor builds for a competition squad.
+export async function saveFixtureLineup(matchId, side, squad = []) {
+  const matchRef = doc(db, 'matches', matchId)
+  const snap = await getDoc(matchRef)
+  if (!snap.exists()) throw new Error('Match not found')
+  const m = snap.data()
+
+  // Map squad rows → line-up entries through the SAME resolver a freeze uses,
+  // so a directly-pasted line-up is identical in shape to an inherited one.
+  const resolved = resolveSideLineup({ squad, exceptions: [], side })
+
+  // Enrich with photo + controllerUids (self-removal rules / avatars), exactly
+  // as freezeFixtureLineupIfNeeded does.
+  const ids = [...new Set(resolved.map(e => e.personId).filter(Boolean))]
+  const peopleById = {}
+  await Promise.all(ids.map(async pid => {
+    try { const p = await getDoc(doc(db, 'people', pid)); if (p.exists()) peopleById[pid] = p.data() }
+    catch { /* snapshot stays minimal */ }
+  }))
+  const entries = resolved.map(e => {
+    const pd = peopleById[e.personId]
+    return {
+      ...e,
+      photoUrl: pd?.photoUrl ?? e.photoUrl ?? null,
+      controllerUids: pd ? [pd.ownerUid, ...(pd.guardianUids ?? []), ...(pd.managerUids ?? [])].filter(Boolean) : [],
+    }
+  })
+
+  const field = side === 'home' ? 'homeLineup' : 'awayLineup'
+  const otherField = side === 'home' ? 'awayLineup' : 'homeLineup'
+  const other = m[otherField] ?? []
+  const lineupPersonIds = [...new Set([...entries, ...other].map(e => e.personId).filter(Boolean))]
+  await updateDoc(matchRef, {
+    [field]: entries,
+    lineupPersonIds,
+    updatedBy: uid(), updatedAt: serverTimestamp(),
+  })
+}
+
 export async function inviteTeamToCompetition(competitionId, teamId, data = {}) {
   await assertCompetitionAdmin(competitionId)
   return setDoc(doc(db, 'competitions', competitionId, 'teams', teamId), {

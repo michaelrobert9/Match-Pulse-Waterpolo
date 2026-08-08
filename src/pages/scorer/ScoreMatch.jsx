@@ -252,7 +252,9 @@ export default function ScoreMatch() {
   const [compType,     setCompType]     = useState(null)
   const [teamSheets,   setTeamSheets]   = useState(null) // { home: {squad,staff}, away: {...} }
   const [sheetRefresh, setSheetRefresh] = useState(0)
-  const [pasteFor,     setPasteFor]     = useState(null) // side being late-pasted
+  const [pasteFor,     setPasteFor]     = useState(null) // side being late-pasted (→ competition squad)
+  const [pasteFixtureFor, setPasteFixtureFor] = useState(null) // side being pasted → THIS fixture's line-up (leagues/standalone, §3)
+  const [lineupConfirmForStart, setLineupConfirmForStart] = useState(false) // §5: inherited line-up awaiting one-tap confirm before freeze
   const [capOvKey,     setCapOvKey]     = useState(null) // playerId whose cap override is being edited
   const [capOvValue,   setCapOvValue]   = useState('')
   // Shootout: optional, only relevant when regulation ends level.
@@ -263,13 +265,6 @@ export default function ScoreMatch() {
   // Match lineup management (stored in match.homeLineup / match.awayLineup)
   const [lineupOpen,     setLineupOpen]     = useState(false)
   const [lineupSide,     setLineupSide]     = useState('home')
-  const [addPersonOpen,  setAddPersonOpen]  = useState(false)
-  const [allPeople,      setAllPeople]      = useState([])
-  const [showAllPeople,  setShowAllPeople]  = useState(false)
-  const [lineupSearch,   setLineupSearch]   = useState('')
-  const [selectedPerson, setSelectedPerson] = useState(null)
-  const [lineupShirt,    setLineupShirt]    = useState('')
-  const [lineupIsStarter, setLineupIsStarter] = useState(false)
   const [lineupSaving,   setLineupSaving]   = useState(false)
   const [lineupError,    setLineupError]    = useState('')
   // Per-fixture shirt edit on an existing lineup entry (carries through from the
@@ -425,11 +420,6 @@ export default function ScoreMatch() {
     return () => clearInterval(iv)
   }, [isBreakState, match?.breakMinutes, match?.nextPeriodIndex])
 
-  useEffect(() => {
-    if (!showAllPeople || allPeople.length > 0) return
-    fetchAllPeople().then(setAllPeople)
-  }, [showAllPeople])
-
   // Load the competition's default walkover score when the outcome sheet opens.
   // MUST live above the early returns below — hooks may never render conditionally.
   useEffect(() => {
@@ -532,7 +522,28 @@ export default function ScoreMatch() {
     finally { savingRef.current = false; setSaving(false) }
   }
 
+  // §5: an INHERITED line-up (tournament/festival with a pasted squad) gets one
+  // confirmation tap before it freezes at start — the moment a human is looking
+  // at the real team. Directly-pasted / manual line-ups skip this: someone
+  // already confirmed the grid for this specific fixture.
+  const startNeedsLineupConfirm = () =>
+    ['home', 'away'].some(s => isInheritedLineup(match, compType) && (teamSheets?.[s]?.squad?.length ?? 0) > 0)
+
   const handleStart = () => {
+    unlockAudio()
+    if (startNeedsLineupConfirm() && !lineupConfirmForStart) {
+      setLineupSide(['home', 'away'].find(s => (teamSheets?.[s]?.squad?.length ?? 0) > 0) || 'home')
+      setLineupConfirmForStart(true)
+      setLineupOpen(true)
+      return
+    }
+    setLineupConfirmForStart(false)
+    return withSaving(() => startMatch(id, { matchTimestamp: 0, periods: match.periods }))
+  }
+
+  const confirmLineupAndStart = () => {
+    setLineupOpen(false)
+    setLineupConfirmForStart(false)
     unlockAudio()
     return withSaving(() => startMatch(id, { matchTimestamp: 0, periods: match.periods }))
   }
@@ -739,56 +750,10 @@ export default function ScoreMatch() {
     setJustFinalized(true)
   }
 
-  // Season squad for a side — roster entries carry a shirt number from the squad.
-  // Deduped by person, minus anyone already in this fixture's lineup, so the panel
-  // lets a scorer add a squad player in one tap without re-entering their details.
-  function squadForSide(side) {
-    const roster = side === 'home' ? home : away
-    const sideLineup = (side === 'home' ? match.homeLineup : match.awayLineup) ?? []
-    const inLineup = new Set(sideLineup.map(e => e.personId).filter(Boolean))
-    const seen = new Set(); const out = []
-    for (const p of roster) {
-      if (!p.personId || inLineup.has(p.personId) || seen.has(p.personId)) continue
-      seen.add(p.personId)
-      out.push({
-        id: p.personId, fullName: p.personName,
-        shirtNumber: p.shirtNumber ?? null, position: p.position ?? null, photoUrl: p.photoUrl ?? null,
-      })
-    }
-    return out.sort((a, b) => (a.shirtNumber || 99) - (b.shirtNumber || 99))
-  }
-
-  async function handleAddToLineup() {
-    if (!selectedPerson) return
-    setLineupSaving(true); setLineupError('')
-    try {
-      await addPersonToMatchLineup(id, {
-        personId:   selectedPerson.id,
-        personName: selectedPerson.fullName,
-        side:       lineupSide,
-        shirtNumber: lineupShirt || null,
-        isStarter:  lineupIsStarter,
-      })
-      setSelectedPerson(null); setLineupShirt(''); setLineupIsStarter(false)
-      setAddPersonOpen(false)
-    } catch (e) {
-      setLineupError(e.message || 'Failed to add player.')
-    } finally { setLineupSaving(false) }
-  }
-
-  // One-tap add of a squad player, carrying their squad shirt number through as
-  // a bench entry (starter status and shirt stay editable in the lineup list).
-  async function quickAddSquadPlayer(sq) {
-    setLineupSaving(true); setLineupError('')
-    try {
-      await addPersonToMatchLineup(id, {
-        personId: sq.id, personName: sq.fullName, side: lineupSide,
-        shirtNumber: sq.shirtNumber || null, isStarter: false,
-      })
-    } catch (e) {
-      setLineupError(e.message || 'Failed to add player.')
-    } finally { setLineupSaving(false) }
-  }
+  // The old select-and-add flow (pick a person → set shirt/starter → add) has
+  // been removed (team-sheets-everywhere §2). Players are added to a league /
+  // standalone fixture through the paste-and-grid screen only, which writes the
+  // whole side's line-up at once (setPasteFixtureFor → TeamSheetEditor).
 
   // Save a per-fixture shirt-number override on an existing lineup entry.
   async function saveEntryShirt(entry) {
@@ -1638,6 +1603,20 @@ export default function ScoreMatch() {
             </div>
           )}
 
+          {/* §5: confirm-at-freeze for an inherited line-up. The names below are
+              tappable to mark absent; one tap confirms and starts the match. */}
+          {lineupConfirmForStart && (
+            <div className="mb-3">
+              <button onClick={confirmLineupAndStart} disabled={saving}
+                className="w-full bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white font-bold text-sm uppercase tracking-wider rounded-xl py-3">
+                Confirm line-up & start match
+              </button>
+              <p className={`text-[11px] ${t.muted} mt-1.5 text-center`}>
+                Check the team below and mark anyone absent, then confirm to start.
+              </p>
+            </div>
+          )}
+
           {/* Derived line-up (§9): a tournament/festival fixture with a pasted
               squad opens with everyone already selected — the DEFAULT state,
               not a button. Tap a player to mark them absent for this fixture
@@ -1854,13 +1833,9 @@ export default function ScoreMatch() {
 
           {!(isInheritedLineup(match, compType) && (teamSheets?.[lineupSide]?.squad?.length ?? 0) > 0) && (
             <button
-              onClick={() => {
-                setSelectedPerson(null); setLineupShirt(''); setLineupIsStarter(false)
-                setLineupSearch(''); setShowAllPeople(false); setLineupError('')
-                setAddPersonOpen(true)
-              }}
+              onClick={() => { setLineupError(''); setPasteFixtureFor(lineupSide) }}
               className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-sm uppercase tracking-wider rounded-xl py-3">
-              + Add player
+              Paste team sheet
             </button>
           )}
         </Sheet>
@@ -1881,129 +1856,22 @@ export default function ScoreMatch() {
         />
       )}
 
-      {/* Add player to lineup */}
-      {addPersonOpen && (
-        <Sheet t={t} title={`Add to ${teamName(lineupSide)}`}
-          color={teamColor(lineupSide)}
-          onClose={() => setAddPersonOpen(false)}>
-          {selectedPerson ? (
-            /* Step 2: optional shirt# and starting status */
-            <div>
-              <div className={`text-sm font-bold text-center mb-4 truncate`}>{selectedPerson.fullName}</div>
-              <div className="mb-4">
-                <div className={`text-[10px] font-bold uppercase tracking-widest ${t.muted} mb-1.5`}>Shirt # (optional)</div>
-                <input type="text" value={lineupShirt} onChange={e => setLineupShirt(e.target.value)}
-                  placeholder="e.g. 8"
-                  className={`w-full rounded-xl border px-3 py-2.5 text-sm focus:outline-none focus:border-emerald-500 transition-colors ${t.neutralBtn}`} />
-              </div>
-              <label className={`flex items-center gap-3 mb-4 cursor-pointer`}>
-                <input type="checkbox" checked={lineupIsStarter} onChange={e => setLineupIsStarter(e.target.checked)}
-                  className="accent-emerald-600 w-4 h-4" />
-                <span className="text-sm font-medium">Starting player</span>
-              </label>
-              {lineupError && (
-                <div className="bg-red-500/15 border border-red-500/30 rounded-lg px-3 py-2 text-[12px] text-red-500 mb-3">
-                  {lineupError}
-                </div>
-              )}
-              <div className="grid grid-cols-2 gap-3">
-                <button onClick={() => setSelectedPerson(null)}
-                  className={`border font-bold text-sm rounded-xl py-3 ${t.neutralBtn}`}>← Back</button>
-                <button onClick={handleAddToLineup} disabled={lineupSaving}
-                  className="bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white font-bold text-sm rounded-xl py-3">
-                  {lineupSaving ? 'Adding…' : 'Add'}
-                </button>
-              </div>
-            </div>
-          ) : (
-            /* Step 1: pick a person */
-            <div>
-              <input value={lineupSearch} onChange={e => setLineupSearch(e.target.value)}
-                placeholder="Search by name…"
-                className={`w-full rounded-xl border px-3 py-2.5 text-sm mb-3 focus:outline-none focus:border-emerald-500 transition-colors ${t.neutralBtn}`} />
-
-              {lineupSaving && (
-                <p className={`text-[11px] ${t.muted} mb-2`}>Adding…</p>
-              )}
-
-              {!showAllPeople ? (
-                /* Squad-first: one-tap add carries the squad shirt number through. */
-                (() => {
-                  const squad = squadForSide(lineupSide).filter(p =>
-                    !lineupSearch || p.fullName.toLowerCase().includes(lineupSearch.toLowerCase()))
-                  return (
-                    <>
-                      <div className={`text-[10px] font-bold uppercase tracking-widest ${t.muted} mb-2`}>
-                        {teamName(lineupSide)} squad
-                      </div>
-                      {squad.length > 0 ? (
-                        <ul className="space-y-1.5 max-h-52 overflow-y-auto mb-3">
-                          {squad.map(sq => (
-                            <li key={sq.id}
-                              className={`flex items-center gap-2 px-2 py-1.5 rounded-xl border ${t.neutralBtn}`}>
-                              <span className={`font-mono text-xs ${t.muted} w-6 text-right shrink-0`}>{sq.shirtNumber || '–'}</span>
-                              <PersonAvatar name={sq.fullName} photoUrl={sq.photoUrl} size={26} />
-                              <button onClick={() => { setSelectedPerson(sq); setLineupShirt(sq.shirtNumber ? String(sq.shirtNumber) : ''); setLineupIsStarter(false) }}
-                                title="Set shirt / starter before adding"
-                                className="text-sm flex-1 truncate text-left">
-                                {sq.fullName}
-                                {sq.position && <span className={`ml-1.5 text-[10px] font-bold uppercase tracking-widest ${t.muted}`}>{sq.position}</span>}
-                              </button>
-                              <button onClick={() => quickAddSquadPlayer(sq)} disabled={lineupSaving}
-                                className="bg-emerald-600 hover:bg-emerald-500 disabled:opacity-40 text-white text-[10px] font-bold uppercase tracking-widest rounded-lg px-2.5 py-1.5 shrink-0">
-                                Add
-                              </button>
-                            </li>
-                          ))}
-                        </ul>
-                      ) : (
-                        <p className={`text-sm ${t.muted} text-center py-3 mb-3`}>
-                          {lineupSearch ? 'No squad player by that name.' : 'No squad players for this team yet — search all players below.'}
-                        </p>
-                      )}
-                    </>
-                  )
-                })()
-              ) : (
-                /* Anyone else — pick then set shirt/starter in step 2. */
-                (() => {
-                  const sideLineup = (lineupSide === 'home' ? match.homeLineup : match.awayLineup) ?? []
-                  const filtered = allPeople.filter(p =>
-                    (!lineupSearch || p.fullName.toLowerCase().includes(lineupSearch.toLowerCase())) &&
-                    !sideLineup.some(e => e.personId === p.id)
-                  )
-                  return filtered.length > 0 ? (
-                    <ul className="space-y-1.5 max-h-52 overflow-y-auto mb-3">
-                      {filtered.map(p => (
-                        <li key={p.id}>
-                          <button onClick={() => { setSelectedPerson(p); setLineupShirt('') }}
-                            className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl border text-left transition-colors ${t.neutralBtn}`}>
-                            <PersonAvatar name={p.fullName} photoUrl={p.photoUrl} size={28} />
-                            <span className="text-sm flex-1 truncate">{p.fullName}</span>
-                            {p.position && (
-                              <span className={`text-[10px] font-bold uppercase tracking-widest ${t.muted} shrink-0`}>{p.position}</span>
-                            )}
-                          </button>
-                        </li>
-                      ))}
-                    </ul>
-                  ) : (
-                    <p className={`text-sm ${t.muted} text-center py-3 mb-3`}>
-                      {lineupSearch
-                        ? 'No player found. Players need their own MatchPulse profile — ask them (or their parent) to sign up, then add them here.'
-                        : 'No other players available.'}
-                    </p>
-                  )
-                })()
-              )}
-
-              <button onClick={() => { setShowAllPeople(v => !v); setLineupSearch('') }}
-                className={`w-full text-[11px] font-bold uppercase tracking-widest py-2.5 border rounded-xl transition-colors ${t.neutralBtn}`}>
-                {showAllPeople ? '← Back to squad' : 'Search all players →'}
-              </button>
-            </div>
-          )}
-        </Sheet>
+      {/* League / standalone fixture (§2/§3): the paste-and-grid is the only way
+          to add players. It writes the confirmed grid straight to THIS fixture's
+          line-up for the side — no competition squad, no inheritance. */}
+      {pasteFixtureFor && (
+        <TeamSheetEditor
+          competitionId={match.competitionId ?? null}
+          matchId={match.id}
+          side={pasteFixtureFor}
+          team={{
+            id: pasteFixtureFor === 'home' ? match.homeTeamId : match.awayTeamId,
+            displayName: teamName(pasteFixtureFor),
+            orgName: pasteFixtureFor === 'home' ? (match.homeOrgName ?? null) : (match.awayOrgName ?? null),
+          }}
+          onClose={() => setPasteFixtureFor(null)}
+          onSaved={() => setPasteFixtureFor(null)}
+        />
       )}
 
       {/* Match result — enter a result, or record a walkover / abandonment / not played */}
