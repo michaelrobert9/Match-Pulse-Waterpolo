@@ -1,78 +1,116 @@
-// Team colour safety (line-up display brief §3): every surface that renders a
-// team-coloured © or a POM accent passes the colour through teamAccent first.
-// It returns the team colour, or neutral slate when the colour is unsafe:
+// teamAccent — resolve a team's chosen colour into a UI accent that is safe to
+// paint on a white surface (captain armband, Player of the Match tint, and any
+// other team-coloured chrome).
 //
-//   • Contrast — a pale colour at 14px bold on the white row background
-//     defeats the point of enlarging the glyph. Large-text threshold (3:1).
-//   • Live-red proximity — a colour close to #E5484D reads as the live-match
-//     indicator, and the design rule is that red means live and nothing else.
+// Authored by netball; copied VERBATIM into hockey, rugby and water polo. Like
+// pom.js this must stay byte-identical across the four repos — a captain badge
+// rendered in one sport must resolve to the same colour in another. Do not
+// tune the thresholds per sport.
 //
-// NOTE: the brief says netball authors this helper and the other three repos
-// copy it verbatim (byte-identical, same terms as pom.js). Netball has not
-// published it yet — this implementation follows the brief's spec and MUST be
-// replaced byte-for-byte with netball's canonical version when it circulates.
+// Two guarantees:
+//   1. Contrast — the returned colour has at least a 3:1 contrast ratio against
+//      white (WCAG AA for large text and graphical objects), so a pale team
+//      colour is darkened until it is legible rather than washing out.
+//   2. Live-red separation — #E5484D means "live match" and nothing else. A
+//      team whose colour sits near it is pushed away (deepened, slightly
+//      desaturated) so a team accent can never be mistaken for the live state.
+//
+// Deterministic and dependency-free. Invalid or empty input returns a neutral
+// slate, so callers never have to guard.
 
-const FALLBACK = '#64748b' // slate-500
+export const TEAM_ACCENT_NEUTRAL = '#64748b'   // slate-500
+export const LIVE_RED            = '#e5484d'    // must match --live
+const MIN_CONTRAST      = 3.0                    // vs white
+const LIVE_MIN_DISTANCE = 70                     // RGB euclidean distance from LIVE_RED
 
-function parseHex(color) {
-  if (typeof color !== 'string') return null
-  const m = color.trim().match(/^#?([0-9a-f]{6})$/i)
-  if (!m) return null
-  const n = parseInt(m[1], 16)
-  return { r: (n >> 16) & 255, g: (n >> 8) & 255, b: n & 255 }
-}
-
-// WCAG relative luminance.
-function luminance({ r, g, b }) {
-  const lin = c => {
-    const s = c / 255
-    return s <= 0.04045 ? s / 12.92 : Math.pow((s + 0.055) / 1.055, 2.4)
+function parseHex(input) {
+  if (typeof input !== 'string') return null
+  let h = input.trim().replace(/^#/, '')
+  if (h.length === 3) h = h.split('').map(c => c + c).join('')
+  if (!/^[0-9a-fA-F]{6}$/.test(h)) return null
+  return {
+    r: parseInt(h.slice(0, 2), 16),
+    g: parseInt(h.slice(2, 4), 16),
+    b: parseInt(h.slice(4, 6), 16),
   }
-  return 0.2126 * lin(r) + 0.7152 * lin(g) + 0.0722 * lin(b)
 }
 
-// Contrast ratio against the white row background.
+function toHex({ r, g, b }) {
+  const c = v => Math.max(0, Math.min(255, Math.round(v))).toString(16).padStart(2, '0')
+  return `#${c(r)}${c(g)}${c(b)}`
+}
+
+function relLuminance({ r, g, b }) {
+  const chan = v => {
+    const s = v / 255
+    return s <= 0.03928 ? s / 12.92 : ((s + 0.055) / 1.055) ** 2.4
+  }
+  return 0.2126 * chan(r) + 0.7152 * chan(g) + 0.0722 * chan(b)
+}
+
 function contrastOnWhite(rgb) {
-  const l = luminance(rgb)
-  return (1.0 + 0.05) / (l + 0.05)
+  return (1.0 + 0.05) / (relLuminance(rgb) + 0.05)
 }
 
-function hue({ r, g, b }) {
-  const max = Math.max(r, g, b), min = Math.min(r, g, b)
-  if (max === min) return 0
-  const d = max - min
-  let h
-  if (max === r)      h = ((g - b) / d) % 6
-  else if (max === g) h = (b - r) / d + 2
-  else                h = (r - g) / d + 4
-  return ((h * 60) + 360) % 360
+function rgbToHsl({ r, g, b }) {
+  const R = r / 255, G = g / 255, B = b / 255
+  const max = Math.max(R, G, B), min = Math.min(R, G, B)
+  const l = (max + min) / 2
+  let h = 0, s = 0
+  if (max !== min) {
+    const d = max - min
+    s = l > 0.5 ? d / (2 - max - min) : d / (max + min)
+    if (max === R)      h = ((G - B) / d + (G < B ? 6 : 0))
+    else if (max === G) h = (B - R) / d + 2
+    else                h = (R - G) / d + 4
+    h /= 6
+  }
+  return { h, s, l }
 }
 
-function saturation({ r, g, b }) {
-  const max = Math.max(r, g, b) / 255, min = Math.min(r, g, b) / 255
-  if (max === 0) return 0
-  return (max - min) / max
+function hslToRgb({ h, s, l }) {
+  if (s === 0) { const v = l * 255; return { r: v, g: v, b: v } }
+  const hue = (p, q, t) => {
+    if (t < 0) t += 1
+    if (t > 1) t -= 1
+    if (t < 1 / 6) return p + (q - p) * 6 * t
+    if (t < 1 / 2) return q
+    if (t < 2 / 3) return p + (q - p) * (2 / 3 - t) * 6
+    return p
+  }
+  const q = l < 0.5 ? l * (1 + s) : l + s - l * s
+  const p = 2 * l - q
+  return {
+    r: hue(p, q, h + 1 / 3) * 255,
+    g: hue(p, q, h) * 255,
+    b: hue(p, q, h - 1 / 3) * 255,
+  }
 }
 
-function lightness({ r, g, b }) {
-  return (Math.max(r, g, b) + Math.min(r, g, b)) / 510
+function distanceToLiveRed(rgb) {
+  const live = parseHex(LIVE_RED)
+  return Math.sqrt((rgb.r - live.r) ** 2 + (rgb.g - live.g) ** 2 + (rgb.b - live.b) ** 2)
 }
 
-const LIVE = parseHex('#E5484D')
-const LIVE_HUE = hue(LIVE)
-
-// Returns the team colour, or '#64748b' when it is unsafe (brief §3).
 export function teamAccent(color) {
   const rgb = parseHex(color)
-  if (!rgb) return FALLBACK
-  // Contrast: 14px bold is WCAG large text — require 3:1 on white.
-  if (contrastOnWhite(rgb) < 3) return FALLBACK
-  // Live-red proximity: a colour reads as the live indicator only when it is
-  // genuinely similar — near the live token's hue, saturated, AND in its
-  // mid-lightness band. A dark maroon shares the hue but not the read.
-  const dh = Math.abs(hue(rgb) - LIVE_HUE)
-  const hueDist = Math.min(dh, 360 - dh)
-  const l = lightness(rgb)
-  if (hueDist <= 18 && saturation(rgb) >= 0.4 && l >= 0.3 && l <= 0.85) return FALLBACK
-  return color
+  if (!rgb) return TEAM_ACCENT_NEUTRAL
+
+  let hsl = rgbToHsl(rgb)
+
+  // 1. Contrast: darken a too-light colour until it is legible on white.
+  let guard = 0
+  while (contrastOnWhite(hslToRgb(hsl)) < MIN_CONTRAST && hsl.l > 0.12 && guard++ < 40) {
+    hsl = { ...hsl, l: hsl.l - 0.03 }
+  }
+
+  // 2. Live-red separation: if the result sits near the live indicator, deepen
+  //    and slightly desaturate it away — enough to be unmistakably a team
+  //    colour, while keeping the team's hue.
+  guard = 0
+  while (distanceToLiveRed(hslToRgb(hsl)) < LIVE_MIN_DISTANCE && hsl.l > 0.12 && guard++ < 40) {
+    hsl = { ...hsl, l: hsl.l - 0.04, s: Math.max(0.35, hsl.s - 0.05) }
+  }
+
+  return toHex(hslToRgb(hsl))
 }

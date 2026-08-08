@@ -56,12 +56,12 @@ test('ALL CAPS normalises preserving McDonald, van der Merwe, O\'Brien, du Pless
   assert.equal(normaliseName('Pieter van der Merwe'), 'Pieter van der Merwe')
 })
 
-test('particle-aware surname split (addendum B5): particles belong to the surname', () => {
-  assert.deepEqual(splitName('John Smith'), { firstName: 'John', surname: 'Smith' })
-  assert.deepEqual(splitName('Pieter van der Merwe'), { firstName: 'Pieter', surname: 'van der Merwe' })
-  assert.deepEqual(splitName('Jean du Plessis'), { firstName: 'Jean', surname: 'du Plessis' })
-  assert.deepEqual(splitName('van der Merwe'), { firstName: '', surname: 'van der Merwe' })
-  assert.deepEqual(splitName('Cher'), { firstName: 'Cher', surname: '' })
+test('splitName (rugby canonical): particles belong to the surname, returns lastName', () => {
+  assert.deepEqual(splitName('John Smith'), { firstName: 'John', lastName: 'Smith' })
+  assert.deepEqual(splitName('Pieter van der Merwe'), { firstName: 'Pieter', lastName: 'van der Merwe' })
+  assert.deepEqual(splitName('Jean du Plessis'), { firstName: 'Jean', lastName: 'du Plessis' })
+  // Single token is treated as a surname (rugby semantics).
+  assert.deepEqual(splitName('Cher'), { firstName: '', lastName: 'Cher' })
 })
 
 // ── §5 water polo cap-vs-list heuristic ─────────────────────────────────────
@@ -135,10 +135,10 @@ test('duplicate caps and names warn, blanks are valid (acceptance 7)', () => {
 // ── §4 derived line-ups ─────────────────────────────────────────────────────
 
 const SQUAD = [
-  { playerId: 'p1', name: 'Anna GK',     capNumber: 1,  isCaptain: false },
-  { playerId: 'p7', name: 'Cara Seven',  capNumber: 7,  isCaptain: true  },
-  { playerId: 'p3', name: 'Bea Three',   capNumber: 3,  isCaptain: false },
-  { playerId: 'pX', name: 'Nocap Player', capNumber: null, isCaptain: false },
+  { playerId: 'p1', playerName: 'Anna GK',      capNumber: 1,  isCaptain: false },
+  { playerId: 'p7', playerName: 'Cara Seven',   capNumber: 7,  isCaptain: true  },
+  { playerId: 'p3', playerName: 'Bea Three',    capNumber: 3,  isCaptain: false },
+  { playerId: 'pX', playerName: 'Nocap Player', capNumber: null, isCaptain: false },
 ]
 
 test('acceptance 4: every fixture inherits the full squad with no input', () => {

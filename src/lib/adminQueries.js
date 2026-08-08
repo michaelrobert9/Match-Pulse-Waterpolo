@@ -1840,10 +1840,10 @@ export async function searchUnclaimedProfiles(name) {
 }
 
 // Save the pasted-and-confirmed squad + optional staff onto the membership
-// doc. squad: [{ playerId, name, capNumber, isCaptain, photoUrl }] (name and
-// photoUrl are display snapshots so line-ups render without N person reads —
-// addendum B5). staff: [{ role, name }] — names only, no accounts, no
-// linking (§8).
+// doc. squad: [{ playerId, playerName, capNumber, isCaptain, photoUrl }]
+// (playerName and photoUrl are display snapshots so line-ups render without N
+// person reads — closing round item 2 fixes the field name to playerName).
+// staff: [{ role, name }] — names only, no accounts, no linking (§8).
 export async function saveCompetitionTeamSheet(competitionId, teamId, { squad = [], staff = [] } = {}) {
   await setDoc(doc(db, 'competitions', competitionId, 'teams', teamId), {
     squad, staff,

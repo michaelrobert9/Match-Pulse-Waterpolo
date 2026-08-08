@@ -70,9 +70,9 @@ export default function TeamSheetEditor({ competitionId, team, onClose, onSaved 
       setStaff(sheet.staff ?? [])
       if ((sheet.squad ?? []).length > 0) {
         setRows(sheet.squad.map(s => {
-          const { firstName, surname } = splitName(s.name ?? '')
+          const { firstName, lastName } = splitName(s.playerName ?? '')
           return {
-            key: newRowKey(), firstName, surname,
+            key: newRowKey(), firstName, surname: lastName,
             capNumber: s.capNumber ?? null, capEdited: true, parsedNumber: s.capNumber ?? null,
             isCaptain: s.isCaptain === true, unreadable: false,
             matchStatus: 'linked', personId: s.playerId, candidates: [], chosen: s.playerId,
@@ -187,7 +187,7 @@ export default function TeamSheetEditor({ competitionId, team, onClose, onSaved 
         }
         squad.push({
           playerId,
-          name: fullName,
+          playerName: fullName,   // squad-entry display name (closing round item 2)
           capNumber: r.capNumber ?? null,
           isCaptain: r.isCaptain === true,
           photoUrl: photoById.get(playerId) ?? null,
