@@ -3,16 +3,23 @@ import { X, Plus, AlertTriangle, Link2 } from 'lucide-react'
 import { fetchAllPeople } from '../lib/queries'
 import {
   saveCompetitionTeamSheet, fetchCompetitionTeamSheet, createTeamSheetPerson,
+  saveFixtureLineup,
 } from '../lib/adminQueries'
 import {
   parseTeamSheet, applyNumbersMode, matchRowToPeople,
   duplicateCapNumbers, duplicateNames, nextUnusedCap, splitName,
 } from '../lib/teamSheet'
 
-// Bulk team sheet editor (bulk team sheets brief §5–§8) — tournaments and
-// festivals only. Paste once per team, review the grid, confirm. Nothing
-// writes to the database until the user confirms; the grid is the whole
-// safety net.
+// Team sheet editor (bulk team sheets brief §5–§8). Paste once, review the
+// grid, confirm. Nothing writes to the database until the user confirms; the
+// grid is the whole safety net.
+//
+// Two destinations (team-sheets-everywhere §3):
+//   • competition squad  — tournaments & festivals: pass competitionId + team,
+//     fixtures inherit it (default).
+//   • fixture line-up     — leagues & standalone fixtures: pass matchId + side,
+//     the confirmed grid writes straight to that fixture's line-up. The box
+//     opens EMPTY every time (no prefill, no "same as last week" — §7).
 
 const STAFF_ROLES = ['Coach', 'Assistant Coach', 'Manager']
 
@@ -44,7 +51,8 @@ function StatusChip({ row }) {
   )
 }
 
-export default function TeamSheetEditor({ competitionId, team, onClose, onSaved }) {
+export default function TeamSheetEditor({ competitionId, team, matchId = null, side = null, onClose, onSaved }) {
+  const fixtureTarget = !!matchId
   const [phase, setPhase]     = useState('loading') // loading | error | paste | grid
   const [loadError, setLoadError] = useState('')
   const [people, setPeople]   = useState([])
@@ -62,6 +70,14 @@ export default function TeamSheetEditor({ competitionId, team, onClose, onSaved 
     setPhase('loading')
     setLoadError('')
     try {
+      // Fixture-line-up target (leagues & standalone, §3): the grid opens EMPTY
+      // every time — no squad prefill, no repeat shortcut (§7). We still load
+      // people so pasted names can match existing profiles.
+      if (fixtureTarget) {
+        setPeople(await fetchAllPeople().catch(() => []))
+        setPhase('grid')
+        return
+      }
       const [sheet, allPeople] = await Promise.all([
         fetchCompetitionTeamSheet(competitionId, team.id),
         fetchAllPeople().catch(() => []),
@@ -193,11 +209,18 @@ export default function TeamSheetEditor({ competitionId, team, onClose, onSaved 
           photoUrl: photoById.get(playerId) ?? null,
         })
       }
-      const cleanStaff = staff
-        .map(s => ({ role: s.role, name: (s.name ?? '').trim() }))
-        .filter(s => s.name)
-      await saveCompetitionTeamSheet(competitionId, team.id, { squad, staff: cleanStaff })
-      onSaved?.({ squad, staff: cleanStaff })
+      if (fixtureTarget) {
+        // Write straight to this fixture's line-up for the side (§3). Replaces
+        // that side wholesale; no competition squad, no staff store.
+        await saveFixtureLineup(matchId, side, squad)
+        onSaved?.({ squad })
+      } else {
+        const cleanStaff = staff
+          .map(s => ({ role: s.role, name: (s.name ?? '').trim() }))
+          .filter(s => s.name)
+        await saveCompetitionTeamSheet(competitionId, team.id, { squad, staff: cleanStaff })
+        onSaved?.({ squad, staff: cleanStaff })
+      }
       onClose()
     } catch (err) {
       setSaveError(err.message || 'Could not save the team sheet. Try again.')
@@ -215,7 +238,7 @@ export default function TeamSheetEditor({ competitionId, team, onClose, onSaved 
         {/* Header */}
         <div className="bg-white border-b border-slate-200 px-4 py-3 flex items-center gap-3 shrink-0">
           <div className="flex-1 min-w-0">
-            <div className="text-[10px] font-bold uppercase tracking-widest text-slate-500">Team sheet</div>
+            <div className="text-[10px] font-bold uppercase tracking-widest text-slate-500">{fixtureTarget ? 'Fixture line-up' : 'Team sheet'}</div>
             <div className="font-display font-bold text-slate-900 truncate">
               {team.orgName ? `${team.orgName} ${team.displayName}` : team.displayName}
             </div>
@@ -370,7 +393,9 @@ export default function TeamSheetEditor({ competitionId, team, onClose, onSaved 
               </div>
 
               {/* Staff — explicitly optional (§8): names only, no accounts.
-                  One labelled field per role (netball canonical layout). */}
+                  One labelled field per role (netball canonical layout).
+                  Only a competition squad carries staff — a fixture line-up does not. */}
+              {!fixtureTarget && (
               <div>
                 <p className="text-[10px] font-bold uppercase tracking-widest text-slate-500 mb-2">
                   Team staff <span className="font-normal normal-case tracking-normal text-slate-400">optional</span>
@@ -393,6 +418,7 @@ export default function TeamSheetEditor({ competitionId, team, onClose, onSaved 
                   ))}
                 </div>
               </div>
+              )}
 
               {/* No consent checkbox (addendum A1): profiles are created
                   ownerless — nobody claims rights over anyone, so there is

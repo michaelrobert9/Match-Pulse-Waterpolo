@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import { assignPlayer, removePlayer, updatePlayer } from '../lib/adminQueries'
-import { fetchTeamLineup, fetchAllPeople } from '../lib/queries'
+import { fetchTeamLineup, fetchAllPeople, deriveSquadFromFrozenLineups } from '../lib/queries'
 import { playerUrl } from '../lib/slugify'
 
 // Season-scoped squad. Self-fetches the team's roster. `readOnly` renders a
@@ -51,6 +51,22 @@ export default function SquadManager({ team, readOnly = false }) {
     .filter(p => (p.season ? String(p.season) === season : season === currentYear))
     .sort((a, b) => (a.shirtNumber || 99) - (b.shirtNumber || 99))
   const prevSeason = seasons.find(s => s < season && entries.some(p => String(p.season ?? '') === s))
+
+  // §6: with no stored roster for this season, derive the squad (read-only)
+  // from FROZEN fixture line-ups so the public squad page is still useful — the
+  // union of everyone who has actually appeared for this team.
+  const [derived, setDerived] = useState(null)
+  useEffect(() => {
+    let cancelled = false
+    if (visible.length === 0) {
+      deriveSquadFromFrozenLineups(team.id, season)
+        .then(d => { if (!cancelled) setDerived(d) })
+        .catch(() => { if (!cancelled) setDerived([]) })
+    } else {
+      setDerived(null)
+    }
+    return () => { cancelled = true }
+  }, [team.id, season, visible.length])
 
   // Add-player flow
   const [adding, setAdding] = useState(false)
@@ -204,8 +220,29 @@ export default function SquadManager({ team, readOnly = false }) {
 
       {visible.length === 0 ? (
         <div>
-          <EmptyCard message={`No players in the ${season} squad yet.`}
-            sub={season === currentYear ? 'A new season starts with a clean slate — past seasons stay on record.' : 'No players were recorded for this season.'} />
+          {derived && derived.length > 0 ? (
+            <>
+              <p className="text-[11px] text-slate-400 mb-2">
+                Derived from played fixtures — no {season} squad has been recorded, so this shows
+                everyone who has appeared in a frozen line-up for this team.
+              </p>
+              <div className="space-y-2">
+                {derived.map(p => (
+                  <div key={p.personId} className="flex items-center gap-3 bg-white rounded-xl border border-slate-200 px-4 py-3 shadow-sm">
+                    <span className="font-mono text-[11px] text-slate-400 w-5 text-right shrink-0">{p.shirtNumber ?? '–'}</span>
+                    <Link to={playerUrl({ id: p.personId })}
+                      className="text-sm text-slate-700 flex-1 hover:text-emerald-600 transition-colors">
+                      {p.personName}
+                    </Link>
+                    {p.isCaptain && <span className="text-sm text-amber-600 font-bold leading-none shrink-0">©</span>}
+                  </div>
+                ))}
+              </div>
+            </>
+          ) : (
+            <EmptyCard message={`No players in the ${season} squad yet.`}
+              sub={season === currentYear ? 'A new season starts with a clean slate — past seasons stay on record.' : 'No players were recorded for this season.'} />
+          )}
           {canManage && prevSeason && season === currentYear && (
             <button onClick={carryOver} disabled={busy}
               className="mt-2 w-full text-[11px] font-bold uppercase tracking-widest text-emerald-700 border border-emerald-200 rounded-xl py-2.5 hover:bg-emerald-50 disabled:opacity-40">

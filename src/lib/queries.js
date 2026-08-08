@@ -702,6 +702,40 @@ export async function fetchMatchesForTeam(teamId) {
   return all.sort((a, b) => toDate(a.scheduledAt) - toDate(b.scheduledAt))
 }
 
+// Team-sheets-everywhere §6: when a team has no stored roster/squad, its squad
+// page derives from FROZEN fixture line-ups — the union of every player who has
+// appeared in a frozen line-up for this team. Read-only, and accurate by
+// construction because it is built from line-ups that actually happened. Only
+// frozen line-ups count (lineupMode === 'frozen'), matching the caps rule (§4).
+// Season-scoped like SquadManager: a match counts for `season` when its own
+// season field matches, or (lacking one) its scheduled year does.
+export async function deriveSquadFromFrozenLineups(teamId, season = null) {
+  if (!configured || !teamId) return []
+  const matches = await fetchMatchesForTeam(teamId)
+  const byPerson = new Map()
+  for (const m of matches) {
+    if (m.lineupMode !== 'frozen') continue
+    if (season != null) {
+      const mSeason = m.season != null ? String(m.season) : String(toDate(m.scheduledAt).getFullYear())
+      if (mSeason !== String(season)) continue
+    }
+    const lineup = m.homeTeamId === teamId ? (m.homeLineup ?? [])
+      : m.awayTeamId === teamId ? (m.awayLineup ?? [])
+      : []
+    for (const e of lineup) {
+      if (!e.personId || byPerson.has(e.personId)) continue
+      byPerson.set(e.personId, {
+        personId: e.personId,
+        personName: e.personName ?? '',
+        photoUrl: e.photoUrl ?? null,
+        shirtNumber: e.shirtNumber ?? null,
+        isCaptain: e.isCaptain === true,
+      })
+    }
+  }
+  return [...byPerson.values()]
+}
+
 export async function fetchMatchesForOrg(orgId) {
   if (!configured) return []
   const [homeSnap, awaySnap] = await Promise.all([
