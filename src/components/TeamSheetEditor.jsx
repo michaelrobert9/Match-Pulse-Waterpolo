@@ -21,7 +21,7 @@ import {
 //     the confirmed grid writes straight to that fixture's line-up. The box
 //     opens EMPTY every time (no prefill, no "same as last week" — §7).
 
-const STAFF_ROLES = ['Coach', 'Assistant Coach', 'Manager']
+const STAFF_ROLES = ['Coach', 'Manager']
 
 const PLACEHOLDER = '1. Sarah Botha\n2. Amahle Dlamini'
 
@@ -285,8 +285,9 @@ export default function TeamSheetEditor({ competitionId, team, matchId = null, s
                 </button>
                 {rows.length === 0 && (
                   <p className="text-sm text-slate-500">
-                    Paste the whole team sheet — one player per line. Numbers, tabs from a
-                    spreadsheet, and names on their own all work.
+                    Paste the whole team sheet — one player per line, as “Cap Name”,
+                    e.g. 1 Sarah Botha. Water polo uses cap numbers, not positions; tabs from a
+                    spreadsheet and names on their own also work.
                   </p>
                 )}
               </div>
