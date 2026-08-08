@@ -320,10 +320,14 @@ service cloud.firestore {
                  .hasAll(resource.data.get('competitionIds', [])))
         // LEGACY self-service claim: a signed-in user may claim an unclaimed
         // roster profile (no owner, no guardians) by making themselves the
-        // owner (player) OR the sole guardian (parent). Scoped AWAY from
-        // team-sheet profiles (claimStatus set) — those claim only through
-        // the email-verified branch below, otherwise its gates are bypassed.
+        // owner (player) OR the sole guardian (parent). This branch does NOT
+        // require email_verified, so it MUST be scoped away from team-sheet
+        // profiles — those carry createdVia == 'teamSheet' and may only be
+        // claimed through the email-verified branch below (resolution round
+        // Part 3A). Keyed on createdVia, not the claimStatus proxy, so it
+        // holds even if claimStatus is ever cleared while createdVia remains.
         || (isSignedIn()
+            && resource.data.get('createdVia', '') != 'teamSheet'
             && resource.data.get('claimStatus', '') == ''
             && resource.data.get('ownerUid', null) == null
             && resource.data.get('guardianUids', []).size() == 0
