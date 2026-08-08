@@ -55,8 +55,6 @@ export default function TeamSheetEditor({ competitionId, team, onClose, onSaved 
   const [hadExisting, setHadExisting] = useState(false)
   const [saving, setSaving]   = useState(false)
   const [saveError, setSaveError] = useState('')
-  const [showAppend, setShowAppend] = useState(false)
-  const [appendText, setAppendText] = useState('')
 
   useEffect(() => { load() }, [competitionId, team.id]) // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -72,19 +70,17 @@ export default function TeamSheetEditor({ competitionId, team, onClose, onSaved 
       setStaff(sheet.staff ?? [])
       if ((sheet.squad ?? []).length > 0) {
         setRows(sheet.squad.map(s => {
-          const { firstName, surname } = splitName(s.name ?? '')
+          const { firstName, lastName } = splitName(s.playerName ?? '')
           return {
-            key: newRowKey(), firstName, surname,
+            key: newRowKey(), firstName, surname: lastName,
             capNumber: s.capNumber ?? null, capEdited: true, parsedNumber: s.capNumber ?? null,
             isCaptain: s.isCaptain === true, unreadable: false,
             matchStatus: 'linked', personId: s.playerId, candidates: [], chosen: s.playerId,
           }
         }))
         setHadExisting(true)
-        setPhase('grid')
-      } else {
-        setPhase('paste')
       }
+      setPhase('grid')
     } catch (err) {
       setLoadError(err.message || 'Could not load the team sheet.')
       setPhase('error')
@@ -106,23 +102,21 @@ export default function TeamSheetEditor({ competitionId, team, onClose, onSaved 
     }
   }
 
-  function handleParse() {
+  // The paste box stays at the top of the screen (netball canonical layout):
+  // reading into an empty grid populates it and guesses the interpretation;
+  // reading with rows already present APPENDS, following the sheet's current
+  // interpretation — a two-line late addition carries no signal of its own.
+  function readSheet() {
     const { rows: parsed, numbersAreCaps: caps } = parseTeamSheet(pasteText)
     if (parsed.length === 0) return
-    setNumbersAreCaps(caps)
-    setRows(parsed.map(r => matchRow({ ...r, key: newRowKey(), capEdited: false }, people)))
-    setPhase('grid')
-  }
-
-  function handleAppend() {
-    const { rows: parsed } = parseTeamSheet(appendText)
-    if (parsed.length === 0) return
-    // Appended rows follow the sheet's CURRENT interpretation rather than
-    // re-guessing over the block — a two-line addition carries no signal.
-    const interpreted = applyNumbersMode(parsed, numbersAreCaps)
-    setRows(prev => [...prev, ...interpreted.map(r => matchRow({ ...r, key: newRowKey(), capEdited: false }, people))])
-    setShowAppend(false)
-    setAppendText('')
+    if (rows.length === 0) {
+      setNumbersAreCaps(caps)
+      setRows(parsed.map(r => matchRow({ ...r, key: newRowKey(), capEdited: false }, people)))
+    } else {
+      const interpreted = applyNumbersMode(parsed, numbersAreCaps)
+      setRows(prev => [...prev, ...interpreted.map(r => matchRow({ ...r, key: newRowKey(), capEdited: false }, people))])
+    }
+    setPasteText('')
   }
 
   function flipNumbersMode(caps) {
@@ -193,7 +187,7 @@ export default function TeamSheetEditor({ competitionId, team, onClose, onSaved 
         }
         squad.push({
           playerId,
-          name: fullName,
+          playerName: fullName,   // squad-entry display name (closing round item 2)
           capNumber: r.capNumber ?? null,
           isCaptain: r.isCaptain === true,
           photoUrl: photoById.get(playerId) ?? null,
@@ -253,26 +247,30 @@ export default function TeamSheetEditor({ competitionId, team, onClose, onSaved 
             </div>
           )}
 
-          {phase === 'paste' && (
-            <div className="space-y-3">
-              <p className="text-sm text-slate-600">
-                Paste the whole team sheet — one player per line. Numbers, tabs from a
-                spreadsheet, and names on their own all work.
-              </p>
-              <textarea rows={8} value={pasteText} onChange={e => setPasteText(e.target.value)}
-                placeholder={PLACEHOLDER}
-                className="w-full bg-white border border-slate-200 rounded-lg px-3 py-2.5 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:border-emerald-500 transition-colors resize-y" />
-              <button onClick={handleParse} disabled={!pasteText.trim()}
-                className="w-full bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white font-bold text-sm rounded-lg py-3 transition-colors">
-                Review team sheet
-              </button>
-            </div>
-          )}
-
           {phase === 'grid' && (
             <>
+              {/* Paste box — always at the top of the screen (netball
+                  canonical layout). Reading into an empty grid populates it;
+                  reading again appends a late addition. */}
+              <div className="space-y-2">
+                <textarea rows={4} value={pasteText} onChange={e => setPasteText(e.target.value)}
+                  placeholder={PLACEHOLDER}
+                  className="w-full bg-white border border-slate-200 rounded-lg px-3 py-2.5 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:border-emerald-500 transition-colors resize-y" />
+                <button onClick={readSheet} disabled={!pasteText.trim()}
+                  className="bg-slate-100 hover:bg-slate-200 disabled:opacity-50 text-slate-600 font-bold text-sm rounded-lg px-4 py-2.5 transition-colors">
+                  Read the sheet
+                </button>
+                {rows.length === 0 && (
+                  <p className="text-sm text-slate-500">
+                    Paste the whole team sheet — one player per line. Numbers, tabs from a
+                    spreadsheet, and names on their own all work.
+                  </p>
+                )}
+              </div>
+
               {/* Interpretation toggle — prominent: this is the code where the
                   guess is most likely to be wrong (§5). */}
+              {rows.length > 0 && (
               <div className="space-y-1.5">
                 <div className="grid grid-cols-2 gap-1.5 bg-slate-100 rounded-xl p-1.5">
                   {[[true, 'These numbers are cap numbers'], [false, 'These numbers are just a list']].map(([val, label]) => (
@@ -290,6 +288,7 @@ export default function TeamSheetEditor({ competitionId, team, onClose, onSaved 
                   <p className="text-[11px] text-slate-400">Read as cap numbers 1 to {readCapsMax}</p>
                 )}
               </div>
+              )}
 
               {/* Squad grid */}
               <div>
@@ -325,12 +324,12 @@ export default function TeamSheetEditor({ competitionId, team, onClose, onSaved 
                           {/* Captain — labelled pill, not a bare glyph (§7). */}
                           <button type="button" aria-pressed={row.isCaptain}
                             onClick={() => patchRow(row.key, { isCaptain: !row.isCaptain })}
-                            className={`min-h-[40px] inline-flex items-center gap-1 rounded-lg border px-2.5 text-[11px] font-bold transition-colors ${
+                            className={`min-h-[40px] inline-flex items-center gap-1 rounded-lg border px-2.5 text-[10px] font-bold uppercase tracking-widest transition-colors ${
                               row.isCaptain
                                 ? 'bg-amber-50 border-amber-300 text-amber-700'
                                 : 'bg-white border-slate-200 text-slate-400 hover:text-slate-600'
                             }`}>
-                            <span className="text-sm font-bold leading-none align-middle">©</span> Captain
+                            <span className="text-sm font-bold leading-none align-middle normal-case">©</span> Captain
                           </button>
                           <StatusChip row={row} />
                           {warnDupCap && (
@@ -368,58 +367,31 @@ export default function TeamSheetEditor({ competitionId, team, onClose, onSaved 
                   <Plus className="w-4 h-4" /> Add row
                 </button>
 
-                {/* Late additions can still be pasted (§9) — appended rows run
-                    through the same parsing and matching as the first paste. */}
-                {!showAppend ? (
-                  <button type="button" onClick={() => setShowAppend(true)}
-                    className="mt-2 text-sm font-medium text-emerald-700 hover:text-emerald-600 transition-colors min-h-[40px]">
-                    Paste more players
-                  </button>
-                ) : (
-                  <div className="mt-2 space-y-2">
-                    <textarea rows={3} value={appendText} onChange={e => setAppendText(e.target.value)}
-                      placeholder={PLACEHOLDER}
-                      className="w-full bg-white border border-slate-200 rounded-lg px-3 py-2.5 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:border-emerald-500 transition-colors resize-y" />
-                    <div className="flex items-center gap-3">
-                      <button type="button" onClick={handleAppend} disabled={!appendText.trim()}
-                        className="bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white font-bold text-xs rounded-lg px-4 py-2.5 transition-colors">
-                        Add to sheet
-                      </button>
-                      <button type="button" onClick={() => { setShowAppend(false); setAppendText('') }}
-                        className="text-sm font-medium text-slate-500 hover:text-slate-700 transition-colors">
-                        Cancel
-                      </button>
-                    </div>
-                  </div>
-                )}
               </div>
 
-              {/* Staff — explicitly optional (§8): names only, no accounts. */}
-              <div className="space-y-2">
-                <p className="text-[10px] font-bold uppercase tracking-widest text-slate-500">
+              {/* Staff — explicitly optional (§8): names only, no accounts.
+                  One labelled field per role (netball canonical layout). */}
+              <div>
+                <p className="text-[10px] font-bold uppercase tracking-widest text-slate-500 mb-2">
                   Team staff <span className="font-normal normal-case tracking-normal text-slate-400">optional</span>
                 </p>
-                {staff.map((s, i) => (
-                  <div key={i} className="flex items-center gap-2">
-                    <select value={s.role} aria-label="Staff role"
-                      onChange={e => setStaff(prev => prev.map((x, j) => j === i ? { ...x, role: e.target.value } : x))}
-                      className="h-10 bg-white border border-slate-200 rounded-lg px-2 text-sm text-slate-900 focus:outline-none focus:border-emerald-500 shrink-0">
-                      {STAFF_ROLES.map(r => <option key={r}>{r}</option>)}
-                    </select>
-                    <input value={s.name} placeholder="Name" aria-label="Staff name"
-                      onChange={e => setStaff(prev => prev.map((x, j) => j === i ? { ...x, name: e.target.value } : x))}
-                      className="flex-1 min-w-0 h-10 bg-white border border-slate-200 rounded-lg px-2.5 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:border-emerald-500 transition-colors" />
-                    <button type="button" aria-label="Remove staff member"
-                      onClick={() => setStaff(prev => prev.filter((_, j) => j !== i))}
-                      className="min-h-[40px] px-2 text-slate-400 hover:text-red-500 transition-colors">
-                      <X className="w-4 h-4" />
-                    </button>
-                  </div>
-                ))}
-                <button type="button" onClick={() => setStaff(prev => [...prev, { role: 'Coach', name: '' }])}
-                  className="text-sm font-medium text-emerald-700 hover:text-emerald-600 transition-colors inline-flex items-center gap-1.5 min-h-[40px]">
-                  <Plus className="w-4 h-4" /> Add staff member
-                </button>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  {STAFF_ROLES.map(role => (
+                    <div key={role}>
+                      <label className="text-[11px] text-slate-500 block mb-1">{role}</label>
+                      <input value={staff.find(s => s.role === role)?.name ?? ''}
+                        placeholder="Name" aria-label={role}
+                        onChange={e => {
+                          const name = e.target.value
+                          setStaff(prev => {
+                            const rest = prev.filter(s => s.role !== role)
+                            return name ? [...rest, { role, name }] : rest
+                          })
+                        }}
+                        className="w-full h-10 bg-white border border-slate-200 rounded-lg px-2.5 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:border-emerald-500 transition-colors" />
+                    </div>
+                  ))}
+                </div>
               </div>
 
               {/* No consent checkbox (addendum A1): profiles are created

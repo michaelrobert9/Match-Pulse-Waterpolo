@@ -1719,6 +1719,9 @@ export async function createTeamSheetPerson({ firstName, lastName, fullName }, c
   if (!name) throw new Error('A player name is required.')
   const slug = await generatePersonSlug(name)
   return addDoc(collection(db, 'people'), {
+    // Display name stays in this repo's existing field, `fullName` (Q3). The
+    // B6 rename to `name` is ON HOLD (resolution round Part 1b) — do NOT
+    // dual-write a second name field. firstName/lastName are canonical.
     fullName: name,
     firstName: (firstName ?? '').trim() || null,
     lastName:  (lastName ?? '').trim() || null,
@@ -1736,12 +1739,14 @@ export async function createTeamSheetPerson({ firstName, lastName, fullName }, c
   })
 }
 
-// A player claims their own unclaimed team-sheet profile (or a parent claims
-// for an under-18 — same flow, same rules). Verification is the account's
-// verified email and nothing more; firestore.rules enforce email_verified,
-// the unclaimed state, the exact-uid manager write and the block list. A
-// pre-claim snapshot is stored so a master-admin revocation can restore it.
-export async function claimTeamSheetProfile(personId) {
+// A player claims their own unclaimed team-sheet profile (relationship
+// 'player' → ownerUid), or a parent claims for an under-18 (relationship
+// 'parent' → guardianUids). managerUids is NEVER written by a claim — the
+// addendum's first flat-managerUids model was wrong; ownership and
+// guardianship transfer normally through the existing flows. Verification is
+// the account's verified email and nothing more. A pre-claim snapshot is
+// stored so a master-admin revocation can restore it.
+export async function claimTeamSheetProfile(personId, relationship = 'player') {
   const user = auth?.currentUser
   if (!user) throw new Error('You must be signed in to claim a profile.')
   if (!user.emailVerified) {
@@ -1762,12 +1767,16 @@ export async function claimTeamSheetProfile(personId) {
   }
   // Snapshot the fields a claimer could later edit, so revocation restores them.
   const preClaimSnapshot = {
-    fullName: d.fullName ?? null, firstName: d.firstName ?? null, lastName: d.lastName ?? null,
+    fullName: d.fullName ?? null,
+    firstName: d.firstName ?? null, lastName: d.lastName ?? null,
     photoUrl: d.photoUrl ?? null, bio: d.bio ?? null, dateOfBirth: d.dateOfBirth ?? null,
     position: d.position ?? null, nationality: d.nationality ?? null,
   }
+  const controlPatch = relationship === 'parent'
+    ? { guardianUids: [user.uid] }
+    : { ownerUid: user.uid }
   return updateDoc(ref, {
-    managerUids: [user.uid],
+    ...controlPatch,
     claimStatus: 'claimed',
     preClaimSnapshot,
     claimedBy: user.uid, claimedAt: serverTimestamp(),
@@ -1778,22 +1787,37 @@ export async function claimTeamSheetProfile(personId) {
 // Master-admin revocation of a claim (addendum A4): returns the profile to
 // unclaimed, blocks the revoked uid from re-claiming, restores the pre-claim
 // snapshot so nothing the wrong claimer added survives, and audits the event.
+// ownerUid and guardianUids empty out; managerUids is untouched — claims
+// never write it, so revocation never strips it.
 export async function revokeProfileClaim(personId) {
   const ref = doc(db, 'people', personId)
   const snap = await getDoc(ref)
   if (!snap.exists()) throw new Error('Profile not found.')
   const d = snap.data()
-  const revokedUid = d.claimedBy ?? (d.managerUids ?? [])[0] ?? null
+  const revokedUid = d.claimedBy ?? d.ownerUid ?? (d.guardianUids ?? [])[0] ?? null
   const restore = d.preClaimSnapshot ?? {}
   return updateDoc(ref, {
     ...restore,
-    managerUids: [], ownerUid: null, guardianUids: [],
+    ownerUid: null, guardianUids: [],
     claimStatus: 'unclaimed',
     ...(revokedUid ? { claimBlockedUids: arrayUnion(revokedUid) } : {}),
     claimRevokedAt: serverTimestamp(), claimRevokedBy: uid(),
     preClaimSnapshot: deleteField(), claimedBy: deleteField(), claimedAt: deleteField(),
     updatedBy: uid(), updatedAt: serverTimestamp(),
   })
+}
+
+// Does this account already control a claimed profile? Drives the one-time
+// session claim search (addendum A4 step 2): it fires on the first
+// authenticated session where the account holds NO claimed profile — on the
+// session, not the sign-up form, so Google/other provider sign-ins that never
+// pass through sign-up still get it.
+export async function userHoldsClaimedProfile(userId) {
+  const [owned, guarded] = await Promise.all([
+    getDocs(query(collection(db, 'people'), where('ownerUid', '==', userId), limit(1))),
+    getDocs(query(collection(db, 'people'), where('guardianUids', 'array-contains', userId), limit(1))),
+  ])
+  return !owned.empty || !guarded.empty
 }
 
 // Unclaimed team-sheet profiles matching a name — the sign-up claim search
@@ -1816,10 +1840,10 @@ export async function searchUnclaimedProfiles(name) {
 }
 
 // Save the pasted-and-confirmed squad + optional staff onto the membership
-// doc. squad: [{ playerId, name, capNumber, isCaptain, photoUrl }] (name and
-// photoUrl are display snapshots so line-ups render without N person reads —
-// addendum B5). staff: [{ role, name }] — names only, no accounts, no
-// linking (§8).
+// doc. squad: [{ playerId, playerName, capNumber, isCaptain, photoUrl }]
+// (playerName and photoUrl are display snapshots so line-ups render without N
+// person reads — closing round item 2 fixes the field name to playerName).
+// staff: [{ role, name }] — names only, no accounts, no linking (§8).
 export async function saveCompetitionTeamSheet(competitionId, teamId, { squad = [], staff = [] } = {}) {
   await setDoc(doc(db, 'competitions', competitionId, 'teams', teamId), {
     squad, staff,

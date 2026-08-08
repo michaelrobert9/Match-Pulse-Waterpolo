@@ -45,7 +45,7 @@ export function resolveSideLineup({ squad = [], exceptions = [], side }) {
     entries.push({
       id: `sq-${s.playerId}`,
       personId: s.playerId,
-      personName: s.name ?? '',
+      personName: s.playerName ?? '',
       photoUrl: s.photoUrl ?? null,
       shirtNumber: override?.capNumber ?? s.capNumber ?? null,
       isCaptain: s.isCaptain === true,

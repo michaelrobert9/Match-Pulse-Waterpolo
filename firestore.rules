@@ -339,19 +339,27 @@ service cloud.firestore {
                  || (request.resource.data.get('ownerUid', null) == null
                    && request.resource.data.get('guardianUids', []) == [request.auth.uid])
                ))
-        // Email-verified CLAIM of a team-sheet profile (addendum A5): the doc
-        // must be unclaimed, the caller's email verified, the caller not on
-        // the block list, and the write must set managerUids to EXACTLY the
-        // caller — a claim naming any other uid is rejected. Only the claim
-        // fields may change; a claimed profile is not claimable again.
+        // Email-verified CLAIM of a team-sheet profile (resolution round
+        // Part 1.1 — three-field ownership): the doc must be unclaimed, the
+        // caller's email verified, the caller not on the block list. A player
+        // claim sets ownerUid to EXACTLY the caller; a parent claim sets
+        // guardianUids to EXACTLY [caller]. managerUids is NEVER written by a
+        // claim (it must be unchanged). A claim naming any other uid is
+        // rejected; a claimed profile is not claimable again.
         || (isSignedIn()
             && request.auth.token.get('email_verified', false) == true
             && resource.data.get('claimStatus', '') == 'unclaimed'
             && !(request.auth.uid in resource.data.get('claimBlockedUids', []))
             && request.resource.data.get('claimStatus', '') == 'claimed'
-            && request.resource.data.get('managerUids', []) == [request.auth.uid]
+            && request.resource.data.get('managerUids', []) == resource.data.get('managerUids', [])
+            && (
+                 (request.resource.data.get('ownerUid', null) == request.auth.uid
+                   && request.resource.data.get('guardianUids', []).size() == 0)
+                 || (request.resource.data.get('ownerUid', null) == null
+                   && request.resource.data.get('guardianUids', []) == [request.auth.uid])
+               )
             && request.resource.data.diff(resource.data).affectedKeys()
-                 .hasOnly(['managerUids', 'claimStatus', 'preClaimSnapshot',
+                 .hasOnly(['ownerUid', 'guardianUids', 'claimStatus', 'preClaimSnapshot',
                            'claimedBy', 'claimedAt', 'updatedAt', 'updatedBy']));
 
       allow delete: if isPlatformAdmin() || controlsPerson(resource.data);

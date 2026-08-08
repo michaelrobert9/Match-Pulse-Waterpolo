@@ -429,7 +429,9 @@ export default function PlayerProfile() {
               if (!window.confirm('Revoke this claim? The profile returns to unclaimed and the pre-claim details are restored.')) return
               try {
                 await revokeProfileClaim(person.id)
-                setPerson(p => ({ ...p, claimStatus: 'unclaimed', managerUids: [], ...(p.preClaimSnapshot ?? {}) }))
+                // Revocation empties ownerUid/guardianUids and restores the
+                // pre-claim snapshot; managerUids is left untouched.
+                setPerson(p => ({ ...p, claimStatus: 'unclaimed', ownerUid: null, guardianUids: [], ...(p.preClaimSnapshot ?? {}) }))
               } catch (e) { window.alert(e.message || 'Revocation failed.') }
             }}
             className="text-[10px] font-bold uppercase tracking-widest text-slate-500 hover:text-red-600 border border-slate-200 rounded-lg px-3 py-2 transition-colors shrink-0">
@@ -503,11 +505,13 @@ function ClaimCard({ person, onClaimed }) {
     setBusy(true); setErr('')
     try {
       if (person.claimStatus === 'unclaimed') {
-        // Team-sheet profile (ownerless-profiles addendum A4): the claim is
-        // email-verified and sets the claimer as the sole manager. A parent
-        // claiming for an under-18 uses the same flow, same rules.
-        await claimTeamSheetProfile(person.id)
-        onClaimed({ claimStatus: 'claimed', managerUids: ['me'] })
+        // Team-sheet profile (ownerless-profiles addendum A4): email-verified
+        // claim. A player becomes the owner; a parent becomes a guardian.
+        // managerUids is never written by a claim.
+        await claimTeamSheetProfile(person.id, relationship)
+        onClaimed(relationship === 'parent'
+          ? { claimStatus: 'claimed', guardianUids: ['me'] }
+          : { claimStatus: 'claimed', ownerUid: 'me' })
       } else {
         await claimPlayerProfile(person.id, relationship)
         onClaimed(relationship === 'parent'

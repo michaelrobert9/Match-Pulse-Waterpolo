@@ -8,8 +8,6 @@ import { Camera, ChevronRight } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
 import { auth, db, storage, configured } from '../firebase'
 import { saveSportProfile, WATERPOLO_POSITIONS } from '../lib/sportProfile'
-import { searchUnclaimedProfiles, claimTeamSheetProfile } from '../lib/adminQueries'
-import { sendEmailVerification } from 'firebase/auth'
 
 const PROVINCES = [
   'Eastern Cape', 'Free State', 'Gauteng', 'KwaZulu-Natal',
@@ -72,12 +70,6 @@ export default function Signup() {
   const [error,      setError]      = useState(null)
   const [loading,    setLoading]    = useState(false)
   const [uploading,  setUploading]  = useState(false)
-  // Unclaimed team-sheet profiles matching the sign-up name (ownerless
-  // profiles addendum A4 step 3 — the main entry point to claiming; skipping
-  // it is how duplicates come back). null = not searched yet.
-  const [claimMatches, setClaimMatches] = useState(null)
-  const [claimNotice,  setClaimNotice]  = useState('')
-  const [claimBusy,    setClaimBusy]    = useState(false)
 
   // ── Step 1 ────────────────────────────────────────────────────────────────
 
@@ -91,12 +83,10 @@ export default function Signup() {
       const displayName = [firstName.trim(), lastName.trim()].filter(Boolean).join(' ')
       const cred = await signUp(email, password, displayName)
       setCreatedUid(cred.user.uid)
-      // Search unclaimed team-sheet profiles by name BEFORE offering a fresh
-      // profile (addendum A4 step 3): a player signing up alongside their own
-      // unclaimed profile is exactly the duplicate the model avoids.
-      const matches = await searchUnclaimedProfiles(displayName).catch(() => [])
-      setClaimMatches(matches)
-      setStep(matches.length > 0 ? 'claim' : 2)
+      // The unclaimed-profile claim search deliberately does NOT live here
+      // (addendum A4): provider sign-ins never pass through this form, so it
+      // fires on the first authenticated session instead (ClaimSearchPrompt).
+      setStep(2)
     } catch (err) {
       // §2b: an existing account is not an error — send them to sign in with the
       // email pre-filled, rather than creating a second account for one person.
@@ -210,80 +200,27 @@ export default function Signup() {
           </div>
         </div>
 
-        {/* Step indicator — the claim step sits between account and profile */}
+        {/* Step indicator */}
         <div className="flex items-center mb-8">
-          {(() => {
-            const stepNum = step === 'claim' ? 1.5 : step
-            return [
-              { n: 1, label: 'Account' },
-              { n: 2, label: 'Profile' },
-            ].map(({ n, label }, i) => (
-              <div key={n} className="flex items-center flex-1">
-                {i > 0 && <div className={`flex-1 h-px mx-2 ${stepNum > i ? 'bg-emerald-300' : 'bg-slate-200'}`} />}
-                <div className="flex items-center gap-1.5 shrink-0">
-                  <div className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold transition-colors ${
-                    stepNum === n ? 'bg-emerald-600 text-white'
-                    : stepNum > n  ? 'bg-emerald-100 text-emerald-700'
-                    : 'bg-slate-100 text-slate-400'
-                  }`}>{n}</div>
-                  <span className={`text-[10px] font-bold uppercase tracking-widest transition-colors ${
-                    stepNum === n ? 'text-slate-900' : 'text-slate-400'
-                  }`}>{label}</span>
-                </div>
+          {[
+            { n: 1, label: 'Account' },
+            { n: 2, label: 'Profile' },
+          ].map(({ n, label }, i) => (
+            <div key={n} className="flex items-center flex-1">
+              {i > 0 && <div className={`flex-1 h-px mx-2 ${step > i ? 'bg-emerald-300' : 'bg-slate-200'}`} />}
+              <div className="flex items-center gap-1.5 shrink-0">
+                <div className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold transition-colors ${
+                  step === n ? 'bg-emerald-600 text-white'
+                  : step > n  ? 'bg-emerald-100 text-emerald-700'
+                  : 'bg-slate-100 text-slate-400'
+                }`}>{n}</div>
+                <span className={`text-[10px] font-bold uppercase tracking-widest transition-colors ${
+                  step === n ? 'text-slate-900' : 'text-slate-400'
+                }`}>{label}</span>
               </div>
-            ))
-          })()}
+            </div>
+          ))}
         </div>
-
-        {/* ── CLAIM STEP — unclaimed team-sheet profiles matching this name ── */}
-        {step === 'claim' && (
-          <div className="space-y-4">
-            <div>
-              <div className="text-slate-900 font-bold text-sm mb-1">Are you already on a team sheet?</div>
-              <p className="text-[12px] text-slate-500 leading-relaxed">
-                We found {claimMatches.length === 1 ? 'a player profile' : 'player profiles'} matching your
-                name, created from a team sheet. Claim yours to take it over — for a player under 18, a
-                parent claims it from their own account.
-              </p>
-            </div>
-            <div className="space-y-2">
-              {claimMatches.map(p => (
-                <div key={p.id} className="flex items-center gap-3 bg-white border border-slate-200 rounded-xl px-4 py-3">
-                  <div className="flex-1 min-w-0">
-                    <div className="text-sm font-semibold text-slate-900 truncate">{p.fullName}</div>
-                    <div className="text-[10px] text-slate-400">Created from a team sheet</div>
-                  </div>
-                  <button type="button" disabled={claimBusy}
-                    onClick={async () => {
-                      setClaimBusy(true); setClaimNotice('')
-                      try {
-                        await claimTeamSheetProfile(p.id)
-                        setClaimNotice(`Claimed — ${p.fullName} is now yours to manage.`)
-                        setTimeout(() => setStep(2), 900)
-                      } catch (err) {
-                        if (err.code === 'claim/email-unverified' && auth?.currentUser) {
-                          await sendEmailVerification(auth.currentUser).catch(() => {})
-                          setClaimNotice('We\'ve emailed you a verification link. Once verified, claim your profile from its player page — you can carry on setting up your account now.')
-                        } else {
-                          setClaimNotice(err.message || 'Could not claim this profile.')
-                        }
-                      } finally { setClaimBusy(false) }
-                    }}
-                    className="bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white font-bold text-xs uppercase tracking-wider rounded-lg px-3 py-2 transition-colors shrink-0">
-                    This is me
-                  </button>
-                </div>
-              ))}
-            </div>
-            {claimNotice && (
-              <div className="bg-emerald-50 border border-emerald-200 rounded-lg px-4 py-3 text-sm text-emerald-700">{claimNotice}</div>
-            )}
-            <button type="button" onClick={() => setStep(2)}
-              className="w-full text-slate-400 hover:text-slate-700 text-sm font-medium py-2 transition-colors">
-              None of these are me — continue
-            </button>
-          </div>
-        )}
 
         {/* ── STEP 1 ── */}
         {step === 1 && (

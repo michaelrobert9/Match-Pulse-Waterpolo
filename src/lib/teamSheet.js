@@ -14,13 +14,16 @@
 //   • gapped or out of order                          → cap numbers
 //   • default                                         → cap numbers
 
-// Surname particles kept lowercase when normalising ALL CAPS names
-// (van der Merwe, du Plessis, …). Applied only after the first word.
-const PARTICLES = new Set(['van', 'der', 'de', 'du', 'den', 'ter', 'ten', 'von', 'le', 'la'])
+// Surname particles — the shared implementation, copied VERBATIM from rugby's
+// src/lib/teamSheet.js (closing round item 5). Must stay byte-identical with
+// splitName below so all four sports split names the same way.
+const SURNAME_PARTICLES = new Set([
+  'van', 'von', 'der', 'den', 'de', 'du', 'da', 'ter', 'ten', 'le', 'la', 'el',
+])
 
 function titleCaseWord(word, isFirst) {
   const lower = word.toLowerCase()
-  if (!isFirst && PARTICLES.has(lower)) return lower
+  if (!isFirst && SURNAME_PARTICLES.has(lower)) return lower
   // O'BRIEN → O'Brien
   if (/^o'/.test(lower) && lower.length > 2) {
     return "O'" + lower[2].toUpperCase() + lower.slice(3)
@@ -48,21 +51,21 @@ export function normaliseName(name) {
   return trimmed.split(' ').map((w, i) => titleCaseWord(w, i === 0)).join(' ')
 }
 
-// Particle-aware surname split (ownerless-profiles addendum B5, adopted from
-// rugby, replacing the original last-space rule): the surname is the last
-// token PLUS any run of particles immediately before it, so
-// "Pieter van der Merwe" splits as Pieter / van der Merwe. A name that is
-// nothing but particles + core ("van der Merwe" on its own) is all surname.
-// NOTE: rugby is circulating its exact rule set — reconcile this against it
-// when it lands so all four sports split identically.
+// Split a display name into first name(s) + surname. Splits on the last space,
+// then pulls surname particles back in ("Jan van der Merwe" → "Jan" +
+// "van der Merwe"). Single token → surname only.
+// Copied VERBATIM from rugby's src/lib/teamSheet.js (closing round item 5) —
+// returns { firstName, lastName }; keep byte-identical across all four sports.
 export function splitName(fullName) {
-  const clean = (fullName ?? '').trim().replace(/\s+/g, ' ')
-  if (!clean) return { firstName: '', surname: '' }
-  const tokens = clean.split(' ')
-  if (tokens.length === 1) return { firstName: clean, surname: '' }
-  let start = tokens.length - 1
-  while (start > 0 && PARTICLES.has(tokens[start - 1].toLowerCase())) start--
-  return { firstName: tokens.slice(0, start).join(' '), surname: tokens.slice(start).join(' ') }
+  const tokens = fullName.trim().replace(/\s+/g, ' ').split(' ').filter(Boolean)
+  if (tokens.length === 0) return { firstName: '', lastName: '' }
+  if (tokens.length === 1) return { firstName: '', lastName: tokens[0] }
+  let split = tokens.length - 1
+  while (split > 1 && SURNAME_PARTICLES.has(tokens[split - 1].toLowerCase())) split--
+  return {
+    firstName: tokens.slice(0, split).join(' '),
+    lastName:  tokens.slice(split).join(' '),
+  }
 }
 
 // Parse ONE line into { parsedNumber, name, isCaptain, unreadable, raw }.
@@ -164,8 +167,10 @@ export function parseTeamSheet(text) {
 }
 
 function decorateRow(row, numbersAreCaps) {
-  const { firstName, surname } = splitName(row.name)
-  return { ...row, capNumber: numbersAreCaps ? row.parsedNumber : null, firstName, surname }
+  // splitName (rugby's) returns { firstName, lastName }; the grid's second name
+  // column is `surname`, so map lastName → surname here.
+  const { firstName, lastName } = splitName(row.name)
+  return { ...row, capNumber: numbersAreCaps ? row.parsedNumber : null, firstName, surname: lastName }
 }
 
 // Re-apply a caps/list interpretation to existing rows without touching the

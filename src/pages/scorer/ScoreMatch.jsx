@@ -1698,7 +1698,7 @@ export default function ScoreMatch() {
                 <span className="w-4 text-center text-sm font-bold text-amber-600 shrink-0 leading-none">
                   {(entry.isCaptain === true) ? '©' : ''}
                 </span>
-                <span className="text-sm flex-1 truncate">{entry.personName ?? entry.name}</span>
+                <span className="text-sm flex-1 truncate">{entry.personName ?? entry.playerName}</span>
                 <button onClick={() => toggleAbsence(entry.personId ?? entry.playerId, !isAbsent)} disabled={lineupSaving}
                   className={`min-h-[40px] px-2 text-[10px] font-bold uppercase tracking-widest shrink-0 transition-colors ${
                     isAbsent ? 'text-emerald-600 hover:text-emerald-500' : `${t.muted} hover:text-red-500`
