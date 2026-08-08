@@ -18,7 +18,10 @@ function Field({ label, children }) {
 }
 
 export default function Contact() {
-  const [form, setForm] = useState({ name: '', email: '', phone: '', message: '' })
+  // Deep links may prefill the message (e.g. the "this isn't me" profile
+  // report link) — works signed-out, no account needed.
+  const aboutParam = new URLSearchParams(window.location.search).get('about') ?? ''
+  const [form, setForm] = useState({ name: '', email: '', phone: '', message: aboutParam ? `${aboutParam}\n\n` : '' })
   const [captchaToken, setCaptchaToken] = useState('')
   const [sending, setSending] = useState(false)
   const [error, setError] = useState('')

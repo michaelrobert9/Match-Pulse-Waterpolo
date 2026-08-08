@@ -11,10 +11,13 @@ import {
   setPlayerOfMatch, setPlayersOfMatch, syncFixtureMembership, swapFixtureSides, resetMatch,
   setFixtureNotPlayed, setFixtureWalkover, abandonMatch, letAbandonedStand, revertFixtureOutcome,
   submitFixtureResult,
+  fetchCompetitionTeamSheet, setFixtureAbsence, setFixtureCapOverride,
 } from '../../lib/adminQueries'
+import { resolveSideLineup, isInheritedLineup } from '../../lib/lineupResolve'
+import TeamSheetEditor from '../../components/TeamSheetEditor'
 import { fetchCompetition } from '../../lib/queries'
 import { walkoverScore, outcomeBanner } from '../../lib/fixtureResult'
-import { POTMColor } from '../../lib/POTM'
+import { pomColor } from '../../lib/pom'
 import FixtureBanner from '../../components/FixtureBanner'
 import {
   getElapsedMs, formatClock, nextPeriodAction,
@@ -244,6 +247,14 @@ export default function ScoreMatch() {
   const [potmStartSide, setPotmStartSide] = useState('home')
   const [potmSide,      setPotmSide]      = useState('home')
   const [potmDraft,     setPotmDraft]     = useState({ home: null, away: null })
+  // Bulk team sheets (§9): competition type + per-side squads for derived
+  // line-ups on tournament/festival fixtures that have not frozen yet.
+  const [compType,     setCompType]     = useState(null)
+  const [teamSheets,   setTeamSheets]   = useState(null) // { home: {squad,staff}, away: {...} }
+  const [sheetRefresh, setSheetRefresh] = useState(0)
+  const [pasteFor,     setPasteFor]     = useState(null) // side being late-pasted
+  const [capOvKey,     setCapOvKey]     = useState(null) // playerId whose cap override is being edited
+  const [capOvValue,   setCapOvValue]   = useState('')
   // Shootout: optional, only relevant when regulation ends level.
   const [shootoutEnabled, setShootoutEnabled] = useState(false)
   const [shootoutHome,    setShootoutHome]    = useState('')
@@ -431,15 +442,31 @@ export default function ScoreMatch() {
   // Load POTM rules (per-team mode + highlight colour) once per match so the
   // POTM sheet and the write path never need to re-fetch the competition.
   // Competition-less matches (friendlies) keep the defaults: single mode, no
-  // colour override.
+  // colour override. The competition TYPE is kept too — it gates the derived
+  // team-sheet line-up panel (tournaments/festivals only, §1).
   useEffect(() => {
     if (!match?.competitionId) return
     fetchCompetition(match.competitionId).then(c => {
       if (!c) return
       setPotmPerTeam(c.rules?.potm?.perTeam === true)
       setPotmColor(c.rules?.potm?.color || '')
+      setCompType(c.type ?? null)
     }).catch(() => {})
   }, [match?.competitionId])
+
+  // Fetch both sides' pasted squads for an unfrozen tournament/festival
+  // fixture. Re-fetches after a late paste (sheetRefresh). Frozen or league
+  // fixtures skip this — their stored line-ups are authoritative.
+  useEffect(() => {
+    if (!match?.competitionId || match.lineupMode === 'frozen'
+      || !(compType === 'tournament' || compType === 'festival')) { setTeamSheets(null); return }
+    let cancelled = false
+    Promise.all([
+      match.homeTeamId ? fetchCompetitionTeamSheet(match.competitionId, match.homeTeamId).catch(() => ({ squad: [], staff: [] })) : { squad: [], staff: [] },
+      match.awayTeamId ? fetchCompetitionTeamSheet(match.competitionId, match.awayTeamId).catch(() => ({ squad: [], staff: [] })) : { squad: [], staff: [] },
+    ]).then(([home, away]) => { if (!cancelled) setTeamSheets({ home, away }) })
+    return () => { cancelled = true }
+  }, [match?.competitionId, match?.homeTeamId, match?.awayTeamId, match?.lineupMode, compType, sheetRefresh])
 
   if (loading) return (
     <div className={`min-h-screen ${t.root} flex items-center justify-center`}>
@@ -680,7 +707,7 @@ export default function ScoreMatch() {
 
   // Attach the competition's chosen POTM colour to every award at write time so
   // match pages never need to re-fetch the competition. Legacy records without
-  // color fall back to POTM_DEFAULT_COLOR via src/lib/POTM.js#POTMColor.
+  // color fall back to POM_DEFAULT_COLOR via src/lib/POTM.js#pomColor.
   function decoratePotm(player) {
     if (!player) return null
     return potmColor ? { ...player, color: potmColor } : player
@@ -1483,8 +1510,8 @@ export default function ScoreMatch() {
             {/* Header */}
             <div className={`px-5 py-4 border-b ${bright ? 'border-slate-200' : 'border-slate-700'} shrink-0`}>
               <div className="flex items-center gap-2 mb-0.5">
-                <Star className="w-4 h-4" style={{ color: POTMColor({ color: potmColor }) }} />
-                <span className="text-[10px] font-bold uppercase tracking-widest" style={{ color: POTMColor({ color: potmColor }) }}>
+                <Star className="w-4 h-4" style={{ color: pomColor({ color: potmColor }) }} />
+                <span className="text-[10px] font-bold uppercase tracking-widest" style={{ color: pomColor({ color: potmColor }) }}>
                   Player of the Match
                   {potmPerTeam && ` · ${potmSide === 'home' ? (match.homeTeamName ?? 'Home') : (match.awayTeamName ?? 'Away')}`}
                 </span>
@@ -1611,8 +1638,124 @@ export default function ScoreMatch() {
             </div>
           )}
 
-          {/* Entries split by starter / sub */}
+          {/* Derived line-up (§9): a tournament/festival fixture with a pasted
+              squad opens with everyone already selected — the DEFAULT state,
+              not a button. Tap a player to mark them absent for this fixture
+              only; the squad and every other fixture are untouched. */}
           {(() => {
+            const sheetSquad = teamSheets?.[lineupSide]?.squad ?? []
+            if (!isInheritedLineup(match, compType) || sheetSquad.length === 0) return null
+            const exceptions = match.exceptions ?? []
+            const absentIds = new Set(exceptions
+              .filter(e => e.side === lineupSide && e.type === 'absent')
+              .map(e => e.playerId))
+            const present = resolveSideLineup({ squad: sheetSquad, exceptions, side: lineupSide })
+            const absent = sheetSquad
+              .filter(s => absentIds.has(s.playerId))
+              .sort((a, b) => (a.capNumber ?? 99) - (b.capNumber ?? 99))
+
+            const toggleAbsence = async (playerId, nowAbsent) => {
+              setLineupSaving(true); setLineupError('')
+              try { await setFixtureAbsence(id, { playerId, side: lineupSide, absent: nowAbsent }) }
+              catch (e) { setLineupError(e.message || 'Update failed.') }
+              finally { setLineupSaving(false) }
+            }
+            const saveCapOverride = async (playerId) => {
+              const v = capOvValue.trim()
+              const capNumber = v === '' ? null : parseInt(v, 10)
+              setCapOvKey(null)
+              setLineupSaving(true); setLineupError('')
+              try { await setFixtureCapOverride(id, { playerId, side: lineupSide, capNumber: Number.isFinite(capNumber) ? capNumber : null }) }
+              catch (e) { setLineupError(e.message || 'Update failed.') }
+              finally { setLineupSaving(false) }
+            }
+
+            const row = (entry, isAbsent) => (
+              <li key={entry.personId ?? entry.playerId}
+                className={`flex items-center gap-2 px-3 py-2 rounded-xl border ${t.neutralBtn} ${isAbsent ? 'opacity-50' : ''}`}>
+                {/* Cap number — per-fixture override behind a small edit
+                    affordance; caps are usually stable across a festival. */}
+                {capOvKey === (entry.personId ?? entry.playerId) && !isAbsent ? (
+                  <span className="flex items-center gap-1 shrink-0">
+                    <input inputMode="numeric" pattern="[0-9]*" value={capOvValue} autoFocus
+                      onChange={e => setCapOvValue(e.target.value.replace(/\D/g, ''))}
+                      onKeyDown={e => { if (e.key === 'Enter') saveCapOverride(entry.personId ?? entry.playerId) }}
+                      placeholder=""
+                      className={`w-12 rounded-lg border px-1.5 py-1 text-xs font-mono tabular-nums ${t.neutralBtn}`} />
+                    <button onClick={() => saveCapOverride(entry.personId ?? entry.playerId)} disabled={lineupSaving}
+                      title="Save cap number" className="text-emerald-500 shrink-0">
+                      <Check className="w-4 h-4" />
+                    </button>
+                  </span>
+                ) : (
+                  <button disabled={isAbsent}
+                    onClick={() => { setCapOvKey(entry.personId ?? entry.playerId); setCapOvValue(entry.shirtNumber != null ? String(entry.shirtNumber) : (entry.capNumber != null ? String(entry.capNumber) : '')) }}
+                    title="Edit cap number for this fixture"
+                    className={`font-mono tabular-nums text-xs ${t.muted} w-6 text-right shrink-0 hover:text-emerald-500 transition-colors`}>
+                    {(entry.shirtNumber ?? entry.capNumber) ?? ''}
+                  </button>
+                )}
+                <span className="w-4 text-center text-sm font-bold text-amber-600 shrink-0 leading-none">
+                  {(entry.isCaptain === true) ? '©' : ''}
+                </span>
+                <span className="text-sm flex-1 truncate">{entry.personName ?? entry.name}</span>
+                <button onClick={() => toggleAbsence(entry.personId ?? entry.playerId, !isAbsent)} disabled={lineupSaving}
+                  className={`min-h-[40px] px-2 text-[10px] font-bold uppercase tracking-widest shrink-0 transition-colors ${
+                    isAbsent ? 'text-emerald-600 hover:text-emerald-500' : `${t.muted} hover:text-red-500`
+                  }`}>
+                  {isAbsent ? 'Restore' : 'Mark absent'}
+                </button>
+              </li>
+            )
+
+            return (
+              <div className="mb-4">
+                <p className={`text-[11px] ${t.muted} mb-2`}>
+                  Line-up inherited from the team sheet — {present.length} playing. Tap “Mark absent”
+                  for anyone not playing this fixture.
+                </p>
+                <ul className="space-y-1.5 max-h-60 overflow-y-auto">
+                  {present.map(e => row(e, false))}
+                </ul>
+                {absent.length > 0 && (
+                  <>
+                    <div className={`text-[10px] font-bold uppercase tracking-widest ${t.muted} mt-3 mb-1.5`}>
+                      Not playing · {absent.length}
+                    </div>
+                    <ul className="space-y-1.5">
+                      {absent.map(e => row(e, true))}
+                    </ul>
+                  </>
+                )}
+                <div className="flex items-center gap-2 mt-3">
+                  <button onClick={() => setPasteFor(lineupSide)}
+                    className={`flex-1 border font-bold text-xs rounded-xl py-2.5 ${t.neutralBtn}`}>
+                    Paste a late addition
+                  </button>
+                  {present.length > 0 && (
+                    <button disabled={lineupSaving}
+                      onClick={async () => {
+                        setLineupSaving(true); setLineupError('')
+                        try {
+                          for (const e of present) {
+                            await setFixtureAbsence(id, { playerId: e.personId, side: lineupSide, absent: true })
+                          }
+                        } catch (err) { setLineupError(err.message || 'Update failed.') }
+                        finally { setLineupSaving(false) }
+                      }}
+                      className={`border font-bold text-xs rounded-xl py-2.5 px-3 ${t.neutralBtn}`}>
+                      Clear all
+                    </button>
+                  )}
+                </div>
+              </div>
+            )
+          })()}
+
+          {/* Entries split by starter / sub — the manual flow, used by leagues,
+              standalone fixtures, frozen fixtures and sides without a pasted
+              squad. Unchanged. */}
+          {!(isInheritedLineup(match, compType) && (teamSheets?.[lineupSide]?.squad?.length ?? 0) > 0) && (() => {
             const entries = (lineupSide === 'home' ? match.homeLineup : match.awayLineup) ?? []
             const starters = entries.filter(e => e.isStarter)
             const subs     = entries.filter(e => !e.isStarter)
@@ -1709,16 +1852,33 @@ export default function ScoreMatch() {
             )
           })()}
 
-          <button
-            onClick={() => {
-              setSelectedPerson(null); setLineupShirt(''); setLineupIsStarter(false)
-              setLineupSearch(''); setShowAllPeople(false); setLineupError('')
-              setAddPersonOpen(true)
-            }}
-            className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-sm uppercase tracking-wider rounded-xl py-3">
-            + Add player
-          </button>
+          {!(isInheritedLineup(match, compType) && (teamSheets?.[lineupSide]?.squad?.length ?? 0) > 0) && (
+            <button
+              onClick={() => {
+                setSelectedPerson(null); setLineupShirt(''); setLineupIsStarter(false)
+                setLineupSearch(''); setShowAllPeople(false); setLineupError('')
+                setAddPersonOpen(true)
+              }}
+              className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-sm uppercase tracking-wider rounded-xl py-3">
+              + Add player
+            </button>
+          )}
         </Sheet>
+      )}
+
+      {/* Late-addition paste (§9): runs through the same review grid and adds
+          to the COMPETITION squad, not just this fixture. */}
+      {pasteFor && (
+        <TeamSheetEditor
+          competitionId={match.competitionId}
+          team={{
+            id: pasteFor === 'home' ? match.homeTeamId : match.awayTeamId,
+            displayName: teamName(pasteFor),
+            orgName: pasteFor === 'home' ? (match.homeOrgName ?? null) : (match.awayOrgName ?? null),
+          }}
+          onClose={() => setPasteFor(null)}
+          onSaved={() => setSheetRefresh(n => n + 1)}
+        />
       )}
 
       {/* Add player to lineup */}

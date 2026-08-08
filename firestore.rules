@@ -269,7 +269,22 @@ service cloud.firestore {
               || (request.resource.data.keys().hasAny(['guardianUids'])
                 && request.auth.uid in request.resource.data.guardianUids)
               || (request.resource.data.keys().hasAny(['managerUids'])
-                && request.auth.uid in request.resource.data.managerUids)));
+                && request.auth.uid in request.resource.data.managerUids)))
+        // OWNERLESS team-sheet creates (ownerless-profiles addendum A5): no
+        // owner, no manager, no consent record — nobody claims rights over
+        // anyone, so there is nothing to consent to at creation. The writer
+        // must hold squad-write authority on the competition team the sheet
+        // belongs to. createdByUid is AUDIT ONLY — it must never appear in a
+        // permission expression (that would quietly turn the ownerless model
+        // back into an ownership model).
+        || (isSignedIn()
+            && request.resource.data.get('createdVia', '') == 'teamSheet'
+            && request.resource.data.get('claimStatus', '') == 'unclaimed'
+            && request.resource.data.get('ownerUid', 'set') == null
+            && request.resource.data.get('managerUids', ['set']).size() == 0
+            && request.resource.data.get('guardianUids', ['set']).size() == 0
+            && (canAdministerCompetition(request.resource.data.get('createdInCompetitionId', ''))
+                || isTeamOrgMember(request.resource.data.get('createdInCompetitionTeamId', ''))));
 
       // Update: platform admin or owner/guardian (full control, including
       // transfer + manager grants); a delegated manager may edit everything
@@ -303,12 +318,13 @@ service cloud.firestore {
                  .hasOnly(['competitionIds'])
             && request.resource.data.get('competitionIds', [])
                  .hasAll(resource.data.get('competitionIds', [])))
-        // Self-service CLAIM: a signed-in user may claim an UNCLAIMED profile
-        // (no owner, no guardians) by making themselves the owner (player) OR the
-        // sole guardian (parent). Only the control fields change, and only to
-        // self. Once owner/guardian exists this fails — reassignment then goes
-        // through the controller or a platform admin.
+        // LEGACY self-service claim: a signed-in user may claim an unclaimed
+        // roster profile (no owner, no guardians) by making themselves the
+        // owner (player) OR the sole guardian (parent). Scoped AWAY from
+        // team-sheet profiles (claimStatus set) — those claim only through
+        // the email-verified branch below, otherwise its gates are bypassed.
         || (isSignedIn()
+            && resource.data.get('claimStatus', '') == ''
             && resource.data.get('ownerUid', null) == null
             && resource.data.get('guardianUids', []).size() == 0
             && request.resource.data.diff(resource.data).affectedKeys()
@@ -318,7 +334,21 @@ service cloud.firestore {
                    && request.resource.data.get('guardianUids', []).size() == 0)
                  || (request.resource.data.get('ownerUid', null) == null
                    && request.resource.data.get('guardianUids', []) == [request.auth.uid])
-               ));
+               ))
+        // Email-verified CLAIM of a team-sheet profile (addendum A5): the doc
+        // must be unclaimed, the caller's email verified, the caller not on
+        // the block list, and the write must set managerUids to EXACTLY the
+        // caller — a claim naming any other uid is rejected. Only the claim
+        // fields may change; a claimed profile is not claimable again.
+        || (isSignedIn()
+            && request.auth.token.get('email_verified', false) == true
+            && resource.data.get('claimStatus', '') == 'unclaimed'
+            && !(request.auth.uid in resource.data.get('claimBlockedUids', []))
+            && request.resource.data.get('claimStatus', '') == 'claimed'
+            && request.resource.data.get('managerUids', []) == [request.auth.uid]
+            && request.resource.data.diff(resource.data).affectedKeys()
+                 .hasOnly(['managerUids', 'claimStatus', 'preClaimSnapshot',
+                           'claimedBy', 'claimedAt', 'updatedAt', 'updatedBy']));
 
       allow delete: if isPlatformAdmin() || controlsPerson(resource.data);
     }
@@ -502,10 +532,15 @@ service cloud.firestore {
 
         allow create: if canAdministerCompetition(competitionId);
 
+        // Team org members (coaches/managers — §3 of the bulk team sheets
+        // brief) may also write their own squad + staff, scoped to their team
+        // by isTeamOrgMember. Organisers and competition scorers go through
+        // canAdministerCompetition and may paste for any team.
         allow update: if canAdministerCompetition(competitionId)
           || (isTeamOrgMember(teamId)
               && request.resource.data.diff(resource.data).affectedKeys()
-                   .hasOnly(['status', 'acceptedBy', 'acceptedAt']));
+                   .hasOnly(['status', 'acceptedBy', 'acceptedAt',
+                             'squad', 'staff', 'squadUpdatedAt', 'squadUpdatedBy']));
 
         allow delete: if canAdministerCompetition(competitionId);
       }

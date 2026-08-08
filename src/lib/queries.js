@@ -477,6 +477,10 @@ export async function fetchPlayers() {
   ))
   return snap.docs
     .map(d => ({ id: d.id, ...d.data() }))
+    // Unclaimed team-sheet profiles never appear in a browsable index
+    // (ownerless-profiles addendum A3) — reachable from a team sheet or a
+    // claim search only. They join the directory once claimed.
+    .filter(p => p.claimStatus !== 'unclaimed')
     .sort((a, b) => (a.fullName || '').localeCompare(b.fullName || ''))
 }
 

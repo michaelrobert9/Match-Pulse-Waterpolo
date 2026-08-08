@@ -136,6 +136,9 @@ async function buildSitemap(db, logger) {
     const people = await db.collection('people').get()
     people.forEach(d => {
       const p = d.data()
+      // Unclaimed team-sheet profiles are noindex and never listed (ownerless
+      // profiles addendum A3) — keep them out of the sitemap too.
+      if (p.claimStatus === 'unclaimed') return
       if (p.slug) push({ path: `/player/${p.slug}`, lastmod: lastmod(p.updatedAt), changefreq: 'weekly', priority: 0.6 })
     })
   } catch (e) { logger?.warn?.('sitemap: people failed', e) }

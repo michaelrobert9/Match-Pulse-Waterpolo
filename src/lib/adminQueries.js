@@ -12,6 +12,7 @@ import { defaultRulesForType, rulesHash } from './competitionRules'
 import { assertCanAdministerCompetition } from './competitionAuth'
 import { schedulePoolFixtures } from './scheduler'
 import { PLAYER_CONSENT_VERSION } from './consent'
+import { resolveSideLineup } from './lineupResolve'
 
 function uid() { return auth?.currentUser?.uid ?? null }
 function userEmail() { return auth?.currentUser?.email ?? null }
@@ -847,6 +848,10 @@ function controlEntry(type, period, matchTimestamp) {
 }
 
 export async function startMatch(id, { matchTimestamp = 0, periods } = {}) {
+  // Tournament/festival fixtures with a pasted squad freeze their derived
+  // line-up at the moment scoring starts (brief §4). Best-effort: a freeze
+  // failure must never block the scorer from starting the match.
+  await freezeFixtureLineupIfNeeded(id).catch(() => {})
   const firstPeriod = periodLabels(periods)[0]
   // The "Start match" tap is the single moment a fixture becomes `tracked` — a
   // human is now live-scoring it. `tracked` drives the live disclaimer, exempts
@@ -1076,6 +1081,11 @@ export async function submitFixtureResult(matchId, {
     throw new Error('Enter a valid score for both teams.')
   }
   const before = { status: m.status, homeScore: m.homeScore ?? null, awayScore: m.awayScore ?? null }
+
+  // An entered result also freezes a derived line-up (brief §4: freeze on the
+  // first tracked event or transition to live — result entry is the terminal
+  // equivalent for fixtures nobody live-scored). Best-effort, never blocks.
+  await freezeFixtureLineupIfNeeded(matchId, m).catch(() => {})
 
   // Build normalised event objects from the caller-supplied stat arrays. Only
   // written when the caller provides them (untracked submissions); tracked
@@ -1688,6 +1698,249 @@ export async function updateCompetitionMemberName(competitionId, teamId, name) {
     updatedAt: serverTimestamp(),
   })
   await addCompetitionAuditEvent(competitionId, { eventType: 'team_name_edited', after: { teamId, name: clean } })
+}
+
+// ── Bulk team sheets (tournaments & festivals) ───────────────────────────────
+// The competition squad lives on the membership doc
+// (competitions/{id}/teams/{teamId}.squad) — this platform's equivalent of the
+// brief's competitionTeams record. Fixture line-ups are DERIVED from it
+// (squad − exceptions) until frozen; see src/lib/lineupResolve.js.
+
+// Create an OWNERLESS player profile from a pasted team sheet (ownerless
+// profiles addendum, Part A). No manager, no consent record, no relationship
+// asserted between the confirmer and the player — nobody is claiming rights
+// over anyone. createdByUid / createdInCompetitionId are AUDIT ONLY: no rule
+// may ever read them to grant access. The profile is claimable later by the
+// player (or a parent) via the email-verified claim transition.
+export async function createTeamSheetPerson({ firstName, lastName, fullName }, competitionId, teamId = null) {
+  const userId = uid()
+  if (!userId) throw new Error('You must be signed in.')
+  const name = (fullName ?? `${firstName ?? ''} ${lastName ?? ''}`).trim().replace(/\s+/g, ' ')
+  if (!name) throw new Error('A player name is required.')
+  const slug = await generatePersonSlug(name)
+  return addDoc(collection(db, 'people'), {
+    fullName: name,
+    firstName: (firstName ?? '').trim() || null,
+    lastName:  (lastName ?? '').trim() || null,
+    slug,
+    roles: ['player'],
+    ownerUid: null, guardianUids: [], managerUids: [],   // empty at creation, always
+    claimStatus: 'unclaimed',
+    createdVia: 'teamSheet',
+    createdByUid: userId,                                 // audit only
+    createdInCompetitionId: competitionId ?? null,        // audit only
+    createdInCompetitionTeamId: teamId,                   // audit + rules scoping for coach creates
+    careerCaps: 0, careerGoals: 0,
+    careerCards: { green: 0, yellow: 0, red: 0 },
+    createdBy: userId, createdAt: serverTimestamp(),
+  })
+}
+
+// A player claims their own unclaimed team-sheet profile (or a parent claims
+// for an under-18 — same flow, same rules). Verification is the account's
+// verified email and nothing more; firestore.rules enforce email_verified,
+// the unclaimed state, the exact-uid manager write and the block list. A
+// pre-claim snapshot is stored so a master-admin revocation can restore it.
+export async function claimTeamSheetProfile(personId) {
+  const user = auth?.currentUser
+  if (!user) throw new Error('You must be signed in to claim a profile.')
+  if (!user.emailVerified) {
+    const e = new Error('Verify your email address first — check your inbox for the confirmation link.')
+    e.code = 'claim/email-unverified'; throw e
+  }
+  const ref = doc(db, 'people', personId)
+  const snap = await getDoc(ref)
+  if (!snap.exists()) throw new Error('Profile not found.')
+  const d = snap.data()
+  if (d.claimStatus !== 'unclaimed') {
+    const e = new Error('This profile has already been claimed.')
+    e.code = 'profile/already-claimed'; throw e
+  }
+  if ((d.claimBlockedUids ?? []).includes(user.uid)) {
+    const e = new Error('This profile cannot be claimed from this account.')
+    e.code = 'claim/blocked'; throw e
+  }
+  // Snapshot the fields a claimer could later edit, so revocation restores them.
+  const preClaimSnapshot = {
+    fullName: d.fullName ?? null, firstName: d.firstName ?? null, lastName: d.lastName ?? null,
+    photoUrl: d.photoUrl ?? null, bio: d.bio ?? null, dateOfBirth: d.dateOfBirth ?? null,
+    position: d.position ?? null, nationality: d.nationality ?? null,
+  }
+  return updateDoc(ref, {
+    managerUids: [user.uid],
+    claimStatus: 'claimed',
+    preClaimSnapshot,
+    claimedBy: user.uid, claimedAt: serverTimestamp(),
+    updatedBy: user.uid, updatedAt: serverTimestamp(),
+  })
+}
+
+// Master-admin revocation of a claim (addendum A4): returns the profile to
+// unclaimed, blocks the revoked uid from re-claiming, restores the pre-claim
+// snapshot so nothing the wrong claimer added survives, and audits the event.
+export async function revokeProfileClaim(personId) {
+  const ref = doc(db, 'people', personId)
+  const snap = await getDoc(ref)
+  if (!snap.exists()) throw new Error('Profile not found.')
+  const d = snap.data()
+  const revokedUid = d.claimedBy ?? (d.managerUids ?? [])[0] ?? null
+  const restore = d.preClaimSnapshot ?? {}
+  return updateDoc(ref, {
+    ...restore,
+    managerUids: [], ownerUid: null, guardianUids: [],
+    claimStatus: 'unclaimed',
+    ...(revokedUid ? { claimBlockedUids: arrayUnion(revokedUid) } : {}),
+    claimRevokedAt: serverTimestamp(), claimRevokedBy: uid(),
+    preClaimSnapshot: deleteField(), claimedBy: deleteField(), claimedAt: deleteField(),
+    updatedBy: uid(), updatedAt: serverTimestamp(),
+  })
+}
+
+// Unclaimed team-sheet profiles matching a name — the sign-up claim search
+// (addendum A4 step 3, not optional). Name-only matching, same bias as the
+// review grid. Never lists; only answers a direct name query.
+export async function searchUnclaimedProfiles(name) {
+  const target = (name ?? '').trim().toLowerCase()
+  if (!target) return []
+  const snap = await getDocs(query(collection(db, 'people'), where('claimStatus', '==', 'unclaimed')))
+  const all = snap.docs.map(d => ({ id: d.id, ...d.data() }))
+  const exact = all.filter(p => (p.fullName ?? '').trim().toLowerCase() === target)
+  if (exact.length > 0) return exact
+  const parts = target.split(/\s+/)
+  const surname = parts[parts.length - 1] ?? ''
+  if (!surname || parts.length < 2) return []
+  return all.filter(p => {
+    const pp = (p.fullName ?? '').trim().toLowerCase().split(/\s+/)
+    return pp.length > 1 && pp[pp.length - 1] === surname && pp[0][0] === parts[0][0]
+  })
+}
+
+// Save the pasted-and-confirmed squad + optional staff onto the membership
+// doc. squad: [{ playerId, name, capNumber, isCaptain, photoUrl }] (name and
+// photoUrl are display snapshots so line-ups render without N person reads —
+// addendum B5). staff: [{ role, name }] — names only, no accounts, no
+// linking (§8).
+export async function saveCompetitionTeamSheet(competitionId, teamId, { squad = [], staff = [] } = {}) {
+  await setDoc(doc(db, 'competitions', competitionId, 'teams', teamId), {
+    squad, staff,
+    squadUpdatedAt: serverTimestamp(),
+    squadUpdatedBy: uid(),
+  }, { merge: true })
+  // competitionIds maintenance — committed here so the stats chain's
+  // before-state check passes when a career stat is later written for these
+  // players (same maintenance addPersonToMatchLineup does one at a time).
+  await Promise.all(squad.map(s =>
+    s.playerId
+      ? updateDoc(doc(db, 'people', s.playerId), { competitionIds: arrayUnion(competitionId) }).catch(() => {})
+      : Promise.resolve()
+  ))
+}
+
+export async function fetchCompetitionTeamSheet(competitionId, teamId) {
+  const snap = await getDoc(doc(db, 'competitions', competitionId, 'teams', teamId))
+  if (!snap.exists()) return { squad: [], staff: [] }
+  const d = snap.data()
+  return { squad: d.squad ?? [], staff: d.staff ?? [] }
+}
+
+// Mark a player absent (or present again) for ONE fixture. Stored as an
+// exception on the match doc — the squad and every other fixture are
+// untouched. A skipped/absent player is an explicit record, not an omission.
+export async function setFixtureAbsence(matchId, { playerId, side, absent }) {
+  const snap = await getDoc(doc(db, 'matches', matchId))
+  if (!snap.exists()) throw new Error('Match not found')
+  const current = (snap.data().exceptions ?? [])
+    .filter(e => !(e.playerId === playerId && e.side === side && e.type === 'absent'))
+  const exceptions = absent
+    ? [...current, { playerId, side, type: 'absent' }]
+    : current
+  return updateDoc(doc(db, 'matches', matchId), {
+    exceptions, updatedBy: uid(), updatedAt: serverTimestamp(),
+  })
+}
+
+// Per-fixture cap override (§9): stored as its OWN exception type — addendum
+// B2; never encoded as an 'added' entry. capNumber null clears the override.
+// Caps are usually stable across a festival.
+export async function setFixtureCapOverride(matchId, { playerId, side, capNumber }) {
+  const snap = await getDoc(doc(db, 'matches', matchId))
+  if (!snap.exists()) throw new Error('Match not found')
+  const current = (snap.data().exceptions ?? [])
+    .filter(e => !(e.playerId === playerId && e.side === side && e.type === 'override'))
+  const exceptions = capNumber != null
+    ? [...current, { playerId, side, type: 'override', capNumber }]
+    : current
+  return updateDoc(doc(db, 'matches', matchId), {
+    exceptions, updatedBy: uid(), updatedAt: serverTimestamp(),
+  })
+}
+
+// Freeze: materialise the derived line-ups into the match doc and flip
+// lineupMode to 'frozen'. Runs on the transition to live (startMatch) and on
+// result entry (submitFixtureResult); a no-op for leagues, standalone
+// fixtures, already-frozen matches and teams without a pasted squad — so
+// legacy behaviour is untouched. After freezing, every existing reader
+// (scoring, stats engine, match page) sees a normal stored line-up, and
+// historical fixtures never mutate when the squad is edited later (§4).
+export async function freezeFixtureLineupIfNeeded(matchId, matchData = null) {
+  const m = matchData ?? (await getDoc(doc(db, 'matches', matchId))).data()
+  if (!m || !m.competitionId || m.lineupMode === 'frozen') return
+  const compSnap = await getDoc(doc(db, 'competitions', m.competitionId))
+  if (!compSnap.exists()) return
+  const type = compSnap.data().type
+  if (type !== 'tournament' && type !== 'festival') return
+
+  const [homeMem, awayMem] = await Promise.all([
+    m.homeTeamId ? getDoc(doc(db, 'competitions', m.competitionId, 'teams', m.homeTeamId)).catch(() => null) : null,
+    m.awayTeamId ? getDoc(doc(db, 'competitions', m.competitionId, 'teams', m.awayTeamId)).catch(() => null) : null,
+  ])
+  const homeSquad = homeMem?.exists() ? (homeMem.data().squad ?? []) : []
+  const awaySquad = awayMem?.exists() ? (awayMem.data().squad ?? []) : []
+  if (homeSquad.length === 0 && awaySquad.length === 0) return
+
+  const exceptions = m.exceptions ?? []
+  // A side without a squad keeps whatever was added manually — the resolver
+  // only replaces sides that actually inherit.
+  const homeResolved = homeSquad.length > 0
+    ? resolveSideLineup({ squad: homeSquad, exceptions, side: 'home' }) : (m.homeLineup ?? [])
+  const awayResolved = awaySquad.length > 0
+    ? resolveSideLineup({ squad: awaySquad, exceptions, side: 'away' }) : (m.awayLineup ?? [])
+
+  // Best-effort person snapshots: controllerUids power self-removal rules,
+  // photoUrl powers avatars on non-line-up surfaces (e.g. the POTM sheet).
+  const ids = [...new Set([...homeResolved, ...awayResolved].map(e => e.personId).filter(Boolean))]
+  const peopleById = {}
+  await Promise.all(ids.map(async pid => {
+    try {
+      const p = await getDoc(doc(db, 'people', pid))
+      if (p.exists()) peopleById[pid] = p.data()
+    } catch { /* snapshot stays minimal */ }
+  }))
+  const enrich = e => {
+    const pd = peopleById[e.personId]
+    if (!pd) return { ...e, photoUrl: null, controllerUids: [] }
+    return {
+      ...e,
+      photoUrl: pd.photoUrl ?? null,
+      controllerUids: [pd.ownerUid, ...(pd.guardianUids ?? []), ...(pd.managerUids ?? [])].filter(Boolean),
+    }
+  }
+
+  const homeLineup = homeResolved.map(enrich)
+  const awayLineup = awayResolved.map(enrich)
+  const lineupPersonIds = [...new Set([
+    ...(m.lineupPersonIds ?? []),
+    ...ids,
+  ])]
+  await updateDoc(doc(db, 'matches', matchId), {
+    // The CANONICAL fields every reader consumes (stats engine, goal
+    // attribution, public renderer) — addendum B3 — plus a frozenLineup copy
+    // for the cross-sport contract.
+    homeLineup, awayLineup, lineupPersonIds,
+    frozenLineup: { home: homeLineup, away: awayLineup },
+    lineupMode: 'frozen', lineupFrozenAt: serverTimestamp(),
+    updatedBy: uid(), updatedAt: serverTimestamp(),
+  })
 }
 
 export async function inviteTeamToCompetition(competitionId, teamId, data = {}) {

@@ -29,7 +29,8 @@ import { useAuth } from '../../../contexts/AuthContext'
 import { matchSlug as buildMatchSlug } from '../../../lib/slugify'
 import { fetchCompetitionPools, fetchCompetitionKnockout, fetchCompetitionFixtureMembers, fetchAwaitingResultMatchesForCompetition, fetchCompetitionAuditLog, toDate } from '../../../lib/queries'
 import { POINTS_PRESETS, competitionLifecycle } from '../../../lib/competitionRules'
-import { POTM_DEFAULT_COLOR } from '../../../lib/POTM'
+import { POM_DEFAULT_COLOR } from '../../../lib/pom'
+import TeamSheetEditor from '../../../components/TeamSheetEditor'
 import { isScheduled } from '../../../lib/fixtureStatus'
 import StatusBadge from '../../../components/StatusBadge'
 import CompetitionStatusBadge from '../../../components/CompetitionStatusBadge'
@@ -1193,12 +1194,12 @@ function POTMCard({ competition, onSaved }) {
         </p>
         <div className="flex items-center gap-2">
           <input type="color" disabled={saving || !enabled}
-            value={color || POTM_DEFAULT_COLOR}
+            value={color || POM_DEFAULT_COLOR}
             onChange={e => patchPotm({ color: e.target.value })}
             className="w-10 h-10 rounded cursor-pointer border-0 bg-transparent p-0" />
           <input type="text" disabled={saving || !enabled}
             value={color}
-            placeholder={POTM_DEFAULT_COLOR}
+            placeholder={POM_DEFAULT_COLOR}
             onChange={e => patchPotm({ color: e.target.value })}
             className="w-28 bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 text-sm font-mono text-slate-900 placeholder-slate-400 focus:outline-none focus:border-emerald-500 transition-colors disabled:bg-slate-50" />
           {color && (
@@ -1708,7 +1709,7 @@ function SettingsTab({ competition, onSaved }) {
 // One participating team. The organiser can edit its name within this
 // competition (e.g. fix a typo) — the org prefix stays, only the team label is
 // editable. For name-only entrants the whole name is editable.
-function CompetitionTeamRow({ team, onRename, onRemove }) {
+function CompetitionTeamRow({ team, onRename, onRemove, onTeamSheet }) {
   const [editing, setEditing] = useState(false)
   const [name, setName]       = useState(team.displayName ?? '')
   const [saving, setSaving]   = useState(false)
@@ -1757,6 +1758,12 @@ function CompetitionTeamRow({ team, onRename, onRemove }) {
       {!editing && (
         <>
           <span className={`text-[9px] font-bold uppercase tracking-widest rounded px-1.5 py-0.5 shrink-0 ${cfg[0]} ${cfg[1]}`}>{cfg[2]}</span>
+          {onTeamSheet && (
+            <button onClick={() => onTeamSheet(team)}
+              className="text-[10px] font-bold uppercase tracking-widest text-emerald-600 hover:text-emerald-500 transition-colors shrink-0 px-1">
+              Team sheet
+            </button>
+          )}
           <button onClick={() => { setName(team.displayName ?? ''); setEditing(true) }} title="Edit name"
             className="text-slate-400 hover:text-slate-700 transition-colors p-1 shrink-0"><Pencil className="w-3.5 h-3.5" /></button>
           <button onClick={() => onRemove(team)} title="Remove"
@@ -1770,6 +1777,10 @@ function CompetitionTeamRow({ team, onRename, onRemove }) {
 function TeamsTab({ competition, teams, setTeams }) {
   const [orgs, setOrgs]                     = useState([])
   const [showAdd, setShowAdd]               = useState(false)
+  // Bulk team sheets are tournament/festival only (brief §1). Leagues keep
+  // the existing per-fixture flow untouched.
+  const [sheetTeam, setSheetTeam]           = useState(null)
+  const supportsTeamSheets = competition.type === 'tournament' || competition.type === 'festival'
   const [mode, setMode]                     = useState('named') // 'named' | 'registered'
   const [selectedOrgId, setSelectedOrgId]   = useState('')
   const [orgTeams, setOrgTeams]             = useState([])
@@ -1996,9 +2007,19 @@ function TeamsTab({ competition, teams, setTeams }) {
       ) : (
         <div className="space-y-2">
           {sortedTeams.map(team => (
-            <CompetitionTeamRow key={team.id} team={team} onRename={handleRename} onRemove={handleRemove} />
+            <CompetitionTeamRow key={team.id} team={team} onRename={handleRename} onRemove={handleRemove}
+              onTeamSheet={supportsTeamSheets ? setSheetTeam : null} />
           ))}
         </div>
+      )}
+
+      {sheetTeam && (
+        <TeamSheetEditor
+          competitionId={competition.id}
+          team={sheetTeam}
+          onClose={() => setSheetTeam(null)}
+          onSaved={() => {}}
+        />
       )}
     </div>
   )

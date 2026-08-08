@@ -1,0 +1,458 @@
+import { useEffect, useMemo, useState } from 'react'
+import { X, Plus, AlertTriangle, Link2 } from 'lucide-react'
+import { fetchAllPeople } from '../lib/queries'
+import {
+  saveCompetitionTeamSheet, fetchCompetitionTeamSheet, createTeamSheetPerson,
+} from '../lib/adminQueries'
+import {
+  parseTeamSheet, applyNumbersMode, matchRowToPeople,
+  duplicateCapNumbers, duplicateNames, nextUnusedCap, splitName,
+} from '../lib/teamSheet'
+
+// Bulk team sheet editor (bulk team sheets brief §5–§8) — tournaments and
+// festivals only. Paste once per team, review the grid, confirm. Nothing
+// writes to the database until the user confirms; the grid is the whole
+// safety net.
+
+const STAFF_ROLES = ['Coach', 'Assistant Coach', 'Manager']
+
+const PLACEHOLDER = '1. Sarah Botha\n2. Amahle Dlamini'
+
+let rowKeyCounter = 0
+const newRowKey = () => `tsrow-${++rowKeyCounter}`
+
+function StatusChip({ row }) {
+  if (row.unreadable) return (
+    <span className="inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-widest text-amber-700 bg-amber-50 border border-amber-200 rounded-full px-2 py-0.5">
+      <AlertTriangle className="w-3 h-3" /> Check
+    </span>
+  )
+  if (row.matchStatus === 'linked') return (
+    <span className="inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-widest text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-full px-2 py-0.5">
+      <Link2 className="w-3 h-3" /> Linked
+    </span>
+  )
+  if (row.matchStatus === 'ambiguous') return (
+    <span className="inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-widest text-amber-700 bg-amber-50 border border-amber-200 rounded-full px-2 py-0.5">
+      Choose
+    </span>
+  )
+  return (
+    <span className="inline-flex items-center text-[10px] font-bold uppercase tracking-widest text-slate-500 bg-slate-50 border border-slate-200 rounded-full px-2 py-0.5">
+      New
+    </span>
+  )
+}
+
+export default function TeamSheetEditor({ competitionId, team, onClose, onSaved }) {
+  const [phase, setPhase]     = useState('loading') // loading | error | paste | grid
+  const [loadError, setLoadError] = useState('')
+  const [people, setPeople]   = useState([])
+  const [pasteText, setPasteText] = useState('')
+  const [rows, setRows]       = useState([])
+  const [staff, setStaff]     = useState([])
+  const [numbersAreCaps, setNumbersAreCaps] = useState(true)
+  const [hadExisting, setHadExisting] = useState(false)
+  const [saving, setSaving]   = useState(false)
+  const [saveError, setSaveError] = useState('')
+  const [showAppend, setShowAppend] = useState(false)
+  const [appendText, setAppendText] = useState('')
+
+  useEffect(() => { load() }, [competitionId, team.id]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  async function load() {
+    setPhase('loading')
+    setLoadError('')
+    try {
+      const [sheet, allPeople] = await Promise.all([
+        fetchCompetitionTeamSheet(competitionId, team.id),
+        fetchAllPeople().catch(() => []),
+      ])
+      setPeople(allPeople)
+      setStaff(sheet.staff ?? [])
+      if ((sheet.squad ?? []).length > 0) {
+        setRows(sheet.squad.map(s => {
+          const { firstName, surname } = splitName(s.name ?? '')
+          return {
+            key: newRowKey(), firstName, surname,
+            capNumber: s.capNumber ?? null, capEdited: true, parsedNumber: s.capNumber ?? null,
+            isCaptain: s.isCaptain === true, unreadable: false,
+            matchStatus: 'linked', personId: s.playerId, candidates: [], chosen: s.playerId,
+          }
+        }))
+        setHadExisting(true)
+        setPhase('grid')
+      } else {
+        setPhase('paste')
+      }
+    } catch (err) {
+      setLoadError(err.message || 'Could not load the team sheet.')
+      setPhase('error')
+    }
+  }
+
+  function matchRow(row, peopleList) {
+    const m = matchRowToPeople(row, peopleList)
+    return {
+      ...row,
+      matchStatus: m.status,
+      personId: m.status === 'linked' ? m.personId : null,
+      candidates: m.candidates,
+      // Bias towards linking: an ambiguous row pre-selects its first
+      // candidate — a wrong link is visible and fixable, a duplicate silent.
+      chosen: m.status === 'linked' ? m.personId
+        : m.status === 'ambiguous' ? (m.candidates[0]?.id ?? 'new')
+        : 'new',
+    }
+  }
+
+  function handleParse() {
+    const { rows: parsed, numbersAreCaps: caps } = parseTeamSheet(pasteText)
+    if (parsed.length === 0) return
+    setNumbersAreCaps(caps)
+    setRows(parsed.map(r => matchRow({ ...r, key: newRowKey(), capEdited: false }, people)))
+    setPhase('grid')
+  }
+
+  function handleAppend() {
+    const { rows: parsed } = parseTeamSheet(appendText)
+    if (parsed.length === 0) return
+    // Appended rows follow the sheet's CURRENT interpretation rather than
+    // re-guessing over the block — a two-line addition carries no signal.
+    const interpreted = applyNumbersMode(parsed, numbersAreCaps)
+    setRows(prev => [...prev, ...interpreted.map(r => matchRow({ ...r, key: newRowKey(), capEdited: false }, people))])
+    setShowAppend(false)
+    setAppendText('')
+  }
+
+  function flipNumbersMode(caps) {
+    // Re-interprets numbers only — name edits already made in the grid survive
+    // (§5: flipping re-parses instantly without discarding edits).
+    setNumbersAreCaps(caps)
+    setRows(prev => applyNumbersMode(prev, caps))
+  }
+
+  function patchRow(key, patch, rematch = false) {
+    setRows(prev => prev.map(r => {
+      if (r.key !== key) return r
+      const next = { ...r, ...patch, unreadable: false }
+      return rematch ? matchRow(next, people) : next
+    }))
+  }
+
+  function removeRow(key) {
+    setRows(prev => prev.filter(r => r.key !== key))
+  }
+
+  function addRow() {
+    setRows(prev => [...prev, {
+      key: newRowKey(), firstName: '', surname: '',
+      capNumber: nextUnusedCap(prev), capEdited: true, parsedNumber: null,
+      isCaptain: false, unreadable: false,
+      matchStatus: 'new', personId: null, candidates: [], chosen: 'new',
+    }])
+  }
+
+  // Ambiguous rows sort to the top, then by cap number, blanks last (§7).
+  const sortedRows = useMemo(() => [...rows].sort((a, b) => {
+    const aAmb = a.matchStatus === 'ambiguous' ? 0 : 1
+    const bAmb = b.matchStatus === 'ambiguous' ? 0 : 1
+    if (aAmb !== bAmb) return aAmb - bAmb
+    const an = a.capNumber, bn = b.capNumber
+    if (an != null && bn != null) return an - bn
+    if (an != null) return -1
+    if (bn != null) return 1
+    return 0
+  }), [rows])
+
+  const dupCaps  = useMemo(() => duplicateCapNumbers(rows), [rows])
+  const dupNames = useMemo(() => duplicateNames(rows), [rows])
+  const readCapsMax = useMemo(() => {
+    const caps = rows.map(r => r.capNumber).filter(n => n != null)
+    return caps.length ? Math.max(...caps) : null
+  }, [rows])
+  const newCount = rows.filter(r => r.chosen === 'new' && `${r.firstName}${r.surname}`.trim()).length
+
+  async function handleConfirm() {
+    setSaving(true)
+    setSaveError('')
+    try {
+      const photoById = new Map(people.map(p => [p.id, p.photoUrl ?? null]))
+      const usable = rows.filter(r => `${r.firstName} ${r.surname}`.trim())
+      const squad = []
+      for (const r of usable) {
+        const fullName = `${r.firstName} ${r.surname}`.trim().replace(/\s+/g, ' ')
+        let playerId = r.chosen
+        if (playerId === 'new' || !playerId) {
+          // OWNERLESS creation (addendum Part A): no manager, no consent
+          // record, no relationship asserted between the confirmer and the
+          // player. Claimable later by the player (or a parent).
+          const ref = await createTeamSheetPerson(
+            { firstName: r.firstName, lastName: r.surname, fullName }, competitionId, team.id)
+          playerId = ref.id
+        }
+        squad.push({
+          playerId,
+          name: fullName,
+          capNumber: r.capNumber ?? null,
+          isCaptain: r.isCaptain === true,
+          photoUrl: photoById.get(playerId) ?? null,
+        })
+      }
+      const cleanStaff = staff
+        .map(s => ({ role: s.role, name: (s.name ?? '').trim() }))
+        .filter(s => s.name)
+      await saveCompetitionTeamSheet(competitionId, team.id, { squad, staff: cleanStaff })
+      onSaved?.({ squad, staff: cleanStaff })
+      onClose()
+    } catch (err) {
+      setSaveError(err.message || 'Could not save the team sheet. Try again.')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const confirmDisabled = saving || rows.length === 0
+
+  return (
+    <div className="fixed inset-0 z-50 bg-slate-900/60 flex items-stretch sm:items-center justify-center">
+      <div className="bg-canvas w-full sm:max-w-2xl sm:rounded-2xl sm:my-8 flex flex-col max-h-full sm:max-h-[90dvh] overflow-hidden">
+
+        {/* Header */}
+        <div className="bg-white border-b border-slate-200 px-4 py-3 flex items-center gap-3 shrink-0">
+          <div className="flex-1 min-w-0">
+            <div className="text-[10px] font-bold uppercase tracking-widest text-slate-500">Team sheet</div>
+            <div className="font-display font-bold text-slate-900 truncate">
+              {team.orgName ? `${team.orgName} ${team.displayName}` : team.displayName}
+            </div>
+          </div>
+          <button onClick={onClose} aria-label="Close"
+            className="text-slate-400 hover:text-slate-700 transition-colors p-2 -mr-2">
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+
+        {/* Body */}
+        <div className="flex-1 overflow-y-auto px-4 py-4 space-y-5">
+
+          {phase === 'loading' && (
+            <div className="space-y-2">
+              {[0, 1, 2, 3].map(i => (
+                <div key={i} className="h-11 rounded-lg bg-slate-100 animate-pulse" />
+              ))}
+            </div>
+          )}
+
+          {phase === 'error' && (
+            <div className="text-center py-8">
+              <p className="text-sm text-slate-600 mb-3">{loadError}</p>
+              <button onClick={load}
+                className="text-sm font-bold text-emerald-700 hover:text-emerald-600 transition-colors">
+                Try again
+              </button>
+            </div>
+          )}
+
+          {phase === 'paste' && (
+            <div className="space-y-3">
+              <p className="text-sm text-slate-600">
+                Paste the whole team sheet — one player per line. Numbers, tabs from a
+                spreadsheet, and names on their own all work.
+              </p>
+              <textarea rows={8} value={pasteText} onChange={e => setPasteText(e.target.value)}
+                placeholder={PLACEHOLDER}
+                className="w-full bg-white border border-slate-200 rounded-lg px-3 py-2.5 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:border-emerald-500 transition-colors resize-y" />
+              <button onClick={handleParse} disabled={!pasteText.trim()}
+                className="w-full bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white font-bold text-sm rounded-lg py-3 transition-colors">
+                Review team sheet
+              </button>
+            </div>
+          )}
+
+          {phase === 'grid' && (
+            <>
+              {/* Interpretation toggle — prominent: this is the code where the
+                  guess is most likely to be wrong (§5). */}
+              <div className="space-y-1.5">
+                <div className="grid grid-cols-2 gap-1.5 bg-slate-100 rounded-xl p-1.5">
+                  {[[true, 'These numbers are cap numbers'], [false, 'These numbers are just a list']].map(([val, label]) => (
+                    <button key={String(val)} type="button" onClick={() => flipNumbersMode(val)}
+                      className={`min-h-[40px] px-3 py-2 rounded-lg text-xs font-bold transition-colors ${
+                        numbersAreCaps === val
+                          ? 'bg-emerald-600 text-white'
+                          : 'text-slate-600 hover:text-slate-900'
+                      }`}>
+                      {label}
+                    </button>
+                  ))}
+                </div>
+                {numbersAreCaps && readCapsMax != null && (
+                  <p className="text-[11px] text-slate-400">Read as cap numbers 1 to {readCapsMax}</p>
+                )}
+              </div>
+
+              {/* Squad grid */}
+              <div>
+                <p className="text-sm text-slate-600 mb-2">
+                  {rows.length} player{rows.length === 1 ? '' : 's'}
+                </p>
+                <div className="space-y-2">
+                  {sortedRows.map(row => {
+                    const nameKey = `${row.firstName} ${row.surname}`.trim().toLowerCase()
+                    const warnDupCap  = row.capNumber != null && dupCaps.has(row.capNumber)
+                    const warnDupName = nameKey && dupNames.has(nameKey)
+                    return (
+                      <div key={row.key}
+                        className={`bg-white rounded-xl border p-2.5 space-y-2 ${row.matchStatus === 'ambiguous' ? 'border-amber-300' : 'border-slate-200'}`}>
+                        <div className="flex items-center gap-2">
+                          {/* Cap number — fixed-width badge, blank is valid and
+                              renders empty (not 0, not a dash). */}
+                          <input inputMode="numeric" pattern="[0-9]*" aria-label="Cap number"
+                            value={row.capNumber ?? ''}
+                            onChange={e => {
+                              const v = e.target.value.replace(/\D/g, '')
+                              patchRow(row.key, { capNumber: v === '' ? null : parseInt(v, 10), capEdited: true })
+                            }}
+                            className="w-12 h-10 shrink-0 text-center font-mono tabular-nums text-sm bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:border-emerald-500 transition-colors" />
+                          <input aria-label="First name" value={row.firstName} placeholder="First name"
+                            onChange={e => patchRow(row.key, { firstName: e.target.value }, true)}
+                            className="flex-1 min-w-0 h-10 bg-white border border-slate-200 rounded-lg px-2.5 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:border-emerald-500 transition-colors" />
+                          <input aria-label="Surname" value={row.surname} placeholder="Surname"
+                            onChange={e => patchRow(row.key, { surname: e.target.value }, true)}
+                            className="flex-1 min-w-0 h-10 bg-white border border-slate-200 rounded-lg px-2.5 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:border-emerald-500 transition-colors" />
+                        </div>
+                        <div className="flex items-center gap-2 flex-wrap">
+                          {/* Captain — labelled pill, not a bare glyph (§7). */}
+                          <button type="button" aria-pressed={row.isCaptain}
+                            onClick={() => patchRow(row.key, { isCaptain: !row.isCaptain })}
+                            className={`min-h-[40px] inline-flex items-center gap-1 rounded-lg border px-2.5 text-[11px] font-bold transition-colors ${
+                              row.isCaptain
+                                ? 'bg-amber-50 border-amber-300 text-amber-700'
+                                : 'bg-white border-slate-200 text-slate-400 hover:text-slate-600'
+                            }`}>
+                            <span className="text-sm font-bold leading-none align-middle">©</span> Captain
+                          </button>
+                          <StatusChip row={row} />
+                          {warnDupCap && (
+                            <span className="text-[10px] font-bold uppercase tracking-widest text-amber-700 bg-amber-50 border border-amber-200 rounded-full px-2 py-0.5">
+                              Duplicate cap
+                            </span>
+                          )}
+                          {warnDupName && (
+                            <span className="text-[10px] font-bold uppercase tracking-widest text-amber-700 bg-amber-50 border border-amber-200 rounded-full px-2 py-0.5">
+                              Duplicate name
+                            </span>
+                          )}
+                          <button type="button" onClick={() => removeRow(row.key)} aria-label="Remove row"
+                            className="ml-auto min-h-[40px] px-2 text-slate-400 hover:text-red-500 transition-colors">
+                            <X className="w-4 h-4" />
+                          </button>
+                        </div>
+                        {/* Ambiguous rows are the only case that asks a question (§6). */}
+                        {row.matchStatus === 'ambiguous' && (
+                          <select value={row.chosen} aria-label="Match to an existing player"
+                            onChange={e => patchRow(row.key, { chosen: e.target.value })}
+                            className="w-full h-10 bg-amber-50/50 border border-amber-200 rounded-lg px-2.5 text-sm text-slate-900 focus:outline-none focus:border-amber-400">
+                            {row.candidates.map(c => (
+                              <option key={c.id} value={c.id}>Link to {c.fullName}</option>
+                            ))}
+                            <option value="new">Create new player</option>
+                          </select>
+                        )}
+                      </div>
+                    )
+                  })}
+                </div>
+                <button type="button" onClick={addRow}
+                  className="mt-2 w-full min-h-[44px] border border-dashed border-slate-300 rounded-xl text-sm font-medium text-slate-500 hover:text-emerald-700 hover:border-emerald-300 transition-colors inline-flex items-center justify-center gap-1.5">
+                  <Plus className="w-4 h-4" /> Add row
+                </button>
+
+                {/* Late additions can still be pasted (§9) — appended rows run
+                    through the same parsing and matching as the first paste. */}
+                {!showAppend ? (
+                  <button type="button" onClick={() => setShowAppend(true)}
+                    className="mt-2 text-sm font-medium text-emerald-700 hover:text-emerald-600 transition-colors min-h-[40px]">
+                    Paste more players
+                  </button>
+                ) : (
+                  <div className="mt-2 space-y-2">
+                    <textarea rows={3} value={appendText} onChange={e => setAppendText(e.target.value)}
+                      placeholder={PLACEHOLDER}
+                      className="w-full bg-white border border-slate-200 rounded-lg px-3 py-2.5 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:border-emerald-500 transition-colors resize-y" />
+                    <div className="flex items-center gap-3">
+                      <button type="button" onClick={handleAppend} disabled={!appendText.trim()}
+                        className="bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white font-bold text-xs rounded-lg px-4 py-2.5 transition-colors">
+                        Add to sheet
+                      </button>
+                      <button type="button" onClick={() => { setShowAppend(false); setAppendText('') }}
+                        className="text-sm font-medium text-slate-500 hover:text-slate-700 transition-colors">
+                        Cancel
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Staff — explicitly optional (§8): names only, no accounts. */}
+              <div className="space-y-2">
+                <p className="text-[10px] font-bold uppercase tracking-widest text-slate-500">
+                  Team staff <span className="font-normal normal-case tracking-normal text-slate-400">optional</span>
+                </p>
+                {staff.map((s, i) => (
+                  <div key={i} className="flex items-center gap-2">
+                    <select value={s.role} aria-label="Staff role"
+                      onChange={e => setStaff(prev => prev.map((x, j) => j === i ? { ...x, role: e.target.value } : x))}
+                      className="h-10 bg-white border border-slate-200 rounded-lg px-2 text-sm text-slate-900 focus:outline-none focus:border-emerald-500 shrink-0">
+                      {STAFF_ROLES.map(r => <option key={r}>{r}</option>)}
+                    </select>
+                    <input value={s.name} placeholder="Name" aria-label="Staff name"
+                      onChange={e => setStaff(prev => prev.map((x, j) => j === i ? { ...x, name: e.target.value } : x))}
+                      className="flex-1 min-w-0 h-10 bg-white border border-slate-200 rounded-lg px-2.5 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:border-emerald-500 transition-colors" />
+                    <button type="button" aria-label="Remove staff member"
+                      onClick={() => setStaff(prev => prev.filter((_, j) => j !== i))}
+                      className="min-h-[40px] px-2 text-slate-400 hover:text-red-500 transition-colors">
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
+                ))}
+                <button type="button" onClick={() => setStaff(prev => [...prev, { role: 'Coach', name: '' }])}
+                  className="text-sm font-medium text-emerald-700 hover:text-emerald-600 transition-colors inline-flex items-center gap-1.5 min-h-[40px]">
+                  <Plus className="w-4 h-4" /> Add staff member
+                </button>
+              </div>
+
+              {/* No consent checkbox (addendum A1): profiles are created
+                  ownerless — nobody claims rights over anyone, so there is
+                  nothing to consent to at creation. */}
+              {newCount > 0 && (
+                <p className="text-xs text-slate-500 leading-relaxed">
+                  {newCount} new player profile{newCount === 1 ? '' : 's'} will be created without an
+                  owner. A player (or their parent) can claim theirs at any time by signing up.
+                </p>
+              )}
+
+              {saveError && <p className="text-sm text-red-600">{saveError}</p>}
+            </>
+          )}
+        </div>
+
+        {/* Confirm bar — pinned. The button carries no count (§7): this screen
+            collects staff as well as players; the count lives on the row-count
+            line inside the squad section, where its object is unambiguous. */}
+        {phase === 'grid' && (
+          <div className="bg-white border-t border-slate-200 px-4 py-3 flex items-center gap-3 shrink-0">
+            <button onClick={handleConfirm} disabled={confirmDisabled}
+              className="flex-1 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white font-bold text-sm rounded-lg py-3 transition-colors">
+              {saving ? 'Saving…' : hadExisting ? 'Save' : 'Add'}
+            </button>
+            <button onClick={onClose}
+              className="text-sm font-medium text-emerald-700 hover:text-emerald-600 transition-colors px-2 min-h-[44px]">
+              Cancel
+            </button>
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}

@@ -8,8 +8,11 @@ import {
   fetchMatchByMatchSlug, subscribeMatchByMatchSlug,
   fetchMatchBySeasonSlug, subscribeMatchBySeasonSlug,
   fetchMatchByCompetitionSlug, subscribeMatchByCompetitionSlug,
+  fetchCompetition,
   toDate,
 } from '../lib/queries'
+import { fetchCompetitionTeamSheet } from '../lib/adminQueries'
+import { resolveSideLineup, isInheritedLineup } from '../lib/lineupResolve'
 import { configured } from '../firebase'
 import ShareButton from '../components/ShareButton'
 import StatusBadge from '../components/StatusBadge'
@@ -17,7 +20,7 @@ import FixtureBanner from '../components/FixtureBanner'
 import { MatchTeamIdentity, MatchTeamCrest } from '../components/TeamIdentity'
 import PersonAvatar from '../components/PersonAvatar'
 import { playerUrl, matchUrl } from '../lib/slugify'
-import { POTMForSide, POTMColor, POTMBgTint, isLineupEntryPOTM } from '../lib/POTM'
+import { pomForSide, pomColor, pomBgTint, isLineupEntryPOM } from '../lib/pom'
 import { gameMinuteLabel, periodRemainingMs, formatCountdown } from '../lib/matchClock'
 import { useSeoMeta } from '../lib/useSeoMeta'
 
@@ -284,6 +287,7 @@ export default function MatchDetail() {
   useSeoMeta({ type: 'match', entity: match })
   const [homePlayers, setHomePlayers] = useState([])
   const [awayPlayers, setAwayPlayers] = useState([])
+  const [derivedLineups, setDerivedLineups] = useState(null) // { home, away } for inherited fixtures
   const [loading,     setLoading]     = useState(true)
   const [, setTick]                   = useState(0)
   const lineupsLoaded = useRef(false)
@@ -336,6 +340,38 @@ export default function MatchDetail() {
       .then(([h, a]) => { setHomePlayers(h); setAwayPlayers(a) })
   }, [match?.homeTeamId, match?.awayTeamId])
 
+  // Derived line-ups for tournament/festival fixtures that have not frozen
+  // yet (bulk team sheets brief §4/§9): resolve competition squad − exceptions
+  // per side. Re-resolves when exceptions change (the match doc is
+  // subscribed). Frozen or legacy fixtures skip this entirely.
+  const exceptionsKey = JSON.stringify(match?.exceptions ?? [])
+  useEffect(() => {
+    if (!match?.competitionId || match.lineupMode === 'frozen') { setDerivedLineups(null); return }
+    let cancelled = false
+    ;(async () => {
+      try {
+        const comp = await fetchCompetition(match.competitionId)
+        if (!comp || !isInheritedLineup(match, comp.type)) { if (!cancelled) setDerivedLineups(null); return }
+        const [homeSheet, awaySheet] = await Promise.all([
+          match.homeTeamId ? fetchCompetitionTeamSheet(match.competitionId, match.homeTeamId) : { squad: [] },
+          match.awayTeamId ? fetchCompetitionTeamSheet(match.competitionId, match.awayTeamId) : { squad: [] },
+        ])
+        if (cancelled) return
+        if (homeSheet.squad.length === 0 && awaySheet.squad.length === 0) { setDerivedLineups(null); return }
+        const exceptions = match.exceptions ?? []
+        setDerivedLineups({
+          home: homeSheet.squad.length > 0
+            ? resolveSideLineup({ squad: homeSheet.squad, exceptions, side: 'home' })
+            : (match.homeLineup ?? []),
+          away: awaySheet.squad.length > 0
+            ? resolveSideLineup({ squad: awaySheet.squad, exceptions, side: 'away' })
+            : (match.awayLineup ?? []),
+        })
+      } catch { if (!cancelled) setDerivedLineups(null) }
+    })()
+    return () => { cancelled = true }
+  }, [match?.id, match?.competitionId, match?.lineupMode, exceptionsKey]) // eslint-disable-line react-hooks/exhaustive-deps
+
   // Advertise the canonical (clean) URL so search engines and link unfurlers
   // prefer it over any legacy id-based URL the visitor may have arrived through.
   useEffect(() => {
@@ -379,14 +415,20 @@ export default function MatchDetail() {
           photoUrl:    e.photoUrl ?? r?.photoUrl ?? null,
           shirtNumber: e.shirtNumber ?? r?.shirtNumber ?? null,
           personSlug:  r?.personSlug ?? null,
-          isCaptain:   r?.isCaptain ?? false,
+          // Captaincy reads from the LINE-UP ENTRY first — that is where the
+          // team sheet writes it. The roster is a legacy fallback only; a
+          // pasted captain would not appear if this joined the roster first.
+          isCaptain:   e.isCaptain ?? r?.isCaptain ?? false,
           isStarter:   !!e.isStarter,
         }
       })
       .sort((a, b) => (Number(b.isStarter) - Number(a.isStarter)) || ((a.shirtNumber || 99) - (b.shirtNumber || 99)))
   }
-  const homeSelection = buildSelection(match.homeLineup, homePlayers)
-  const awaySelection = buildSelection(match.awayLineup, awayPlayers)
+  // A tournament/festival fixture that has not frozen yet derives its line-ups
+  // from the competition squads (squad − exceptions); frozen and legacy
+  // fixtures read their stored arrays exactly as before.
+  const homeSelection = buildSelection(derivedLineups?.home ?? match.homeLineup, homePlayers)
+  const awaySelection = buildSelection(derivedLineups?.away ?? match.awayLineup, awayPlayers)
 
   // Running scoreboard clock — counts DOWN within the current period, exactly
   // as the scorer sees it (negative past 00:00). Hidden during the
@@ -575,16 +617,21 @@ export default function MatchDetail() {
         </div>
       )}
 
-      {/* Player of the Match — reads both storage shapes via POTMForSide.
+      {/* Player of the Match — reads both storage shapes via pomForSide.
           Renders one row if only one side has an award, a two-column grid if
           both. The header colour follows whichever side's award is present
           (matches a competition's chosen POTM colour). */}
       {match.status === 'final' && (() => {
-        const homePOTM = POTMForSide(match, 'home')
-        const awayPOTM = POTMForSide(match, 'away')
+        const homePOTM = pomForSide(match, 'home')
+        const awayPOTM = pomForSide(match, 'away')
         if (!homePOTM && !awayPOTM) return null
         const anyPOTM = homePOTM || awayPOTM
         const both    = homePOTM && awayPOTM
+        // General fixtures take the awarded (anchor) team's colour; a
+        // competition-set POM colour on the record still wins inside pomColor.
+        const anchorCol = anyPOTM === homePOTM
+          ? (match.homeTeamColor ?? '#64748b')
+          : (match.awayTeamColor ?? '#64748b')
         const items   = [
           homePOTM ? { potm: homePOTM, teamName: match.homeTeamName } : null,
           awayPOTM ? { potm: awayPOTM, teamName: match.awayTeamName } : null,
@@ -592,9 +639,9 @@ export default function MatchDetail() {
         return (
           <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm">
             <div className="flex items-center gap-2 mb-3">
-              <Star className="w-4 h-4" style={{ color: POTMColor(anyPOTM) }} />
+              <Star className="w-4 h-4" style={{ color: pomColor(anyPOTM, anchorCol) }} />
               <div className="text-[10px] font-bold uppercase tracking-widest"
-                style={{ color: POTMColor(anyPOTM) }}>
+                style={{ color: pomColor(anyPOTM, anchorCol) }}>
                 {both ? 'Players of the Match' : 'Player of the Match'}
               </div>
             </div>
@@ -616,12 +663,16 @@ export default function MatchDetail() {
         )
       })()}
 
-      {/* Lineups — the POTM row is highlighted using the competition's chosen
-          POTM colour (falls back to amber via POTMColor). Captain © stays
-          amber-600 regardless — it's independent of POTM. */}
+      {/* Lineups — POTM rows highlight in the competition's configured POM
+          colour, else the awarded player's TEAM colour, else legacy amber
+          (line-up display brief §4). The captain © is team-coloured and lives
+          in the column the avatar vacated (§2); slate fallback for a team
+          with no colour set. */}
       {(homeSelection.length > 0 || awaySelection.length > 0) && (() => {
-        const homePOTM = POTMForSide(match, 'home')
-        const awayPOTM = POTMForSide(match, 'away')
+        const homePOTM = pomForSide(match, 'home')
+        const awayPOTM = pomForSide(match, 'away')
+        const homeCol  = match.homeTeamColor ?? '#64748b'
+        const awayCol  = match.awayTeamColor ?? '#64748b'
         return (
         <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm">
           <div className="text-[10px] font-bold uppercase tracking-widest text-slate-500 mb-4">Lineups</div>
@@ -634,22 +685,26 @@ export default function MatchDetail() {
               </div>
               <div className="space-y-2">
                 {homeSelection.map(p => {
-                  const isPOTM = isLineupEntryPOTM(homePOTM, p)
-                  const rowStyle  = isPOTM ? { backgroundColor: POTMBgTint(homePOTM) } : undefined
-                  const nameStyle = isPOTM ? { color: POTMColor(homePOTM) } : undefined
+                  const isPOTM = isLineupEntryPOM(homePOTM, p)
+                  const rowStyle  = isPOTM ? { backgroundColor: pomBgTint(homePOTM, homeCol) } : undefined
+                  const nameStyle = isPOTM ? { color: pomColor(homePOTM, homeCol) } : undefined
                   const nameCls   = `text-xs truncate flex-1 ${isPOTM ? 'font-semibold' : 'text-slate-700'} ${p.personId ? 'hover:text-emerald-600 transition-colors' : ''}`
                   return (
+                    // Row order: number slot → captain slot → name → POTM
+                    // badge. The cap slot renders EMPTY when there is no cap
+                    // (water polo call-out: not a dash, not a zero); the
+                    // captain slot is reserved on every row so names stay
+                    // aligned, © in the team's colour at 14px. No avatar.
                     <div key={p.id} className={`flex items-center gap-2 ${isPOTM ? '-mx-2 px-2 py-1 rounded' : ''}`} style={rowStyle}>
-                      <span className="font-mono text-[11px] text-slate-400 w-5 text-right shrink-0">{p.shirtNumber ?? '–'}</span>
-                      <PersonAvatar name={p.personName} photoUrl={p.photoUrl} size={20} />
+                      <span className="font-mono tabular-nums text-[11px] text-slate-400 w-5 text-right shrink-0">{p.shirtNumber ?? ''}</span>
+                      <span className="w-5 text-center text-sm font-bold leading-none shrink-0" style={{ color: homeCol }}>{p.isCaptain ? '©' : ''}</span>
                       {p.personId
                         ? <Link to={playerUrl({ id: p.personId, slug: p.personSlug })} className={nameCls} style={nameStyle}>{p.personName}</Link>
                         : <span className={nameCls} style={nameStyle}>{p.personName}</span>}
                       {isPOTM && (
                         <span className="text-[9px] font-bold uppercase tracking-widest shrink-0"
-                          style={{ color: POTMColor(homePOTM) }}>POTM</span>
+                          style={{ color: pomColor(homePOTM, homeCol) }}>POTM</span>
                       )}
-                      {p.isCaptain && <span className="text-[9px] text-amber-600 font-bold shrink-0">©</span>}
                     </div>
                   )
                 })}
@@ -664,22 +719,23 @@ export default function MatchDetail() {
               </div>
               <div className="space-y-2">
                 {awaySelection.map(p => {
-                  const isPOTM = isLineupEntryPOTM(awayPOTM, p)
-                  const rowStyle  = isPOTM ? { backgroundColor: POTMBgTint(awayPOTM) } : undefined
-                  const nameStyle = isPOTM ? { color: POTMColor(awayPOTM) } : undefined
+                  const isPOTM = isLineupEntryPOM(awayPOTM, p)
+                  const rowStyle  = isPOTM ? { backgroundColor: pomBgTint(awayPOTM, awayCol) } : undefined
+                  const nameStyle = isPOTM ? { color: pomColor(awayPOTM, awayCol) } : undefined
                   const nameCls   = `text-xs truncate flex-1 text-right ${isPOTM ? 'font-semibold' : 'text-slate-700'} ${p.personId ? 'hover:text-emerald-600 transition-colors' : ''}`
                   return (
+                    // Mirrored right column: POTM badge ← name ← captain slot
+                    // ← number slot. Same reserved slots, no avatar.
                     <div key={p.id} className={`flex items-center gap-2 justify-end ${isPOTM ? '-mx-2 px-2 py-1 rounded' : ''}`} style={rowStyle}>
-                      {p.isCaptain && <span className="text-[9px] text-amber-600 font-bold shrink-0">©</span>}
                       {isPOTM && (
                         <span className="text-[9px] font-bold uppercase tracking-widest shrink-0"
-                          style={{ color: POTMColor(awayPOTM) }}>POTM</span>
+                          style={{ color: pomColor(awayPOTM, awayCol) }}>POTM</span>
                       )}
                       {p.personId
                         ? <Link to={playerUrl({ id: p.personId, slug: p.personSlug })} className={nameCls} style={nameStyle}>{p.personName}</Link>
                         : <span className={nameCls} style={nameStyle}>{p.personName}</span>}
-                      <PersonAvatar name={p.personName} photoUrl={p.photoUrl} size={20} />
-                      <span className="font-mono text-[11px] text-slate-400 w-5 shrink-0">{p.shirtNumber ?? '–'}</span>
+                      <span className="w-5 text-center text-sm font-bold leading-none shrink-0" style={{ color: awayCol }}>{p.isCaptain ? '©' : ''}</span>
+                      <span className="font-mono tabular-nums text-[11px] text-slate-400 w-5 text-left shrink-0">{p.shirtNumber ?? ''}</span>
                     </div>
                   )
                 })}

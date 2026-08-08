@@ -10,7 +10,12 @@ import { matchUrl } from '../lib/slugify'
 import { monogram } from '../lib/names'
 import { useAuth } from '../contexts/AuthContext'
 import { managesPlayerProfile } from '../lib/capabilities'
-import { removeSelfFromFixture, updatePersonBanner, updatePersonPhoto, claimPlayerProfile, isProfileClaimed } from '../lib/adminQueries'
+import {
+  removeSelfFromFixture, updatePersonBanner, updatePersonPhoto,
+  claimPlayerProfile, isProfileClaimed, claimTeamSheetProfile, revokeProfileClaim,
+} from '../lib/adminQueries'
+import { sendEmailVerification } from 'firebase/auth'
+import { auth } from '../firebase'
 import { storage } from '../firebase'
 import { ref as storageRef, uploadBytes, getDownloadURL } from 'firebase/storage'
 import { useSeoMeta } from '../lib/useSeoMeta'
@@ -281,6 +286,18 @@ export default function PlayerProfile() {
   const [loading,        setLoading]       = useState(true)
   const [notFound,       setNotFound]      = useState(false)
 
+  // Unclaimed team-sheet profiles are noindex (addendum A3): the page exists
+  // and is reachable from a team sheet, but never enters search results. The
+  // tag drops away on claim.
+  useEffect(() => {
+    if (person?.claimStatus !== 'unclaimed') return
+    const meta = document.createElement('meta')
+    meta.name = 'robots'
+    meta.content = 'noindex'
+    document.head.appendChild(meta)
+    return () => { document.head.removeChild(meta) }
+  }, [person?.claimStatus])
+
   useEffect(() => {
     let alive = true
     setLoading(true); setNotFound(false)
@@ -325,11 +342,17 @@ export default function PlayerProfile() {
   }
 
   const initials      = person.fullName.split(' ').filter(Boolean).slice(0, 2).map(w => w[0]).join('').toUpperCase()
+  // An UNCLAIMED team-sheet profile (ownerless-profiles addendum A3) shows a
+  // LIMITED page: name, teams, stats. No photo, no banner, no bio, no date of
+  // birth — nothing a player would have filled in themselves.
+  const isUnclaimedTeamSheet = person.claimStatus === 'unclaimed'
   const canSelfRemove = managesPlayerProfile(person, uid)
-  const canEditBanner = isPlatformAdmin || managesPlayerProfile(person, uid)
-  // Anyone signed in may claim an UNCLAIMED profile (no owner/guardian yet) that
-  // isn't already theirs.
-  const canClaim = !!uid && !isProfileClaimed(person) && !managesPlayerProfile(person, uid)
+  const canEditBanner = !isUnclaimedTeamSheet && (isPlatformAdmin || managesPlayerProfile(person, uid))
+  // Anyone signed in may claim an unclaimed profile that isn't already theirs.
+  // Team-sheet profiles (claimStatus set) claim through the email-verified
+  // path; legacy roster profiles through the original one.
+  const canClaim = !!uid && person.claimStatus !== 'claimed'
+    && !isProfileClaimed(person) && !managesPlayerProfile(person, uid)
 
   // Career groups from players-collection records, then append any representative
   // orgs that have no career data yet (so the org header still shows).
@@ -343,13 +366,18 @@ export default function PlayerProfile() {
   return (
     <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-6 pb-12 space-y-6">
 
-      {/* Hero: banner, photo, name, position, nationality, DOB, SAHA number */}
+      {/* Hero: banner, photo, name, position, nationality, DOB, SAHA number.
+          Unclaimed team-sheet profiles render none of the self-filled fields
+          (addendum A3): no banner, no photo, no DOB. */}
       <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm">
-        <ProfileBanner person={person} canEdit={canEditBanner}
-          onSaved={url => setPerson(p => ({ ...p, bannerUrl: url }))} />
+        {!isUnclaimedTeamSheet && (
+          <ProfileBanner person={person} canEdit={canEditBanner}
+            onSaved={url => setPerson(p => ({ ...p, bannerUrl: url }))} />
+        )}
         <div className="h-2 bg-gradient-to-r from-emerald-500 to-emerald-400" />
         <div className="p-5 flex items-start gap-4">
-          <ProfilePhoto person={person} canEdit={canEditBanner} initials={initials}
+          <ProfilePhoto person={isUnclaimedTeamSheet ? { ...person, photoUrl: null } : person}
+            canEdit={canEditBanner} initials={initials}
             onSaved={url => setPerson(p => ({ ...p, photoUrl: url }))} />
           <div className="flex-1 min-w-0 pt-0.5">
             {person.roles?.length > 0 && (
@@ -367,7 +395,7 @@ export default function PlayerProfile() {
                 {[person.position, person.nationality].filter(Boolean).join(' · ')}
               </div>
             )}
-            {person.dateOfBirth && (
+            {person.dateOfBirth && !isUnclaimedTeamSheet && (
               <div className="text-slate-400 text-xs mt-1">
                 {fmtDate(person.dateOfBirth)}
                 {age(person.dateOfBirth) != null && ` · ${age(person.dateOfBirth)} yrs`}
@@ -388,6 +416,26 @@ export default function PlayerProfile() {
       {canClaim && (
         <ClaimCard person={person}
           onClaimed={patch => setPerson(p => ({ ...p, ...patch }))} />
+      )}
+
+      {/* Master-admin revocation of a wrong claim (addendum A4). Returns the
+          profile to unclaimed, restores the pre-claim snapshot and blocks the
+          revoked uid from re-claiming. */}
+      {isPlatformAdmin && person.claimStatus === 'claimed' && (
+        <div className="bg-white rounded-xl border border-slate-200 shadow-sm px-4 py-3 flex items-center justify-between gap-3">
+          <p className="text-xs text-slate-500">This team-sheet profile has been claimed.</p>
+          <button
+            onClick={async () => {
+              if (!window.confirm('Revoke this claim? The profile returns to unclaimed and the pre-claim details are restored.')) return
+              try {
+                await revokeProfileClaim(person.id)
+                setPerson(p => ({ ...p, claimStatus: 'unclaimed', managerUids: [], ...(p.preClaimSnapshot ?? {}) }))
+              } catch (e) { window.alert(e.message || 'Revocation failed.') }
+            }}
+            className="text-[10px] font-bold uppercase tracking-widest text-slate-500 hover:text-red-600 border border-slate-200 rounded-lg px-3 py-2 transition-colors shrink-0">
+            Revoke claim
+          </button>
+        </div>
       )}
 
       {/* Represents: org → team blocks with caps/goals stats */}
@@ -428,6 +476,16 @@ export default function PlayerProfile() {
         )}
       </section>
 
+      {/* "This isn't me" (addendum A4): a plain report link on every profile
+          page, working without an account — the public contact form takes
+          signed-out submissions. */}
+      <p className="text-center">
+        <Link to={`/contact?about=${encodeURIComponent(`Player profile report: ${person.fullName} (${person.id}) — this isn't me / wrong claim`)}`}
+          className="text-[11px] text-slate-400 hover:text-slate-600 underline underline-offset-2 transition-colors">
+          This isn't me — report this profile
+        </Link>
+      </p>
+
     </div>
   )
 }
@@ -444,12 +502,26 @@ function ClaimCard({ person, onClaimed }) {
     if (!window.confirm(`${label}? You'll be able to manage this profile.`)) return
     setBusy(true); setErr('')
     try {
-      await claimPlayerProfile(person.id, relationship)
-      onClaimed(relationship === 'parent'
-        ? { guardianUids: [...(person.guardianUids ?? []), 'me'] }
-        : { ownerUid: 'me' })
+      if (person.claimStatus === 'unclaimed') {
+        // Team-sheet profile (ownerless-profiles addendum A4): the claim is
+        // email-verified and sets the claimer as the sole manager. A parent
+        // claiming for an under-18 uses the same flow, same rules.
+        await claimTeamSheetProfile(person.id)
+        onClaimed({ claimStatus: 'claimed', managerUids: ['me'] })
+      } else {
+        await claimPlayerProfile(person.id, relationship)
+        onClaimed(relationship === 'parent'
+          ? { guardianUids: [...(person.guardianUids ?? []), 'me'] }
+          : { ownerUid: 'me' })
+      }
     } catch (e) {
-      setErr(e.message || 'Could not claim this profile.')
+      if (e.code === 'claim/email-unverified' && auth?.currentUser) {
+        // Verification is an emailed confirmation and nothing more (A4).
+        await sendEmailVerification(auth.currentUser).catch(() => {})
+        setErr('Verify your email first — we\'ve sent you a confirmation link. Once verified, claim again.')
+      } else {
+        setErr(e.message || 'Could not claim this profile.')
+      }
     } finally { setBusy(false) }
   }
 
