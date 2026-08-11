@@ -11,6 +11,8 @@ import { matchUrl, competitionUrl, orgUrl } from '../lib/slugify'
 import { competitionLifecycle } from '../lib/competitionRules'
 import { prefetchMatchTeams } from '../lib/teamIdentity'
 import { MatchTeamIdentity, MatchTeamCrest } from '../components/TeamIdentity'
+import MatchDayRow from '../components/MatchDayRow'
+import { collapseMatchDays } from '../lib/matchGroups'
 import StatusBadge from '../components/StatusBadge'
 import { BADGE_BASE, LIVE_DOT, ACTIVITY_STYLES } from '../lib/statusStyles'
 import { monogram } from '../lib/names'
@@ -326,10 +328,14 @@ export default function Home() {
   function load() {
     setDataLoading(true)
     setError(null)
+    // Over-read the match feeds: they collapse match days into single rows at
+    // render, so N raw matches can become far fewer rows. These fetches read the
+    // whole status slice and cap client-side, so a larger cap costs no extra
+    // reads — we then collapse and slice to the display count in the render.
     Promise.allSettled([
-      fetchLiveMatches(10),
+      fetchLiveMatches(60),
       fetchTodayMatches(),
-      fetchRecentMatches(8),
+      fetchRecentMatches(60),
       fetchAllCompetitions(),
       fetchOrganizationsByType('school'),
       fetchOrganizationsByType('club'),
@@ -342,7 +348,9 @@ export default function Home() {
       const schoolList = schoolsR.status === 'fulfilled' ? schoolsR.value : []
       const clubList   = clubsR.status   === 'fulfilled' ? clubsR.value   : []
 
-      prefetchMatchTeams([...liveM, ...todayM, ...recentM])
+      // Bound the prefetch to what the (collapsed) feeds actually show — the raw
+      // lists are over-read for collapsing, so warming all of them would be waste.
+      prefetchMatchTeams([...liveM.slice(0, 15), ...todayM.slice(0, 20), ...recentM.slice(0, 15)])
 
       // Filter + sort competitions for homepage
       const homeComps = allComps
@@ -421,7 +429,9 @@ export default function Home() {
         <section>
           <SectionHead label="Live now" dot />
           <div className="space-y-3">
-            {live.map(m => <FeaturedLiveCard key={m.id} match={m} />)}
+            {collapseMatchDays(live).slice(0, 10).map(it => it.kind === 'group'
+              ? <MatchDayRow key={it.matchGroupId} item={it} />
+              : <FeaturedLiveCard key={it.match.id} match={it.match} />)}
           </div>
         </section>
       )}
@@ -448,7 +458,9 @@ export default function Home() {
             label={`Today · ${new Date().toLocaleDateString('en-ZA', { weekday: 'short', day: 'numeric', month: 'short' })}`}
           />
           <div className="space-y-2">
-            {today.map(m => <MatchRow key={m.id} match={m} variant="upcoming" />)}
+            {collapseMatchDays(today).slice(0, 20).map(it => it.kind === 'group'
+              ? <MatchDayRow key={it.matchGroupId} item={it} />
+              : <MatchRow key={it.match.id} match={it.match} variant="upcoming" />)}
           </div>
         </section>
       )}
@@ -460,7 +472,9 @@ export default function Home() {
           {dataLoading
             ? <div className="space-y-2">{[1, 2, 3].map(i => <SkeletonRow key={i} />)}</div>
             : <div className="space-y-2">
-                {recent.map(m => <MatchRow key={m.id} match={m} variant="result" />)}
+                {collapseMatchDays(recent).slice(0, 8).map(it => it.kind === 'group'
+                  ? <MatchDayRow key={it.matchGroupId} item={it} />
+                  : <MatchRow key={it.match.id} match={it.match} variant="result" />)}
               </div>
           }
         </section>

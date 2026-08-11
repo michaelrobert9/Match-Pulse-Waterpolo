@@ -650,20 +650,60 @@ export async function fetchRedirect(path) {
   return snap.exists() ? { id: snap.id, ...snap.data() } : null
 }
 
-export async function fetchMatchBySlug(slug) {
+// Resolve a match by its stored canonical path. Both URL shapes store their
+// resolved `path`, so this one query resolves either: a dated standalone match
+// ("/match/{date}/{slug}" or ".../{child}") and a competition-scoped, dateless
+// match ("/competitions/{season}/{slug}/match/{matchSlug}"). The path is frozen
+// on the match at creation, so this reads the stored value.
+export async function fetchMatchByPath(path) {
   if (!configured) {
-    const all = Object.values(sampleMatches)
-    return all.find(m => m.slug === slug) ?? null
+    return Object.values(sampleMatches).find(m => m.path === path) ?? null
   }
-  const snap = await getDocs(query(collection(db, 'matches'), where('slug', '==', slug)))
+  const snap = await getDocs(query(collection(db, 'matches'), where('path', '==', path)))
   return snap.empty ? null : { id: snap.docs[0].id, ...snap.docs[0].data() }
 }
 
-export function subscribeMatchBySlug(slug, onChange) {
+export function subscribeMatchByPath(path, onChange) {
   if (!configured) return () => {}
-  const q = query(collection(db, 'matches'), where('slug', '==', slug))
+  const q = query(collection(db, 'matches'), where('path', '==', path))
   return onSnapshot(q, snap => {
-    if (!snap.empty) onChange({ id: snap.docs[0].id, ...snap.docs[0].data() })
+    onChange(snap.empty ? null : { id: snap.docs[0].id, ...snap.docs[0].data() })
+  })
+}
+
+// ── Match groups (a "match day") ─────────────────────────────────────────────
+// A group's identity is (matchDate, slug); it lives at /match/{date}/{slug} in
+// the same namespace as a standalone match, so a slug resolves to at most one of
+// the two. We query on matchDate (single field, no composite index) and match
+// the slug client-side.
+export async function fetchMatchGroup(matchDate, slug) {
+  if (!configured) return null
+  const snap = await getDocs(query(collection(db, 'matchGroups'), where('matchDate', '==', matchDate)))
+  const hit = snap.docs.find(d => d.data().slug === slug)
+  return hit ? { id: hit.id, ...hit.data() } : null
+}
+
+export function subscribeMatchGroup(matchDate, slug, onChange) {
+  if (!configured) return () => {}
+  const q = query(collection(db, 'matchGroups'), where('matchDate', '==', matchDate))
+  return onSnapshot(q, snap => {
+    const hit = snap.docs.find(d => d.data().slug === slug)
+    onChange(hit ? { id: hit.id, ...hit.data() } : null)
+  })
+}
+
+// A group's children — ordinary matches, most senior first via stored groupOrder.
+export async function fetchMatchGroupChildren(matchGroupId) {
+  if (!configured || !matchGroupId) return []
+  const snap = await getDocs(query(collection(db, 'matches'), where('matchGroupId', '==', matchGroupId)))
+  return snap.docs.map(d => ({ id: d.id, ...d.data() })).sort((a, b) => (a.groupOrder ?? 0) - (b.groupOrder ?? 0))
+}
+
+export function subscribeMatchGroupChildren(matchGroupId, onChange) {
+  if (!configured || !matchGroupId) return () => {}
+  const q = query(collection(db, 'matches'), where('matchGroupId', '==', matchGroupId))
+  return onSnapshot(q, snap => {
+    onChange(snap.docs.map(d => ({ id: d.id, ...d.data() })).sort((a, b) => (a.groupOrder ?? 0) - (b.groupOrder ?? 0)))
   })
 }
 
@@ -747,68 +787,4 @@ export async function fetchMatchesForOrg(orgId) {
     ...homeSnap.docs.map(d => ({ id: d.id, ...d.data() })),
     ...awaySnap.docs.map(d => ({ id: d.id, ...d.data() })),
   ].filter(m => { if (seen.has(m.id)) return false; seen.add(m.id); return true })
-}
-
-export async function fetchMatchByMatchSlug(matchSlug) {
-  if (!configured) return null
-  const snap = await getDocs(query(collection(db, 'matches'), where('matchSlug', '==', matchSlug)))
-  return snap.empty ? null : { id: snap.docs[0].id, ...snap.docs[0].data() }
-}
-
-export function subscribeMatchByMatchSlug(matchSlug, onChange) {
-  if (!configured) return () => {}
-  const q = query(collection(db, 'matches'), where('matchSlug', '==', matchSlug))
-  return onSnapshot(q, snap => {
-    if (!snap.empty) onChange({ id: snap.docs[0].id, ...snap.docs[0].data() })
-    else onChange(null)
-  })
-}
-
-export async function fetchMatchBySeasonSlug(season, matchSlug) {
-  if (!configured) return null
-  const snap = await getDocs(query(
-    collection(db, 'matches'),
-    where('season', '==', season),
-    where('matchSlug', '==', matchSlug)
-  ))
-  return snap.empty ? null : { id: snap.docs[0].id, ...snap.docs[0].data() }
-}
-
-// Resolve a competition-scoped match by its competition slug + match slug.
-// Match slugs are made unique WITHIN a competition at creation, so this is the
-// authoritative lookup for /competitions/:season/:slug/matches/:matchSlug — it
-// does NOT depend on the edition season segment matching the fixture's own
-// season (which the season+slug lookup would). Two equality filters: no index.
-export async function fetchMatchByCompetitionSlug(competitionSlug, matchSlug) {
-  if (!configured) {
-    return Object.values(sampleMatches)
-      .find(m => m.competitionSlug === competitionSlug && m.matchSlug === matchSlug) ?? null
-  }
-  const snap = await getDocs(query(
-    collection(db, 'matches'),
-    where('competitionSlug', '==', competitionSlug),
-    where('matchSlug', '==', matchSlug)
-  ))
-  return snap.empty ? null : { id: snap.docs[0].id, ...snap.docs[0].data() }
-}
-
-export function subscribeMatchByCompetitionSlug(competitionSlug, matchSlug, onChange) {
-  if (!configured) return () => {}
-  const q = query(collection(db, 'matches'),
-    where('competitionSlug', '==', competitionSlug),
-    where('matchSlug', '==', matchSlug))
-  return onSnapshot(q, snap => {
-    if (!snap.empty) onChange({ id: snap.docs[0].id, ...snap.docs[0].data() })
-    else onChange(null)
-  })
-}
-
-export function subscribeMatchBySeasonSlug(season, matchSlug, onChange) {
-  if (!configured) return () => {}
-  const q = query(collection(db, 'matches'),
-    where('season', '==', season),
-    where('matchSlug', '==', matchSlug))
-  return onSnapshot(q, snap => {
-    if (!snap.empty) onChange({ id: snap.docs[0].id, ...snap.docs[0].data() })
-  })
 }

@@ -6,6 +6,8 @@ import {
 import { httpsCallable } from 'firebase/functions'
 import { db, auth, functions } from '../firebase'
 import { slugify, matchSlug as buildMatchSlug } from './slugify'
+import { matchPath, competitionMatchPath, dedupeSlug } from './matchPaths'
+import { redirectKey } from './queries'
 import { periodLabels, DEFAULT_PERIODS, DEFAULT_PERIOD_MINUTES, DEFAULT_BREAK_MINUTES } from './matchClock'
 import { generatedTeamName, teamStructuralKey, levelLabel } from './teamNaming'
 import { defaultRulesForType, rulesHash } from './competitionRules'
@@ -817,18 +819,78 @@ export async function removePlayer(id) {
   return deleteDoc(doc(db, 'players', id))
 }
 
+// The URL date segment (YYYY-MM-DD) for a STANDALONE match, in SAST (UTC+2, no
+// DST) so an evening match never lands on the wrong calendar day. Accepts a Date,
+// a Firestore Timestamp, or an ISO string; returns null when nothing is derivable.
+export function toMatchDate(value) {
+  if (!value) return null
+  const d = value instanceof Date ? value : (value?.toDate ? value.toDate() : new Date(value))
+  if (isNaN(d?.getTime?.())) return null
+  return new Date(d.getTime() + 2 * 60 * 60 * 1000).toISOString().slice(0, 10)
+}
+
+// ONE namespace for a date's top-level slugs. A standalone match at
+// /match/{date}/{slug} and a match GROUP at /match/{date}/{slug} cannot both
+// exist, so uniqueness on (matchDate, slug) is checked across BOTH collections
+// together — matches (matchSlug) and matchGroups (slug) — never within one.
+// Group CHILDREN are excluded: they live one level deeper (they carry a
+// matchGroupId and their slug is the group's), so they never compete for a
+// top-level slug.
+async function takenTopLevelSlugsForDate(matchDate) {
+  const [matchSnap, groupSnap] = await Promise.all([
+    getDocs(query(collection(db, 'matches'), where('matchDate', '==', matchDate))),
+    getDocs(query(collection(db, 'matchGroups'), where('matchDate', '==', matchDate))).catch(() => ({ forEach() {} })),
+  ])
+  const taken = new Set()
+  matchSnap.forEach(d => { const m = d.data(); if (!m.matchGroupId && m.matchSlug) taken.add(m.matchSlug) })
+  groupSnap.forEach(d => { const s = d.data().slug; if (s) taken.add(s) })
+  return taken
+}
+
+// Slug uniqueness for a STANDALONE match is scoped to its date, across the whole
+// (matchDate, slug) namespace — matches AND groups (see takenTopLevelSlugsForDate).
+async function generateUniqueStandaloneMatchSlug(matchDate, base) {
+  return dedupeSlug(base, await takenTopLevelSlugsForDate(matchDate))
+}
+
+// Slug uniqueness for a COMPETITION match is scoped to its competition: the URL
+// is /competitions/{season}/{competition-slug}/match/{slug} (dateless — the
+// competition owns the timing), so two matches in one competition can't collide.
+async function generateUniqueCompetitionMatchSlug(competitionId, base) {
+  const snap = await getDocs(query(collection(db, 'matches'), where('competitionId', '==', competitionId)))
+  const taken = new Set(snap.docs.map(d => d.data().matchSlug).filter(Boolean))
+  return dedupeSlug(base, taken)
+}
+
 export async function createMatch(competitionId, homeTeam, awayTeam, {
-  scheduledAt, pitch = '', season,
+  matchDate, scheduledAt = null, pitch = '', season, competitionSlug = null,
   periods = DEFAULT_PERIODS, periodMinutes = DEFAULT_PERIOD_MINUTES,
   breakMinutes = DEFAULT_BREAK_MINUTES,
   indoor = false,
 }) {
-  if (!scheduledAt) throw new Error('scheduledAt is required')
-  const baseSlug = buildMatchSlug(homeTeam.displayName, awayTeam.displayName)
   const seasonStr = season ? String(season) : null
-  const matchSlug = seasonStr
-    ? await generateUniqueMatchSlug(seasonStr, baseSlug)
-    : await generateUniqueMatchSlugGlobal(baseSlug)
+  const baseSlug  = buildMatchSlug(homeTeam.displayName, awayTeam.displayName)
+
+  // The canonical URL depends on whether this match belongs to a competition.
+  // Competition matches are competition-scoped and dateless
+  // (/competitions/{season}/{slug}/match/{matchSlug}); standalone matches carry
+  // their own date (/match/{matchDate}/{matchSlug}). scheduledAt (the exact time)
+  // is optional either way and shows as TBC until set.
+  let matchSlug, path, matchDateField
+  if (competitionId) {
+    if (!competitionSlug || !seasonStr) {
+      throw new Error('A competition match needs the competition slug and season to build its URL.')
+    }
+    matchSlug      = await generateUniqueCompetitionMatchSlug(competitionId, baseSlug)
+    path           = competitionMatchPath(seasonStr, competitionSlug, matchSlug)
+    matchDateField = null
+  } else {
+    const date = matchDate ?? toMatchDate(scheduledAt)
+    if (!date) throw new Error('matchDate is required for a standalone match (no date could be derived)')
+    matchSlug      = await generateUniqueStandaloneMatchSlug(date, baseSlug)
+    path           = matchPath(date, matchSlug)
+    matchDateField = date
+  }
 
   // A team may be a registered MatchPulse team (has .id) or a manual/unregistered
   // opponent (id is null). Both are supported; only registered teams earn stats.
@@ -863,17 +925,288 @@ export async function createMatch(competitionId, homeTeam, awayTeam, {
     startedAt: null, pausedAt: null, totalPausedMs: 0,
     nextPeriodIndex: 1,
     scheduledAt, pitch, indoor: !!indoor, status: 'scheduled', tracked: false,
+    ...(matchDateField ? { matchDate: matchDateField } : {}),
     matchSlug,
+    path,
     ...(seasonStr ? { season: seasonStr } : {}),
+    ...(competitionId && competitionSlug && seasonStr ? { competitionSlug, competitionSeason: seasonStr } : {}),
     createdBy: uid(), createdAt: serverTimestamp(),
   })
 }
+
 export async function updateMatch(id, data) {
   return updateDoc(doc(db, 'matches', id), { ...data, updatedBy: uid(), updatedAt: serverTimestamp() })
 }
 export async function deleteMatch(id) {
   return deleteDoc(doc(db, 'matches', id))
 }
+
+// ── Match groups (a "match day" between two schools) ──────────────────────────
+// A matchGroup owns identity + display only. Its children are ORDINARY standalone
+// matches (competitionId null) carrying matchGroupId, groupOrder (from the
+// canonical seniority sort) and ageSlug; each child's path is
+// matchPath(date, groupSlug, ageSlug). Nothing in scoring / line-up / stats
+// changes. The day tally is DERIVED on read from the children — no counters are
+// stored on the group document (same discipline as standings).
+//
+// `rows` are already paired + ordered by the caller (create wizard), each:
+//   { ageSlug, groupOrder, home: teamLike, away: teamLike,
+//     scheduledAt?: Date|null, venue?: string }
+// where teamLike is a registered team (has .id) or a manual opponent.
+export async function createMatchGroup({
+  home, away, matchDate, venue = '', sport = null, ownerOrgId = null,
+  periods = DEFAULT_PERIODS, periodMinutes = DEFAULT_PERIOD_MINUTES,
+  breakMinutes = DEFAULT_BREAK_MINUTES, indoor = false,
+  rows = [],
+}) {
+  if (!matchDate) throw new Error('A date is required to create a match day.')
+  if (!rows.length) throw new Error('Pick at least one match to create.')
+  // One namespace: the group's slug is unique on (matchDate, slug) across BOTH
+  // matchGroups and matches (see takenTopLevelSlugsForDate).
+  const groupSlug = dedupeSlug(buildMatchSlug(home.name, away.name), await takenTopLevelSlugsForDate(matchDate))
+
+  const batch = writeBatch(db)
+  const groupRef = doc(collection(db, 'matchGroups'))
+  batch.set(groupRef, {
+    slug: groupSlug,
+    matchDate,
+    homeName: home.name,
+    awayName: away.name,
+    homeOrgId: home.id ?? null,   // a group's "sides" are ORGS (schools/clubs), not
+    awayOrgId: away.id ?? null,   // single teams — named like /matches for by-school queries
+    venue: venue || '',
+    sport: sport ?? null,
+    ownerOrgId: ownerOrgId ?? null,
+    createdBy: uid(), createdAt: serverTimestamp(),
+  })
+
+  // Data-integrity backstop: two children must never share an ageSlug, or their
+  // paths (/match/{date}/{groupSlug}/{ageSlug}) collide and one shadows the other.
+  // The wizard's finalizeRows already gender-prefixes and de-dupes, but enforce it
+  // here too so a bad caller can't create an unreachable child.
+  const usedAge = new Set()
+  const childIds = []
+  for (const r of rows) {
+    const childRef = doc(collection(db, 'matches'))
+    const h = r.home, a = r.away
+    const hReg = h.id != null, aReg = a.id != null
+    const ageSlug = dedupeSlug(r.ageSlug, usedAge)
+    usedAge.add(ageSlug)
+    batch.set(childRef, {
+      competitionId: null,
+      matchGroupId: groupRef.id,
+      groupOrder:   r.groupOrder ?? 0,
+      ageSlug,
+      ...(r.gender ? { gender: r.gender } : {}),
+      matchDate,
+      matchSlug:    groupSlug,        // children share the group's top-level slug
+      path:         matchPath(matchDate, groupSlug, ageSlug),
+      homeTeamId:        hReg ? h.id : null,
+      homeTeamName:      h.displayName ?? h.name ?? null,
+      homeOrgName:       h.orgName ?? null,
+      homeTeamShortCode: h.shortCode ?? null,
+      homeTeamSlug:      h.slug ?? null,
+      homeTeamColor:     h.primaryColor ?? null,
+      homeOrgId:         h.organizationId ?? null,
+      homeRegistered:    hReg,
+      ...(h.manualOpponentId ? { manualHomeOpponentId: h.manualOpponentId } : {}),
+      awayTeamId:        aReg ? a.id : null,
+      awayTeamName:      a.displayName ?? a.name ?? null,
+      awayOrgName:       a.orgName ?? null,
+      awayTeamShortCode: a.shortCode ?? null,
+      awayTeamSlug:      a.slug ?? null,
+      awayTeamColor:     a.primaryColor ?? null,
+      awayOrgId:         a.organizationId ?? null,
+      awayRegistered:    aReg,
+      ...(a.manualOpponentId ? { manualAwayOpponentId: a.manualOpponentId } : {}),
+      homeScore: 0, awayScore: 0,
+      periods:       Number(periods) || DEFAULT_PERIODS,
+      periodMinutes: Number(periodMinutes) || DEFAULT_PERIOD_MINUTES,
+      breakMinutes:  Array.isArray(breakMinutes) ? breakMinutes : DEFAULT_BREAK_MINUTES,
+      goals: [], cards: [], controlLog: [],
+      startedAt: null, pausedAt: null, totalPausedMs: 0, nextPeriodIndex: 1,
+      scheduledAt: r.scheduledAt ?? null,   // blank is expected and valid
+      pitch:       r.venue || venue || '',
+      // Whether THIS child's venue was set explicitly (its own row venue) rather
+      // than inherited from the group default. A later group-venue cascade must
+      // not overwrite an explicit one (P4).
+      venueOverride: !!r.venue,
+      indoor:      !!indoor,
+      status: 'scheduled', tracked: false,
+      createdBy: uid(), createdAt: serverTimestamp(),
+    })
+    childIds.push(childRef.id)
+  }
+  await batch.commit()
+  return { id: groupRef.id, slug: groupSlug, matchDate, childIds }
+}
+
+// Set scheduled time (and optional venue) on many matches at once — backs the
+// "times grid" screen. patches: [{ matchId, scheduledAt: Date|null, venue?: string }].
+// Blank time is valid (clears to null); nothing else on the match is touched.
+export async function setMatchTimes(patches = []) {
+  const list = patches.filter(p => p && p.matchId)
+  if (!list.length) return
+  const batch = writeBatch(db)
+  for (const p of list) {
+    const patch = { scheduledAt: p.scheduledAt ?? null, updatedBy: uid(), updatedAt: serverTimestamp() }
+    if (p.venue !== undefined) {
+      patch.pitch = p.venue || ''
+      // Setting a venue here is an explicit choice → it now wins over a later
+      // group-venue cascade; clearing it lets the group default flow back in.
+      patch.venueOverride = !!(p.venue && String(p.venue).trim())
+    }
+    batch.update(doc(db, 'matches', p.matchId), patch)
+  }
+  await batch.commit()
+}
+
+// ── Match-group edit / delete (P4) ────────────────────────────────────────────
+
+// Move a stored time to a new calendar day, KEEPING its SAST wall-clock time
+// (UTC+2, no DST). A group date move shifts the day; each match's explicit
+// kickoff time is preserved, not reset.
+function shiftScheduledToDate(scheduledAt, newDate) {
+  const d = scheduledAt?.toDate ? scheduledAt.toDate() : (scheduledAt ? new Date(scheduledAt) : null)
+  if (!d || isNaN(d.getTime())) return null
+  const sast = new Date(d.getTime() + 2 * 60 * 60 * 1000)
+  const hh = String(sast.getUTCHours()).padStart(2, '0')
+  const mm = String(sast.getUTCMinutes()).padStart(2, '0')
+  const shifted = new Date(`${newDate}T${hh}:${mm}:00+02:00`)
+  return isNaN(shifted.getTime()) ? d : shifted
+}
+
+// Write a batch of path redirects so links shared before a move keep resolving
+// (NotFound.jsx resolves them). Scoped to /match/ paths and stamped with the
+// owning org so the (broadened) rule can authorise a non-admin owner's write.
+async function writePathRedirects(pairs, ownerOrgId) {
+  const clean = pairs.filter(p => p.from && p.to && p.from !== p.to)
+  if (!clean.length) return
+  const batch = writeBatch(db)
+  for (const { from, to } of clean) {
+    batch.set(doc(db, 'redirects', redirectKey(from)), {
+      fromPath: from, toPath: to, ownerOrgId: ownerOrgId ?? null,
+      createdBy: uid(), createdAt: serverTimestamp(),
+    })
+  }
+  await batch.commit()
+}
+
+// Edit a match group's DATE and/or default VENUE, cascading to its children:
+//   • date  — the day moved: every child's matchDate + path change, each kickoff
+//             time is preserved, and the group + every child path is redirected
+//             from old → new so shared links survive.
+//   • venue — the group default flows to children that DID NOT set their own
+//             venue (venueOverride); an explicit child venue is never overwritten.
+// Returns a summary for the UI. The confirm dialog computes its preview from the
+// children directly (see fetchMatchGroupChildren) — this performs the write.
+export async function updateMatchGroup(groupId, { matchDate, venue } = {}) {
+  const gRef  = doc(db, 'matchGroups', groupId)
+  const gSnap = await getDoc(gRef)
+  if (!gSnap.exists()) throw new Error('Match day not found.')
+  const g = gSnap.data()
+  const kids = (await getDocs(query(collection(db, 'matches'), where('matchGroupId', '==', groupId)))).docs
+
+  const dateChanged  = !!matchDate && matchDate !== g.matchDate
+  const venueChanged = venue !== undefined && venue !== (g.venue ?? '')
+  if (!dateChanged && !venueChanged) return { dateChanged: false, venueChanged: false, childCount: kids.length }
+  const newDate = dateChanged ? matchDate : g.matchDate
+
+  const batch = writeBatch(db)
+  const redirects = []
+
+  const gPatch = { updatedBy: uid(), updatedAt: serverTimestamp() }
+  if (dateChanged)  gPatch.matchDate = newDate
+  if (venueChanged) gPatch.venue = venue
+  batch.update(gRef, gPatch)
+  if (dateChanged) redirects.push({ from: matchPath(g.matchDate, g.slug), to: matchPath(newDate, g.slug) })
+
+  let cascaded = 0, kept = 0
+  for (const cSnap of kids) {
+    const c = cSnap.data()
+    const patch = {}
+    if (dateChanged) {
+      patch.matchDate = newDate
+      const newPath = matchPath(newDate, g.slug, c.ageSlug)
+      patch.path = newPath
+      const shifted = shiftScheduledToDate(c.scheduledAt, newDate)
+      if (shifted) patch.scheduledAt = shifted
+      if (c.path && c.path !== newPath) redirects.push({ from: c.path, to: newPath })
+    }
+    if (venueChanged) {
+      if (c.venueOverride) kept++
+      else { patch.pitch = venue || ''; cascaded++ }
+    }
+    if (Object.keys(patch).length) {
+      patch.updatedBy = uid(); patch.updatedAt = serverTimestamp()
+      batch.update(cSnap.ref, patch)
+    }
+  }
+
+  await batch.commit()
+  await writePathRedirects(redirects, g.ownerOrgId).catch(() => {})
+  return { dateChanged, venueChanged, childCount: kids.length, venueCascaded: cascaded, venueKept: kept, redirects: redirects.length }
+}
+
+// Delete a match group WITHOUT orphaning children. Two modes:
+//   • 'cascade' — delete the group and every child (one batch).
+//   • 'detach'  — keep the matches but make them ordinary STANDALONE matches:
+//                 clear matchGroupId/groupOrder/ageSlug, give each its own
+//                 /match/{date}/{home-vs-away} slug+path (unique per date, across
+//                 matches AND groups), and redirect the old child path → the new
+//                 standalone path. Then delete the group.
+export async function deleteMatchGroup(groupId, mode = 'cascade') {
+  const gRef = doc(db, 'matchGroups', groupId)
+  const kids = (await getDocs(query(collection(db, 'matches'), where('matchGroupId', '==', groupId)))).docs
+
+  if (mode === 'detach') {
+    // Seed per-date taken slug sets so new standalone slugs don't collide with
+    // existing matches/groups on that date.
+    const dates = [...new Set(kids.map(d => d.data().matchDate).filter(Boolean))]
+    const takenByDate = new Map()
+    await Promise.all(dates.map(async d => { takenByDate.set(d, await takenTopLevelSlugsForDate(d)) }))
+
+    const batch = writeBatch(db)
+    const redirects = []
+    for (const cSnap of kids) {
+      const c = cSnap.data()
+      const taken = takenByDate.get(c.matchDate) ?? new Set()
+      const slug = dedupeSlug(buildMatchSlug(c.homeTeamName ?? 'home', c.awayTeamName ?? 'away'), taken)
+      taken.add(slug)
+      const newPath = matchPath(c.matchDate, slug)
+      batch.update(cSnap.ref, {
+        matchGroupId: deleteField(), groupOrder: deleteField(), ageSlug: deleteField(),
+        matchSlug: slug, path: newPath, updatedBy: uid(), updatedAt: serverTimestamp(),
+      })
+      if (c.path && c.path !== newPath) redirects.push({ from: c.path, to: newPath })
+    }
+    batch.delete(gRef)
+    await batch.commit()
+    await writePathRedirects(redirects, gSnapOwner(kids)).catch(() => {})
+    return { mode: 'detach', count: kids.length }
+  }
+
+  // cascade: remove children then the group (batch limit 500 — a match day is
+  // tens of matches at most).
+  const batch = writeBatch(db)
+  for (const cSnap of kids) batch.delete(cSnap.ref)
+  batch.delete(gRef)
+  await batch.commit()
+  return { mode: 'cascade', count: kids.length }
+}
+
+// The owning org for a detach's redirects — read off any child (all share it).
+function gSnapOwner(kids) {
+  for (const c of kids) { const o = c.data().homeOrgId; if (o) return o }
+  return null
+}
+
+// Write a single path redirect (old → new). Used by the scorer slug edit so a
+// renamed match's old link keeps resolving. /match/-scoped + org-stamped.
+export async function writeMatchRedirect(fromPath, toPath, ownerOrgId = null) {
+  return writePathRedirects([{ from: fromPath, to: toPath }], ownerOrgId)
+}
+
 
 // ── Match control (timer + periods) ──────────────────────────────────────────
 // Each control action records an immutable audit entry in controlLog with the

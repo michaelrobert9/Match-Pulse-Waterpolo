@@ -188,6 +188,7 @@ function SchoolFixtureForm({ org, canChange, onChangeOrg }) {
         scheduledAt:   new Date(form.scheduledAt),
         pitch:         form.pitch.trim(),
         season:        comp?.season ?? null,
+        competitionSlug: comp?.slug ?? null,
         periods:       Number(form.periods),
         periodMinutes: Number(form.periodMinutes),
         breakMinutes:  form.breakMinutes,
@@ -398,6 +399,7 @@ function ClubFixtureForm({ org, canChange, onChangeOrg }) {
         scheduledAt:   new Date(form.scheduledAt),
         pitch:         form.pitch.trim(),
         season:        comp?.season ?? null,
+        competitionSlug: comp?.slug ?? null,
         periods:       Number(form.periods),
         periodMinutes: Number(form.periodMinutes),
         breakMinutes:  form.breakMinutes,
@@ -624,6 +626,10 @@ export default function NewFixture() {
           {!selOrg && !loading && orgs.length > 1 && (
             <p className="text-slate-500 text-sm mt-2">Select a school or club to continue.</p>
           )}
+          <Link to="/match/new/group"
+            className="inline-block mt-2 text-[11px] font-bold uppercase tracking-widest text-emerald-600 hover:text-emerald-500 transition-colors">
+            Several teams playing? Create a match day →
+          </Link>
         </div>
 
         {loading && <Spinner />}

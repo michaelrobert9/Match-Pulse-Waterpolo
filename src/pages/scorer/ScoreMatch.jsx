@@ -10,7 +10,7 @@ import {
   addPersonToMatchLineup, removePersonFromMatchLineup, toggleLineupStarter, updateMatchLineupEntry, updateMatch,
   setPlayerOfMatch, setPlayersOfMatch, syncFixtureMembership, swapFixtureSides, resetMatch,
   setFixtureNotPlayed, setFixtureWalkover, abandonMatch, letAbandonedStand, revertFixtureOutcome,
-  submitFixtureResult,
+  submitFixtureResult, writeMatchRedirect,
   fetchCompetitionTeamSheet, setFixtureAbsence, setFixtureCapOverride,
 } from '../../lib/adminQueries'
 import { resolveSideLineup, isInheritedLineup } from '../../lib/lineupResolve'
@@ -27,7 +27,8 @@ import { isLive, isScheduled } from '../../lib/fixtureStatus'
 import { useTeamIdentity } from '../../hooks/useTeamIdentity'
 import { TeamCrest } from '../../components/TeamIdentity'
 import PersonAvatar from '../../components/PersonAvatar'
-import { slugify } from '../../lib/slugify'
+import { slugify, matchUrl } from '../../lib/slugify'
+import { matchPath } from '../../lib/matchPaths'
 
 const DEFAULT_BREAK_SECS = 120
 
@@ -814,7 +815,9 @@ export default function ScoreMatch() {
       awayTeamId:    match.awayTeamId    || '',
       periods:       match.periods       ?? 2,
       periodMinutes: match.periodMinutes ?? 35,
-      matchSlug:     match.matchSlug     || match.slug || '',
+      // For a group child the editable slug is its ageSlug (last segment); for a
+      // standalone/competition match it is the matchSlug.
+      matchSlug:     (match.matchGroupId ? match.ageSlug : match.matchSlug) || match.slug || '',
     })
     setEditError('')
     const sortByName = ts => ts.slice().sort((a, b) => (a.displayName || '').localeCompare(b.displayName || ''))
@@ -908,11 +911,33 @@ export default function ScoreMatch() {
           patch.awayRegistered    = false
         }
       }
-      // URL slug — slugify the admin's input and store as the canonical
-      // matchSlug. Saved verbatim (no auto-suffix) so admins keep full control.
+      // URL slug — slugify the admin's input; keep the stored `path` in step.
+      // A GROUP CHILD is different: the editable slug is the child's ageSlug (the
+      // last segment), while the group slug (matchSlug) + date belong to the group
+      // — so rebuild the group-child path, not a standalone one. A standalone /
+      // competition match rebuilds via matchUrl as before. Either way, redirect the
+      // old path → new so links shared before the rename keep resolving.
+      let redirectFrom = null
       const cleanSlug = slugify(editForm.matchSlug || '')
-      if (cleanSlug) patch.matchSlug = cleanSlug
+      if (cleanSlug) {
+        if (match.matchGroupId) {
+          const newPath = matchPath(match.matchDate, match.matchSlug, cleanSlug)
+          if (match.path && match.path !== newPath) redirectFrom = match.path
+          patch.ageSlug = cleanSlug
+          patch.path = newPath
+        } else {
+          patch.matchSlug = cleanSlug
+          const rebuilt = matchUrl({ ...match, matchSlug: cleanSlug, path: null })
+          if (rebuilt && rebuilt !== '/') {
+            if (match.path && match.path !== rebuilt) redirectFrom = match.path
+            patch.path = rebuilt
+          }
+        }
+      }
       await updateMatch(id, patch)
+      if (redirectFrom && patch.path) {
+        await writeMatchRedirect(redirectFrom, patch.path, match.homeOrgId ?? null).catch(() => {})
+      }
       // If teams changed: reset lineup cache and keep the competition's
       // fixture-membership doc in sync so standings/stats use correct IDs.
       if (patch.homeTeamId !== undefined || patch.awayTeamId !== undefined) {
@@ -2010,7 +2035,13 @@ export default function ScoreMatch() {
                 placeholder="e.g. home-team-vs-away-team"
                 className={`w-full rounded-xl border px-3 py-2.5 text-sm focus:outline-none focus:border-emerald-500 transition-colors ${t.neutralBtn}`} />
               <div className={`text-[10px] ${t.muted} mt-1 break-all`}>
-                /…/matches/{slugify(editForm.matchSlug || '') || '—'}
+                {(() => {
+                  const s = slugify(editForm.matchSlug || '') || '—'
+                  if (match.matchGroupId) return `/match/${match.matchDate || '{date}'}/${match.matchSlug}/${s}`
+                  return match.competitionId && match.competitionSlug && match.competitionSeason
+                    ? `/competitions/${match.competitionSeason}/${match.competitionSlug}/match/${s}`
+                    : `/match/${match.matchDate || '{date}'}/${s}`
+                })()}
               </div>
             </div>
 
