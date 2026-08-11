@@ -1939,7 +1939,7 @@ function TeamsTab({ competition, teams, setTeams }) {
               <div>
                 <label className="micro-label block mb-1.5">Team name</label>
                 <Input value={namedName} onChange={e => setNamedName(e.target.value)}
-                  placeholder="e.g. Crusaders 1st" required />
+                  placeholder="e.g. Crusaders 1st Team" required />
               </div>
               <div className="grid grid-cols-[auto,1fr] gap-3 items-end">
                 <div>

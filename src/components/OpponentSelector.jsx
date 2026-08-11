@@ -2,17 +2,22 @@ import { useRef, useState } from 'react'
 import { X, Plus, ChevronDown } from 'lucide-react'
 import { createManualOpponent, searchOpponents } from '../lib/adminQueries'
 import { monogram } from '../lib/names'
-import { CLUB_DIVISIONS, TEAM_LEVEL_CHIPS, schoolTeamName, clubTeamName } from '../lib/teamNaming'
+import { CLUB_DIVISIONS, generatedTeamName } from '../lib/teamNaming'
+import { LevelPicker, BLANK_LEVEL, levelFieldsOf, levelComplete } from './LevelPicker'
+
+// The opponent's structured team fields, derived from the create-form state.
+function opponentFields(form) {
+  const isSchool = form.orgType === 'school'
+  const effectiveGender = form.orgGenderProfile !== 'coed' ? form.orgGenderProfile : form.gender
+  return isSchool
+    ? { gender: effectiveGender || null, orgGenderProfile: form.orgGenderProfile, ...levelFieldsOf(form.level) }
+    : { division: form.division || null,                                          ...levelFieldsOf(form.level) }
+}
 
 function computeOpponentName(form) {
   const org = form.orgName.trim()
   if (!org) return ''
-  if (form.orgType === 'school') {
-    const effectiveGender = form.orgGenderProfile !== 'coed' ? form.orgGenderProfile : form.gender
-    const suffix = schoolTeamName(effectiveGender, form.teamLabel.trim(), form.orgGenderProfile)
-    return `${org} ${suffix}`.replace(/\s+/g, ' ').trim()
-  }
-  const suffix = clubTeamName(form.division, form.teamLabel.trim() || null, null)
+  const suffix = generatedTeamName(opponentFields(form))
   return `${org} ${suffix}`.replace(/\s+/g, ' ').trim()
 }
 
@@ -22,7 +27,8 @@ const BLANK_FORM = {
   orgGenderProfile: 'coed',
   gender:           'girls',
   division:         'men',
-  teamLabel:        '',
+  level:            BLANK_LEVEL,
+  shortCode:        '',
 }
 
 export default function OpponentSelector({ orgTeams = [], excludeTeamId, orgId, excludeOrgId, value, onChange }) {
@@ -68,26 +74,26 @@ export default function OpponentSelector({ orgTeams = [], excludeTeamId, orgId, 
 
   async function handleCreate() {
     const computedName = computeOpponentName(newForm)
-    if (!computedName || !newForm.teamLabel.trim() || creating) return
+    if (!computedName || !levelComplete(newForm.level) || creating) return
     setCreating(true)
-    const effectiveGender = newForm.orgType === 'school'
-      ? (newForm.orgGenderProfile !== 'coed' ? newForm.orgGenderProfile : newForm.gender)
-      : newForm.division
+    const fields = opponentFields(newForm)
     try {
       const ref = await createManualOpponent({
         name:             computedName,
-        shortCode:        null,
+        shortCode:        newForm.shortCode || null,
         type:             newForm.orgType,
         orgName:          newForm.orgName.trim(),
         orgGenderProfile: newForm.orgType === 'school' ? newForm.orgGenderProfile : null,
-        gender:           effectiveGender,
-        teamLabel:        newForm.teamLabel.trim(),
+        gender:           fields.gender ?? null,
+        division:         fields.division ?? null,
+        ageGroup:         fields.ageGroup ?? null,
+        teamLevel:        fields.teamLevel ?? null,
         createdByOrgId:   orgId,
       })
       onChange({
         id:               null,
         displayName:      computedName,
-        shortCode:        null,
+        shortCode:        newForm.shortCode || null,
         primaryColor:     null,
         organizationId:   null,
         manualOpponentId: ref.id,
@@ -122,7 +128,7 @@ export default function OpponentSelector({ orgTeams = [], excludeTeamId, orgId, 
   const hasQuery   = inputValue.trim().length >= 2
   const hasResults = searchResults.teams.length > 0 || searchResults.manual.length > 0
   const previewName = showCreate ? computeOpponentName(newForm) : ''
-  const canCreate   = previewName.length > 0 && newForm.teamLabel.trim().length > 0
+  const canCreate   = previewName.length > 0 && levelComplete(newForm.level)
 
   return (
     <div className="space-y-2">
@@ -141,7 +147,7 @@ export default function OpponentSelector({ orgTeams = [], excludeTeamId, orgId, 
             onClick={() => setAllowInternal(v => !v)}
             className="text-[10px] font-bold uppercase tracking-widest text-slate-400 hover:text-slate-600 transition-colors flex items-center gap-1 mb-1.5">
             <ChevronDown className={`w-3 h-3 transition-transform ${allowInternal ? '' : '-rotate-90'}`} />
-            Allow internal fixture
+            Allow internal match
           </button>
           {allowInternal && (
             <div className="flex flex-wrap gap-2">
@@ -230,7 +236,7 @@ export default function OpponentSelector({ orgTeams = [], excludeTeamId, orgId, 
           <div>
             <label className="text-[10px] font-bold uppercase tracking-widest text-slate-500 block mb-1.5">Type</label>
             <div className="flex gap-2">
-              {[{ v: 'school', label: 'School' }, { v: 'club', label: 'Club' }].map(o => (
+              {[{ v: 'school', label: 'School' }, { v: 'club', label: 'Club' }, { v: 'association', label: 'Assoc.' }].map(o => (
                 <button type="button" key={o.v} onClick={() => setNewForm(f => ({ ...f, orgType: o.v }))}
                   className={`flex-1 text-[10px] font-bold uppercase tracking-wider px-3 py-2 rounded-lg border transition-colors ${
                     newForm.orgType === o.v ? 'bg-sky-600 border-sky-600 text-white' : 'border-slate-200 text-slate-500 hover:border-slate-400'
@@ -288,8 +294,8 @@ export default function OpponentSelector({ orgTeams = [], excludeTeamId, orgId, 
             </div>
           )}
 
-          {/* Club: division */}
-          {newForm.orgType === 'club' && (
+          {/* Club / association: division */}
+          {newForm.orgType !== 'school' && (
             <div>
               <label className="text-[10px] font-bold uppercase tracking-widest text-slate-500 block mb-1.5">Division</label>
               <select
@@ -301,28 +307,25 @@ export default function OpponentSelector({ orgTeams = [], excludeTeamId, orgId, 
             </div>
           )}
 
-          {/* Team — tap a designation, or type a custom one */}
+          {/* Team level — the same selector as everywhere else, no free text. */}
           <div>
             <label className="text-[10px] font-bold uppercase tracking-widest text-slate-500 block mb-1.5">Team</label>
-            <div className="grid grid-cols-4 gap-1.5 mb-2">
-              {TEAM_LEVEL_CHIPS.map(chip => (
-                <button type="button" key={chip}
-                  onClick={() => setNewForm(f => ({ ...f, teamLabel: chip }))}
-                  className={`text-[10px] font-bold uppercase tracking-widest px-2 py-1.5 rounded-lg border transition-colors ${
-                    newForm.teamLabel === chip
-                      ? 'bg-sky-600 border-sky-600 text-white'
-                      : 'border-slate-200 text-slate-600 hover:border-slate-400'
-                  }`}>
-                  {chip}
-                </button>
-              ))}
-            </div>
+            <LevelPicker
+              orgType={newForm.orgType}
+              value={newForm.level}
+              onChange={lvl => setNewForm(f => ({ ...f, level: lvl }))}
+            />
+          </div>
+
+          {/* Short code */}
+          <div>
+            <label className="text-[10px] font-bold uppercase tracking-widest text-slate-500 block mb-1.5">
+              Short code <span className="text-slate-400 normal-case tracking-normal font-normal">optional</span>
+            </label>
             <input
-              className="w-full bg-white border border-slate-200 rounded-lg px-3 py-2.5 text-slate-900 text-sm placeholder-slate-400 focus:outline-none focus:border-sky-500 transition-colors"
-              value={newForm.teamLabel}
-              placeholder="Custom team (e.g. U16C, Vets)"
-              onChange={e => setNewForm(f => ({ ...f, teamLabel: e.target.value }))}
-              onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); handleCreate() } }}
+              className="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-slate-900 text-sm placeholder-slate-400 focus:outline-none focus:border-sky-500 transition-colors"
+              placeholder="e.g. WBH" value={newForm.shortCode} maxLength={6}
+              onChange={e => setNewForm(f => ({ ...f, shortCode: e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '') }))}
             />
           </div>
 

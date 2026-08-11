@@ -1,23 +1,32 @@
-// Structured team-naming model.
+// Structured team-naming model — the single governance model shared by schools,
+// clubs and associations.
 //
-//   School / Club  >  Gender or Division  >  Team
+//   School            >  Gender (from the school)  >  Level
+//   Club / Association >  Division                  >  Level
 //
-// Schools carry a `genderProfile` (boys / girls / coed). Single-gender schools
-// apply their gender automatically; co-ed schools choose per team. Clubs choose
-// a division. Names are generated from these structured fields rather than free
-// text so they stay consistent and can be re-rendered.
+// The LEVEL selector is IDENTICAL for every organisation type. A team is either:
+//   • a senior side  — an ordinal, "1st Team" … "10th Team"  (ageGroup empty), or
+//   • an age side    — an age group + a letter, "U14" + "A"  → "U14A".
 //
-// Structured fields (governance model):
-//   School:  { gender, ageGroup, teamLevel }   e.g. girls + U16 + A  → "Girls U16A"
-//   Club:    { division, teamLabel }            e.g. mens + 1st Team  → "Men's 1st Team"
+// Schools take their gender FROM THE SCHOOL: a single-gender school applies its
+// gender automatically and is never asked; a co-ed school chooses Boys or Girls
+// per team (which is what lets a co-ed school hold both "Boys U14A" and
+// "Girls U14A"). Clubs and associations instead pick a division (Men's, Ladies,
+// Masters, Open, Boys, Girls…) that sits on top of the same level selector.
 //
-// Legacy school teams stored a single fused `teamLabel` ("U16A") and clubs stored
-// their division in the `gender` field. Both legacy shapes remain supported so
-// existing teams continue to render and de-duplicate correctly.
+// Everything is stored as STRUCTURED FIELDS — there is no free-text path. Names
+// are generated from the fields, never parsed back out of a label, so seniority
+// ordering and duplicate detection read the fields directly.
+//
+//   School:  { gender, ageGroup, teamLevel }   girls + U16 + A     → "Girls U16A"
+//   Club:    { division, ageGroup, teamLevel }  men + '' + 1st Team → "Men's 1st Team"
+//
+// CANONICAL — this file is shared byte-identical across netball, hockey, rugby
+// and water polo. Keep it self-contained apart from the local slugify import.
 
 import { slugify } from './slugify'
 
-// ── School ───────────────────────────────────────────────────────────────────
+// ── School gender ─────────────────────────────────────────────────────────────
 export const SCHOOL_GENDER_PROFILES = [
   { value: 'boys',  label: 'Boys only' },
   { value: 'girls', label: 'Girls only' },
@@ -26,46 +35,93 @@ export const SCHOOL_GENDER_PROFILES = [
 // Gender word used inside a school team name.
 export const SCHOOL_GENDER_LABEL = { boys: 'Boys', girls: 'Girls' }
 
-// ── Club ─────────────────────────────────────────────────────────────────────
+// A school's stored gender profile, or null when it has not been set. There is
+// NO default — an unset profile must block team creation rather than silently
+// assume co-ed, so an unset school never ends up with the wrong-gender teams.
+export function schoolGenderProfile(org) {
+  const p = org?.genderProfile
+  return (p === 'boys' || p === 'girls' || p === 'coed') ? p : null
+}
+
+// ── Club / association division ───────────────────────────────────────────────
+// The selectable divisions. Masters and Open live here as first-class selector
+// values (they are never free-typed level names).
 export const CLUB_DIVISIONS = [
   { value: 'men',         label: "Men's"   },
   { value: 'ladies',      label: 'Ladies'  },
   { value: 'masters',     label: 'Masters' },
+  { value: 'open',        label: 'Open'    },
   { value: 'juniorBoys',  label: 'Boys'    },
   { value: 'juniorGirls', label: 'Girls'   },
 ]
-// Senior/open team levels as plain ordinals — water polo squad sizes vary, so
-// there is deliberately NO reference to a number of players (no "XI"/"Team").
-export const TEAM_LEVELS = ['1st', '2nd', '3rd', '4th', '5th', '6th']
+// Every value ever accepted on a club/association team, including the legacy
+// 'mixed' division. Used only to RECOGNISE a division sitting in the legacy
+// `gender` field — never rendered as a create option.
+const CLUB_DIVISION_VALUES = new Set([
+  ...CLUB_DIVISIONS.map(d => d.value), 'mixed',
+])
 
-// Quick-pick team designations shared by the create-team and add-opponent chip
-// grids: senior ordinals plus the common age-group teams. No player-count words.
-export const TEAM_LEVEL_CHIPS = [
-  '1st', '2nd', '3rd', '4th', '5th', '6th',
-  'U19A', 'U19B', 'U18A', 'U18B', 'U16A', 'U16B',
-  'U15A', 'U15B', 'U14A', 'U14B', 'U13A', 'U13B', 'U12A', 'U12B',
+// ── Level ─────────────────────────────────────────────────────────────────────
+// Senior ordinals, 1st … 10th. Identical for schools, clubs and associations.
+export const TEAM_LEVELS = [
+  '1st Team', '2nd Team', '3rd Team', '4th Team', '5th Team',
+  '6th Team', '7th Team', '8th Team', '9th Team', '10th Team',
 ]
+// Age-side letters, A … J.
+export const TEAM_LETTERS = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J']
+// Age groups. Schools stop at U19; clubs and associations may also field U21.
+export const AGE_GROUPS_SCHOOL = ['U19', 'U18', 'U17', 'U16', 'U15', 'U14', 'U13', 'U12', 'U11', 'U10', 'U9', 'U8']
+export const AGE_GROUPS_CLUB   = ['U21', ...AGE_GROUPS_SCHOOL]
 
-// A school's effective gender for team naming. Co-ed (or unset) means "ask".
-export function schoolGenderProfile(org) {
-  return org?.genderProfile ?? 'coed'
+// Age groups offered for an org type ('school' → up to U19, else up to U21).
+export function ageGroupsFor(orgType) {
+  return orgType === 'school' ? AGE_GROUPS_SCHOOL : AGE_GROUPS_CLUB
 }
 
-// Generate a school team name: "[Gender] [Team]" e.g. "Girls U16A".
-// Single-gender schools (orgGenderProfile boys/girls) omit the gender prefix.
-export function schoolTeamName(gender, teamLabel, orgGenderProfile = 'coed') {
+// ── Field readers (structured only, no parsing) ───────────────────────────────
+
+// The division sitting on a team: the current `division` field, else a legacy
+// division value stored in `gender`. Null for school teams.
+export function teamDivision(fields = {}) {
+  const { division, gender } = fields ?? {}
+  if (division) return division
+  if (gender && CLUB_DIVISION_VALUES.has(gender)) return gender
+  return null
+}
+
+// Whether a team is an age side (has an age group) vs a senior side.
+export function isAgeTeam(fields = {}) {
+  return !!(fields?.ageGroup)
+}
+
+// The level portion of a team's label, from its structured fields:
+//   age side    → "U14A"  (ageGroup + letter)
+//   senior side → "1st Team" (ordinal)
+export function levelLabel(fields = {}) {
+  const { ageGroup, teamLevel } = fields ?? {}
+  if (ageGroup) return `${ageGroup}${(teamLevel ?? '').trim()}`.trim()
+  return (teamLevel ?? '').trim()
+}
+
+// ── Name generation ───────────────────────────────────────────────────────────
+
+// School team name: "[Gender] [Level]" e.g. "Girls U16A". A single-gender school
+// (orgGenderProfile boys/girls) omits the gender word — the school identity
+// already carries it — so "U16A", not "Girls U16A".
+export function schoolTeamName(gender, levelFields, orgGenderProfile = null) {
+  const level = levelLabel(levelFields)
   if (orgGenderProfile === 'boys' || orgGenderProfile === 'girls') {
-    return (teamLabel ?? '').replace(/\s+/g, ' ').trim()
+    return level.replace(/\s+/g, ' ').trim()
   }
   const g = SCHOOL_GENDER_LABEL[gender] ?? ''
-  return `${g} ${teamLabel ?? ''}`.replace(/\s+/g, ' ').trim()
+  return `${g} ${level}`.replace(/\s+/g, ' ').trim()
 }
 
-// Generate a club team name: "[Division] [Team]" e.g. "Men's 1st Team".
-export function clubTeamName(division, teamLevel, customLevel) {
-  const dLabel = CLUB_DIVISIONS.find(d => d.value === division)?.label ?? ''
-  const tLabel = teamLevel === 'custom' ? (customLevel ?? '').trim() : (teamLevel ?? '')
-  return `${dLabel} ${tLabel}`.replace(/\s+/g, ' ').trim()
+// Club / association team name: "[Division] [Level]" e.g. "Men's 1st Team".
+export function clubTeamName(division, levelFields) {
+  const dLabel = divisionLabel(division)
+  const level  = levelLabel(levelFields)
+  return `${dLabel} ${level}`.replace(/\s+/g, ' ').trim()
 }
 
 // Full competition-facing team label: "[Organisation] [Team]" — e.g.
@@ -81,99 +137,80 @@ export function competitionTeamLabel(snapshot) {
   return `${org} ${team}`
 }
 
-// Human-readable label for a stored division/gender value (school or club).
+// Human-readable label for a stored division/gender value.
 export function divisionLabel(value) {
   return (
     CLUB_DIVISIONS.find(d => d.value === value)?.label ??
     SCHOOL_GENDER_LABEL[value] ??
-    value
+    (value ?? '')
   )
 }
 
-// Normalise an age-group input to canonical form: "U16".
-// Accepts variations: "u16", "u 16", "u 16 a", "under 16", "16", "U16 A".
-// Any trailing team-level letter is ignored here (it belongs to teamLevel).
-export function normalizeAgeGroup(input) {
-  if (input == null || input === '') return ''
-  const s = String(input).toLowerCase().replace(/\s+/g, '').replace(/^under/, 'u')
-  const m = s.match(/u?(\d{1,2})/)
-  return m ? `U${m[1]}` : String(input).trim().toUpperCase()
-}
-
-// Normalise a team level. A single letter ("a") becomes uppercase ("A"); a
-// worded level ("1st Team") is kept with collapsed whitespace.
-export function normalizeTeamLevel(input) {
-  if (input == null || input === '') return ''
-  const s = String(input).trim().replace(/\s+/g, ' ')
-  return /^[a-z]$/i.test(s) ? s.toUpperCase() : s
-}
-
-// Split a legacy fused school label ("U16A") into structured { age, level }.
-// Returns { raw } when it does not look like an age+level label.
-function splitLegacyLabel(teamLabel) {
-  const s = String(teamLabel ?? '').trim()
-  const m = s.match(/^u?\s*(\d{1,2})\s*([a-z])?$/i)
-  if (m) return { age: `U${m[1]}`, level: (m[2] ?? '').toUpperCase() }
-  return { age: '', level: '', raw: s }
-}
-
 // Generate a team's display label ("Girls U16A", "Men's 1st Team") from its
-// structured fields, auto-detecting school vs club. Club division may live in
-// `division` (current) or `gender` (legacy). School name is built from gender +
-// structured ageGroup/teamLevel (current) or the fused teamLabel (legacy).
-// Single-gender schools (orgGenderProfile boys/girls) omit the gender prefix.
-// Returns '' when there is nothing structured to work with — callers fall back
-// to the stored displayName so legacy teams continue to render.
+// structured fields, auto-detecting school vs club/association. Returns '' when
+// there is nothing structured to work with — callers fall back to the stored
+// displayName so any not-yet-migrated team still renders.
 export function generatedTeamName(fields = {}) {
-  const { gender, ageGroup, teamLevel, teamLabel, division, orgGenderProfile } = fields ?? {}
-
-  // Club — division (current) or legacy division stored in `gender`.
-  const clubDivision = division ?? (CLUB_DIVISIONS.some(d => d.value === gender) ? gender : null)
-  if (clubDivision) {
-    const level = (teamLabel ?? teamLevel ?? '').trim()
-    return clubTeamName(clubDivision, level || null, null)
-  }
-
-  // School — build the structured label from ageGroup+teamLevel or legacy fused teamLabel.
-  const structured = (ageGroup || teamLevel)
-    ? `${normalizeAgeGroup(ageGroup)}${normalizeTeamLevel(teamLevel)}`
-    : (teamLabel ?? '').trim()
-
-  // Single-gender schools omit the gender prefix — "U16A" not "Girls U16A".
-  if (orgGenderProfile === 'boys' || orgGenderProfile === 'girls') {
-    return structured
-  }
-
-  const g = SCHOOL_GENDER_LABEL[gender] ?? ''
-  if (!g && !structured) return ''
-  return `${g} ${structured}`.replace(/\s+/g, ' ').trim()
+  const { gender, orgGenderProfile } = fields ?? {}
+  const division = teamDivision(fields)
+  if (division) return clubTeamName(division, fields)
+  return schoolTeamName(gender, fields, orgGenderProfile)
 }
 
-// Deterministic structural key for duplicate prevention. Two inputs that
-// describe the same team — regardless of spacing/casing variations ("u16a",
-// "U16 A", "under 16 a") — produce the same key. The key is scoped per
-// organisation by the caller (one team per organizationId + structuralKey).
+// ── Structural key (duplicate prevention) ─────────────────────────────────────
+// Deterministic key scoped per organisation (one team per organizationId +
+// structuralKey). Built from the structured fields only.
 //
-//   School:  girls + U16 + A      → "girls-u16-a"
-//   Club:    mens + 1st Team      → "mens-1st-team"
-//   Custom:  "Open Girls"         → "open-girls"
+//   School:  girls + U16 + A   → "girls-u16-a"
+//   Club:    men + 1st Team    → "men-1st-team"
 export function teamStructuralKey(fields = {}) {
-  const { gender, ageGroup, teamLevel, teamLabel, division, custom } = fields ?? {}
+  const { gender, ageGroup, teamLevel } = fields ?? {}
+  const division = teamDivision(fields)
+  const axis = division || gender || ''
+  const level = ageGroup
+    ? `${ageGroup}-${(teamLevel ?? '').trim()}`
+    : (teamLevel ?? '').trim()
+  return slugify([axis, level].filter(Boolean).join('-'))
+}
 
-  const clubDivision = division ?? (CLUB_DIVISIONS.some(d => d.value === gender) ? gender : null)
-  if (clubDivision) {
-    const level = (teamLabel ?? teamLevel ?? '').trim()
-    return slugify(`${clubDivision}-${level}`)
+// ── Seniority descriptor ──────────────────────────────────────────────────────
+// A fully-numeric descriptor for the CANONICAL seniority sort (see seniority.js).
+// Built here, where the level vocabulary lives, so seniority.js never parses a
+// string. Order intent, most senior first:
+//   1. Senior ordinals ascending (1st, 2nd, …)
+//   2. Age bands descending (U19, U18, …)
+//   3. Within a band, letters ascending (A, B, …)
+//
+//   group 0 = senior side, `number` = ordinal (1..10)
+//   group 1 = age side,    `age` = years, `letter` = 1..10 (A=1)
+//   group 2 = unrecognised (sorts last)
+export function seniorityDescriptor(fields = {}) {
+  const { gender, ageGroup, teamLevel } = fields ?? {}
+  const g = teamDivision(fields) || gender || ''
+
+  if (ageGroup) {
+    const age = ageToNumber(ageGroup)
+    const letter = letterToIndex(teamLevel)
+    if (age) return { group: 1, number: 0, age, letter, gender: g }
+  } else {
+    const number = ordinalToNumber(teamLevel)
+    if (number) return { group: 0, number, age: 0, letter: 0, gender: g }
   }
+  return { group: 2, number: 0, age: 0, letter: 0, gender: g }
+}
 
-  if (custom) return slugify(custom)
-
-  let age = normalizeAgeGroup(ageGroup)
-  let level = normalizeTeamLevel(teamLevel)
-  if (!age && !level && teamLabel) {
-    const sp = splitLegacyLabel(teamLabel)
-    if (sp.age) { age = sp.age; level = sp.level }
-    else if (sp.raw) return slugify([gender, sp.raw].filter(Boolean).join('-'))
-  }
-  return slugify([gender, age, level].filter(Boolean).join('-'))
+// Years from a canonical age group ("U14" → 14). Enum-only, not a display parse.
+function ageToNumber(ageGroup) {
+  const m = /^u(\d{1,2})$/i.exec(String(ageGroup ?? '').trim())
+  return m ? parseInt(m[1], 10) : 0
+}
+// Letter index ("A" → 1, "B" → 2 … "J" → 10). 0 when absent/unknown.
+function letterToIndex(letter) {
+  const i = TEAM_LETTERS.indexOf(String(letter ?? '').trim().toUpperCase())
+  return i < 0 ? 0 : i + 1
+}
+// Ordinal number from a level ("1st Team" → 1 … "10th Team" → 10). 0 when unknown.
+function ordinalToNumber(teamLevel) {
+  const i = TEAM_LEVELS.indexOf(String(teamLevel ?? '').trim())
+  return i < 0 ? 0 : i + 1
 }

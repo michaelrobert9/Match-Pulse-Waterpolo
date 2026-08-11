@@ -7,7 +7,7 @@ import { httpsCallable } from 'firebase/functions'
 import { db, auth, functions } from '../firebase'
 import { slugify, matchSlug as buildMatchSlug } from './slugify'
 import { periodLabels, DEFAULT_PERIODS, DEFAULT_PERIOD_MINUTES, DEFAULT_BREAK_MINUTES } from './matchClock'
-import { generatedTeamName } from './teamNaming'
+import { generatedTeamName, teamStructuralKey, levelLabel } from './teamNaming'
 import { defaultRulesForType, rulesHash } from './competitionRules'
 import { assertCanAdministerCompetition } from './competitionAuth'
 import { schedulePoolFixtures } from './scheduler'
@@ -518,12 +518,23 @@ async function generateUniqueMatchSlugGlobal(base) {
 }
 
 export async function createTeam(orgData, displayName, options = {}) {
-  const { competitionId = null, season = null, ageGroup = null, gender = null, teamLabel = null } = options
+  const {
+    competitionId = null, season = null,
+    ageGroup = null, gender = null, division = null, teamLevel = null,
+  } = options
   const orgSlug = orgData.slug || slugify(orgData.name)
   // Always generate a slug. Season-based teams use "{org}-{season}";
   // non-season teams use "{org}-{displayName}" so every team has a profile URL.
   const slug = await generateUniqueTeamSlug(orgSlug, season ?? displayName ?? orgSlug)
   const name = displayName || orgData.name
+  // Structured naming fields are the source of truth: gender (school) OR
+  // division (club/association), plus ageGroup + teamLevel (a letter for age
+  // sides, an ordinal for senior sides). `teamLabel` and `structuralKey` are
+  // DERIVED here and stored for display / duplicate-detection — never parsed
+  // back into structure.
+  const fields = { ageGroup, gender, division, teamLevel }
+  const teamLabel     = levelLabel(fields) || null
+  const structuralKey = teamStructuralKey(fields) || null
   return addDoc(collection(db, 'teams'), {
     organizationId: orgData.id,
     orgName:        orgData.name,
@@ -536,13 +547,13 @@ export async function createTeam(orgData, displayName, options = {}) {
     logoUrl:        orgData.logoUrl || null,
     primaryColor:   orgData.primaryColor ?? null,
     secondaryColor: orgData.secondaryColor || '#FFFFFF',
-    // Structured naming fields — gender (school: boys/girls, club: division)
-    // and the team label (e.g. "U16A" or "1st Team") are stored alongside the
-    // generated displayName so teams can be re-rendered and edited consistently.
-    ...(ageGroup ? { ageGroup } : {}),
-    ...(gender    ? { gender }    : {}),
-    ...(teamLabel ? { teamLabel } : {}),
-    ...(slug     ? { slug }     : {}),
+    ...(ageGroup      ? { ageGroup }      : {}),
+    ...(gender        ? { gender }        : {}),
+    ...(division      ? { division }      : {}),
+    ...(teamLevel     ? { teamLevel }     : {}),
+    ...(teamLabel     ? { teamLabel }     : {}),
+    ...(structuralKey ? { structuralKey } : {}),
+    ...(slug          ? { slug }          : {}),
     active: true,
     played: 0, won: 0, drawn: 0, lost: 0,
     goalsFor: 0, goalsAgainst: 0, points: 0,
@@ -564,7 +575,10 @@ export async function createManualOpponent(data) {
     orgName:              data.orgName || null,
     orgGenderProfile:     data.orgGenderProfile || null,
     gender:               data.gender || null,
-    teamLabel:            data.teamLabel || null,
+    division:             data.division || null,
+    ageGroup:             data.ageGroup || null,
+    teamLevel:            data.teamLevel || null,
+    teamLabel:            levelLabel(data) || null,
     createdByUid:         uid(),
     createdByOrgId:       data.createdByOrgId || null,
     createdAt:            serverTimestamp(),
@@ -602,14 +616,37 @@ export async function searchOpponents(term, { excludeOrgId } = {}) {
 // denormalised fallback used for manual opponents, search and legacy safety.
 export async function updateTeam(id, data) {
   const { organizationId, orgName, ...patch } = data ?? {}
-  if ('gender' in patch || 'teamLabel' in patch) {
-    const name = generatedTeamName({ gender: patch.gender ?? null, teamLabel: patch.teamLabel ?? null })
+  // Any change to a structural field re-derives the display name, level label
+  // and structural key from the discrete fields.
+  const structuralChange = ['gender', 'division', 'ageGroup', 'teamLevel', 'orgGenderProfile']
+    .some(k => k in patch)
+  if (structuralChange) {
+    const fields = {
+      gender:           patch.gender    ?? null,
+      division:         patch.division   ?? null,
+      ageGroup:         patch.ageGroup   ?? null,
+      teamLevel:        patch.teamLevel  ?? null,
+      orgGenderProfile: patch.orgGenderProfile,
+    }
+    const name = generatedTeamName(fields)
     if (name) {
       patch.displayName = name
       patch.searchName  = name.toLowerCase()
     }
+    patch.teamLabel     = levelLabel(fields) || null
+    patch.structuralKey = teamStructuralKey(fields) || null
+    delete patch.orgGenderProfile   // derivation input only, not a stored field
   }
   return updateDoc(doc(db, 'teams', id), { ...patch, updatedAt: serverTimestamp() })
+}
+
+// Teams the governance migration could not map automatically (Masters/Open/
+// custom sides, bare age groups, co-ed teams missing a gender, …). The admin
+// resolution screen lists these so each can be mapped onto the structured model
+// by hand. Flagged by scripts/migrate-team-governance.mjs (needsGovernanceReview).
+export async function fetchTeamsNeedingGovernanceReview() {
+  const snap = await getDocs(query(collection(db, 'teams'), where('needsGovernanceReview', '==', true)))
+  return snap.docs.map(d => ({ id: d.id, ...d.data() }))
 }
 
 // When a team's displayName changes, update the denormalized name on all

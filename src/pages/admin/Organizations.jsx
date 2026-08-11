@@ -43,7 +43,7 @@ function OrgForm({ initial = {}, onSave, onDelete, saving }) {
   const isNew = !initial.id
   const [form, setForm] = useState({
     name: '', shortCode: '', primaryColor: '#006B3C', secondaryColor: '#FFFFFF',
-    type: 'school', region: '', logoUrl: '', website: '', genderProfile: 'coed', ...initial,
+    type: 'school', region: '', logoUrl: '', website: '', genderProfile: '', ...initial,
   })
 
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }))
@@ -88,8 +88,10 @@ function OrgForm({ initial = {}, onSave, onDelete, saving }) {
             onChange={e => set('genderProfile', e.target.value)}
             className="w-full bg-white border border-slate-200 rounded-lg px-3 py-2.5 text-slate-900 text-sm focus:outline-none focus:border-emerald-500"
           >
+            <option value="">— not set —</option>
             {SCHOOL_GENDER_PROFILES.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
           </select>
+          <p className="text-[11px] text-slate-400 mt-1">Required before the school can add teams — teams take their gender from here.</p>
         </Field>
       )}
 

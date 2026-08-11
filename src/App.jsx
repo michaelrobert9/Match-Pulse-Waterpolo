@@ -51,6 +51,7 @@ const ScoreList  = lazy(() => import('./pages/scorer/ScoreList'))
 const ScoreMatch = lazy(() => import('./pages/scorer/ScoreMatch'))
 
 // Admin pages (named exports resolved to a default for React.lazy)
+import TeamGovernance from './pages/admin/TeamGovernance'
 const AdminDashboard = lazy(() => import('./pages/admin/Dashboard'))
 const OrganizationsList = lazy(() => import('./pages/admin/Organizations').then(m => ({ default: m.OrganizationsList })))
 const NewOrganization   = lazy(() => import('./pages/admin/Organizations').then(m => ({ default: m.NewOrganization })))
@@ -218,6 +219,7 @@ export default function App() {
           <Route path="competitions"                element={<AdminCompetitionsList />} />
           <Route path="fixtures"                    element={<AdminFixturesList />} />
           <Route path="result-queue"                element={<ResultQueue />} />
+          <Route path="team-governance"             element={<TeamGovernance />} />
           {/* Old admin detail/edit/create pages redirect to the manage flow. */}
           <Route path="competitions/new"            element={<Navigate to="/manage/competitions/new" replace />} />
           <Route path="competitions/:id"            element={<RedirectToCompetitionManager />} />
