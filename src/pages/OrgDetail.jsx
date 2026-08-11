@@ -8,6 +8,8 @@ import {
 import { teamUrl, matchUrl } from '../lib/slugify'
 import { prefetchMatchTeams, resolveTeamProfileIdentity } from '../lib/teamIdentity'
 import { MatchTeamIdentity } from '../components/TeamIdentity'
+import MatchDayRow from '../components/MatchDayRow'
+import { collapseMatchDays } from '../lib/matchGroups'
 import StatusBadge from '../components/StatusBadge'
 import { monogram } from '../lib/names'
 import { useSeoMeta } from '../lib/useSeoMeta'
@@ -173,14 +175,28 @@ export default function OrgDetail({ type }) {
   const color     = org.primaryColor   || '#334155'
   const secondary = org.secondaryColor || color
 
-  const upcoming = matches
-    .filter(m => m.status !== 'final')
-    .sort((a, b) => toDate(a.scheduledAt) - toDate(b.scheduledAt))
+  // Collapse match days FIRST, then route each item. A collapsed group has
+  // something to show (goes to Results) once any child is played or live;
+  // otherwise it's Upcoming. A standalone match keeps the isScheduled/final
+  // split. sortAt is the item's ms timestamp (a group's earliest child), so
+  // sorting by it preserves the standalone scheduledAt order.
+  const items = collapseMatchDays(matches)
+
+  const upcomingItems = []
+  const resultItems   = []
+  for (const it of items) {
+    const toResults = it.kind === 'group'
+      ? (it.tally.played > 0 || it.tally.status === 'live')
+      : it.match?.status === 'final'
+    ;(toResults ? resultItems : upcomingItems).push(it)
+  }
+
+  const upcoming = upcomingItems
+    .sort((a, b) => (a.sortAt ?? Infinity) - (b.sortAt ?? Infinity))
     .slice(0, 5)
 
-  const results = matches
-    .filter(m => m.status === 'final')
-    .sort((a, b) => toDate(b.scheduledAt) - toDate(a.scheduledAt))
+  const results = resultItems
+    .sort((a, b) => (b.sortAt ?? -Infinity) - (a.sortAt ?? -Infinity))
     .slice(0, 5)
 
   return (
@@ -227,7 +243,9 @@ export default function OrgDetail({ type }) {
           />
         ) : (
           <div className="space-y-2">
-            {upcoming.map(m => <UpcomingCard key={m.id} match={m} />)}
+            {upcoming.map(it => it.kind === 'group'
+              ? <MatchDayRow key={it.matchGroupId} item={it} viewerOrgId={org.id} />
+              : <UpcomingCard key={it.match.id} match={it.match} />)}
           </div>
         )}
       </section>
@@ -242,7 +260,9 @@ export default function OrgDetail({ type }) {
           />
         ) : (
           <div className="space-y-2">
-            {results.map(m => <ResultCard key={m.id} match={m} />)}
+            {results.map(it => it.kind === 'group'
+              ? <MatchDayRow key={it.matchGroupId} item={it} viewerOrgId={org.id} />
+              : <ResultCard key={it.match.id} match={it.match} />)}
           </div>
         )}
       </section>

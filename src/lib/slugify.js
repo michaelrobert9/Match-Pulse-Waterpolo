@@ -1,3 +1,5 @@
+import { matchPath, competitionMatchPath } from './matchPaths'
+
 export function slugify(str) {
   return String(str)
     .toLowerCase()
@@ -17,39 +19,34 @@ export function teamSlug(orgSlug, season) {
 }
 
 // ── Public URL helpers ───────────────────────────────────────────────────────
-// Long-term URL scheme (stable, share-safe, SEO-friendly):
+// The platform speaks in "Match" (singular), in two canonical shapes:
 //
-//   Standalone fixture     /matches/:season/:fixtureSlug
-//   Competition fixture    /competitions/:season/:competitionSlug/matches/:fixtureSlug
-//   Competition edition    /competitions/:season/:competitionSlug
+//   Standalone (non-competition) matches carry their own date:
+//     /match/{YYYY-MM-DD}/{home}-vs-{away}            single match, or a group
+//     /match/{YYYY-MM-DD}/{home}-vs-{away}/{child}    child of a group
 //
-// Slugs are frozen at creation: a later team/competition rename updates page
-// DISPLAY (via the live identity resolver) but never the URL, so shared links
-// keep resolving. Firebase IDs stay internal — the legacy /matches/:id,
-// /match/:slug and /competition/:series/:ageGroup/:season forms remain only as
-// backwards-compatible fallbacks for links shared before this scheme.
+//   Competition matches keep the competition-scoped shape (singular segment),
+//   with NO date — tournaments and festivals carry dates from competition setup:
+//     /competitions/{season}/{competition-slug}/match/{matchSlug}
+//
+// Path ASSEMBLY is a platform decision and lives in the canonical matchPaths.js
+// (shared byte-identical across the four sports); matchUrl owns only the BRANCH
+// logic. The resolved `path` is frozen on the match at creation and is the
+// source of truth; a later rename changes DISPLAY only, never the URL — matchUrl
+// reads the stored `path` first and only rebuilds it as a fallback.
 
-// Canonical match URL. Competition-scoped when the match carries its competition
-// slug + season; otherwise the standalone season-namespaced URL; then legacy.
+// Canonical match URL. Reads the stored `path`; otherwise rebuilds it by
+// branching on whether the match belongs to a competition (competition-scoped,
+// dateless) or stands alone (dated). Every match carries `path` after creation
+// and the backfill, so the rebuild branches are fallbacks only.
 export function matchUrl(match) {
   if (!match) return '/'
-  if (match.competitionSlug && match.competitionSeason && match.matchSlug)
-    return `/competitions/${match.competitionSeason}/${match.competitionSlug}/matches/${match.matchSlug}`
-  if (match.season && match.matchSlug)
-    return `/matches/${match.season}/${match.matchSlug}`
-  if (match.matchSlug) return `/matches/${match.matchSlug}` // legacy unseasoned slug
-  if (match.slug) return `/match/${match.slug}`
-  return `/matches/${match.id}`
-}
-
-// Competition-scoped match URL from an explicit competition + match pairing.
-// Falls back to matchUrl(match) when the competition slug/season are unknown.
-export function competitionMatchUrl(comp, match) {
-  const cSlug   = comp?.slug
-  const cSeason = comp?.season ?? match?.season
-  if (cSlug && cSeason && match?.matchSlug)
-    return `/competitions/${cSeason}/${cSlug}/matches/${match.matchSlug}`
-  return matchUrl(match)
+  if (match.path) return match.path
+  if (match.competitionId && match.competitionSeason && match.competitionSlug && match.matchSlug) {
+    return competitionMatchPath(match.competitionSeason, match.competitionSlug, match.matchSlug)
+  }
+  if (match.matchDate && match.matchSlug) return matchPath(match.matchDate, match.matchSlug)
+  return '/'
 }
 
 export function profileUrl(person) {
