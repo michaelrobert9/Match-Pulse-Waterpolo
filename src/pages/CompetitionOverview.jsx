@@ -401,9 +401,9 @@ export default function CompetitionOverview() {
                 </Link>
               ))}
             </div>
-            <Link to={competitionUrl(competition) + '/fixtures'}
+            <Link to={competitionUrl(competition) + '/matches'}
               className="block text-center text-[11px] text-emerald-600 hover:text-emerald-500 mt-3 transition-colors">
-              All fixtures →
+              All matches →
             </Link>
           </div>
         )}
@@ -411,7 +411,7 @@ export default function CompetitionOverview() {
         {/* Upcoming */}
         {upcoming.length > 0 && (
           <div>
-            <div className="micro-label text-slate-500 mb-3">{isFestival ? 'Next fixture' : 'Coming up'}</div>
+            <div className="micro-label text-slate-500 mb-3">{isFestival ? 'Next match' : 'Coming up'}</div>
             <div className="space-y-2">
               {upcoming.map(match => (
                 <Link key={match.id} to={matchUrl(match)}

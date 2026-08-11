@@ -418,7 +418,7 @@ export default function Home() {
           </div>
           <div className="flex-1 min-w-0">
             <div className="text-sm font-bold text-slate-900">Create your school or club</div>
-            <div className="text-[11px] text-emerald-700 mt-0.5">Start managing fixtures in minutes</div>
+            <div className="text-[11px] text-emerald-700 mt-0.5">Start managing matches in minutes</div>
           </div>
           <ChevronRight className="w-4 h-4 text-emerald-500 shrink-0" />
         </Link>

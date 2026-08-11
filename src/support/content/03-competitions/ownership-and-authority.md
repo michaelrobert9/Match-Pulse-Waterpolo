@@ -8,7 +8,7 @@ Whoever creates a competition is its Owner. The Owner has full authority over it
 
 - Edit the competition's settings and name.
 - Add and remove teams.
-- Add, edit and delete fixtures.
+- Add, edit and delete matches.
 - Score and finalise matches.
 - Grant other people roles on the competition.
 

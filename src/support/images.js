@@ -30,13 +30,13 @@ export const IMAGE_SLOTS = {
     { src: null, alt: 'The competition type chooser comparing league, tournament and festival formats.', caption: 'Choosing a format' },
   ],
   'fixtures/add-a-fixture': [
-    { src: null, alt: 'The “Add fixture” form with home team, away team, date, time and venue fields.', caption: 'Adding a fixture' },
+    { src: null, alt: 'The “Add match” form with home team, away team, date, time and venue fields.', caption: 'Adding a match' },
   ],
   'fixtures/generate-fixtures': [
-    { src: null, alt: 'The generate-fixtures panel for a round-robin, showing the match-format options.', caption: 'Generating a fixture list' },
+    { src: null, alt: 'The generate-matches panel for a round-robin, showing the match-format options.', caption: 'Generating a match list' },
   ],
   'fixtures/fixture-lifecycle': [
-    { src: null, alt: 'A fixture list showing the lifecycle status badges: scheduled, live, awaiting result and final.', caption: 'Fixture lifecycle states' },
+    { src: null, alt: 'A match list showing the lifecycle status badges: scheduled, live, awaiting result and final.', caption: 'Match lifecycle states' },
   ],
   'live-scoring/start-a-live-match': [
     { src: null, alt: 'The live scoring screen before kickoff with the “Start match” control.', caption: 'Starting a live match' },

@@ -196,19 +196,19 @@ function UpcomingFixturesSection({ orgId, org, competitions, teams, matches, set
   }
 
   async function handleDelete(match) {
-    if (!confirm('Delete this fixture?')) return
+    if (!confirm('Delete this match?')) return
     await deleteMatch(match.id)
     setMatches(prev => prev.filter(m => m.id !== match.id))
   }
 
-  if (loading) return <Section id="fixtures" title="Upcoming Fixtures"><Spinner /></Section>
+  if (loading) return <Section id="fixtures" title="Upcoming Matches"><Spinner /></Section>
 
   const canAddNew = !isSchool || teams.length > 0
 
   return (
     <Section
       id="fixtures"
-      title={`Upcoming Fixtures (${upcoming.length})`}
+      title={`Upcoming Matches (${upcoming.length})`}
       action={
         canAddNew && (
           <button onClick={() => setShowAdd(v => !v)}
@@ -335,20 +335,20 @@ function UpcomingFixturesSection({ orgId, org, competitions, teams, matches, set
 
           <button type="submit" disabled={saving || !canSubmit}
             className="w-full bg-emerald-500 hover:bg-emerald-400 disabled:opacity-50 text-white font-bold text-sm uppercase tracking-wider rounded-lg py-2.5 transition-colors">
-            {saving ? 'Creating…' : 'Create fixture'}
+            {saving ? 'Creating…' : 'Create match'}
           </button>
         </form>
       )}
 
       {isSchool && teams.length === 0 && (
         <div className="px-4 py-8 text-center">
-          <p className="text-slate-500 text-sm">Add a team first, then create fixtures.</p>
+          <p className="text-slate-500 text-sm">Add a team first, then create matches.</p>
         </div>
       )}
       {canAddNew && upcoming.length === 0 && !showAdd && (
         <div className="px-4 py-8 text-center">
-          <p className="text-slate-400 text-sm font-medium mb-1">No upcoming fixtures</p>
-          <p className="text-slate-600 text-xs">Create your first fixture to start scoring matches.</p>
+          <p className="text-slate-400 text-sm font-medium mb-1">No upcoming matches</p>
+          <p className="text-slate-600 text-xs">Create your first match to start scoring matches.</p>
         </div>
       )}
       {upcoming.length > 0 && (
@@ -367,7 +367,7 @@ function UpcomingFixturesSection({ orgId, org, competitions, teams, matches, set
                   </div>
                   <MatchVersus match={m} className="text-sm text-slate-900 font-semibold" vsClass="text-slate-600 font-normal" />
                 </Link>
-                <button onClick={() => handleDelete(m)} title="Delete fixture"
+                <button onClick={() => handleDelete(m)} title="Delete match"
                   className="text-slate-600 hover:text-red-400 transition-colors p-1 shrink-0">
                   <X className="w-4 h-4" />
                 </button>
@@ -747,7 +747,7 @@ function TeamsSection({ orgId, org, competitions, teams, setTeams, defaultOpen, 
       {teams.length === 0 && !showAdd && (
         <div className="px-4 py-8 text-center">
           <p className="text-slate-400 text-sm font-medium mb-1">No teams yet</p>
-          <p className="text-slate-600 text-xs">Teams are optional — add one to play your own fixtures, or host a competition below without any.</p>
+          <p className="text-slate-600 text-xs">Teams are optional — add one to play your own matches, or host a competition below without any.</p>
         </div>
       )}
 
@@ -1397,7 +1397,7 @@ function QuickActions({ teams, org, onFixture, onTeam, onCompetition, canManage 
         title={disableFixture ? 'Add a team first' : undefined}
         className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 disabled:opacity-40 disabled:cursor-not-allowed text-white text-sm font-bold transition-colors shrink-0">
         <Plus className="w-4 h-4" />
-        Create fixture
+        Create match
       </button>
       {canManage && (
         <>

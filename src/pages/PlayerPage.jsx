@@ -76,7 +76,7 @@ function CareerCard({ player }) {
             <div>
               <div className="text-slate-900 font-semibold text-sm leading-tight">{player.teamDisplayName}</div>
               <div className="flex items-center gap-2 mt-0.5 flex-wrap">
-                <span className="micro-label">{player.competitionName || (!player.competitionId ? 'Friendlies & other fixtures' : 'Fixtures')}</span>
+                <span className="micro-label">{player.competitionName || (!player.competitionId ? 'Friendlies & other matches' : 'Matches')}</span>
                 {(player.competitionSeason || player.season) && (
                   <><span className="micro-label text-slate-300">·</span>
                   <span className="micro-label">{player.competitionSeason || player.season}</span></>
@@ -247,7 +247,7 @@ export default function PlayerPage() {
           </Link>
         </div>
         {career.length === 0 ? (
-          <EmptyCard message="No fixtures recorded yet." />
+          <EmptyCard message="No matches recorded yet." />
         ) : (
           <div className="space-y-2">
             {career.slice(0, 5).map(p => <CareerCard key={p.id} player={p} />)}

@@ -58,10 +58,10 @@ export default function ScoreList() {
     <div className="max-w-2xl mx-auto w-full px-4 py-5">
       <div className="flex items-center justify-between mb-4">
         <h1 className="font-display font-bold text-slate-900 text-lg">My matches</h1>
-        <Link to="/fixtures/new"
+        <Link to="/match/new"
           className="flex items-center gap-1.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-sm rounded-lg px-3 py-2 transition-colors">
           <Plus className="w-4 h-4" />
-          Add fixture
+          Add match
         </Link>
       </div>
 
@@ -72,10 +72,10 @@ export default function ScoreList() {
       ) : matches.length === 0 ? (
         <div className="text-center py-12 space-y-3">
           <p className="text-slate-500 text-sm">No live or upcoming matches.</p>
-          <Link to="/fixtures/new"
+          <Link to="/match/new"
             className="inline-flex items-center gap-1.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-sm rounded-lg px-4 py-2.5 transition-colors">
             <Plus className="w-4 h-4" />
-            Add a fixture
+            Add a match
           </Link>
         </div>
       ) : (

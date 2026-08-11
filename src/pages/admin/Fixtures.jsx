@@ -99,7 +99,7 @@ export function FixturesList() {
   return (
     <div className="px-4 py-5">
       <div className="flex items-center justify-between mb-4">
-        <h1 className="font-display font-bold text-slate-900 text-lg">Fixtures</h1>
+        <h1 className="font-display font-bold text-slate-900 text-lg">Matches</h1>
         <span className="text-xs text-slate-400">{filtered.length} of {matches.length}</span>
       </div>
 
@@ -142,7 +142,7 @@ export function FixturesList() {
 
       {filtered.length === 0 ? (
         <div className="text-center py-12">
-          <p className="text-slate-500 text-sm">No fixtures match these filters.</p>
+          <p className="text-slate-500 text-sm">No matches found for these filters.</p>
         </div>
       ) : (
         <div className="space-y-2">

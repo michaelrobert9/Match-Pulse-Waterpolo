@@ -223,7 +223,7 @@ export default function SquadManager({ team, readOnly = false }) {
           {derived && derived.length > 0 ? (
             <>
               <p className="text-[11px] text-slate-400 mb-2">
-                Derived from played fixtures — no {season} squad has been recorded, so this shows
+                Derived from played matches — no {season} squad has been recorded, so this shows
                 everyone who has appeared in a frozen line-up for this team.
               </p>
               <div className="space-y-2">

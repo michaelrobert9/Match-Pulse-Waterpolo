@@ -3036,7 +3036,7 @@ export async function stampPlayoffFixtureTeams(competitionId, fixtureId, home, a
 // whatever remains verified. Never touches a fixture that has been played.
 export async function resetPlayoffHoldingFixtureToPlaceholders(competitionId, fixtureId, homeName, awayName) {
   await assertCompetitionAdmin(competitionId)
-  await updateDoc(doc(db, 'matches', fixtureId), {
+  await updateDoc(doc(db, 'matches', matchId), {
     homeTeamId: null, homeTeamName: homeName ?? 'TBC', homeTeamColor: null, homeTeamShortCode: null,
     homeOrgId: null, homeOrgName: null, homeRegistered: false,
     awayTeamId: null, awayTeamName: awayName ?? 'TBC', awayTeamColor: null, awayTeamShortCode: null,

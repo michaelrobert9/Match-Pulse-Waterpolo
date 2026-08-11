@@ -14,7 +14,7 @@ export default function AdminLayout() {
   const navItems = [
     { to: '/admin',               label: 'Dashboard',      Icon: Home,    end: true },
     { to: '/admin/competitions',  label: 'Competitions',   Icon: Trophy             },
-    { to: '/admin/fixtures',      label: 'Fixtures',       Icon: CalendarDays       },
+    { to: '/admin/matches',       label: 'Matches',        Icon: CalendarDays       },
     { to: '/admin/result-queue',  label: 'Awaiting result', Icon: Inbox             },
     { to: '/admin/organizations', label: 'Organizations',  Icon: Shield             },
     { to: '/admin/people',        label: 'People',         Icon: User               },

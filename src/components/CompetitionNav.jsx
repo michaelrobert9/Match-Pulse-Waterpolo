@@ -11,13 +11,13 @@ function tabsForType(base, type, { festivalStats } = {}) {
       { to: base,               label: 'Overview' },
       { to: `${base}/pools`,     label: 'Pools' },
       { to: `${base}/knockout`,  label: 'Playoffs' },
-      { to: `${base}/fixtures`,  label: 'Fixtures' },
+      { to: `${base}/matches`,  label: 'Matches' },
     ]
   }
   if (type === 'festival') {
     const t = [
       { to: base,               label: 'Overview' },
-      { to: `${base}/fixtures`,  label: 'Fixtures' },
+      { to: `${base}/matches`,  label: 'Matches' },
     ]
     if (festivalStats) t.push({ to: `${base}/stats`, label: 'Stats' })
     return t
@@ -26,7 +26,7 @@ function tabsForType(base, type, { festivalStats } = {}) {
   return [
     { to: base,                label: 'Overview' },
     { to: `${base}/standings`, label: 'Standings' },
-    { to: `${base}/fixtures`,  label: 'Fixtures' },
+    { to: `${base}/matches`,  label: 'Matches' },
   ]
 }
 

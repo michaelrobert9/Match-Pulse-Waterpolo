@@ -13,19 +13,19 @@ An organisation is the school, club or association. A team is a side within it (
 **What does a parent organisation do?**
 It links a smaller organisation to a wider one, so an association can run competitions that include teams from its member schools and clubs. See [Link a parent organisation](../02-organisations-teams/link-a-parent-organisation.md).
 
-## Competitions and fixtures
+## Competitions and matches
 
 **Can I run a league and a knockout in the same competition?**
 Yes, that's a hybrid: a league phase that feeds into a knockout. See [Competition formats](../03-competitions/competition-formats.md).
 
-**Do I have to add every fixture by hand?**
-No. For a league you can generate the whole fixture list at once. See [Generate a full fixture list](../04-fixtures/generate-fixtures.md).
+**Do I have to add every match by hand?**
+No. For a league you can generate the whole match list at once. See [Generate a full match list](../04-fixtures/generate-fixtures.md).
 
 **A team didn't show up. What do I record?**
 A walkover, not an invented score. See [Walkovers, withdrawals and abandonments](../04-fixtures/non-standard-outcomes.md).
 
 **A team pulled out mid-season. What now?**
-Handle it as a withdrawal so their remaining fixtures resolve properly. Don't just delete the team. See [Walkovers, withdrawals and abandonments](../04-fixtures/non-standard-outcomes.md).
+Handle it as a withdrawal so their remaining matches resolve properly. Don't just delete the team. See [Walkovers, withdrawals and abandonments](../04-fixtures/non-standard-outcomes.md).
 
 ## Scoring and stats
 

@@ -8,7 +8,7 @@ import { ROLE_DISPLAY, invitableRoles } from '../lib/capabilities'
 const ROLE_HINT = {
   master_admin: 'Full platform control — handle with extreme care.',
   owner:        'Owners manage teams, competitions, and invite scorers.',
-  staff:        'Scorers can create and score fixtures only.',
+  staff:        'Scorers can create and score matches only.',
 }
 
 export default function InviteUserForm({

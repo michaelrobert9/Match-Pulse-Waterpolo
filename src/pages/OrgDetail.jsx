@@ -235,11 +235,11 @@ export default function OrgDetail({ type }) {
 
       {/* Upcoming Fixtures */}
       <section>
-        <SectionHeader title="Upcoming Fixtures" />
+        <SectionHeader title="Upcoming Matches" />
         {upcoming.length === 0 ? (
           <EmptyCard
-            message={`No upcoming fixtures for ${org.name}.`}
-            sub="Fixtures will appear here once they are scheduled."
+            message={`No upcoming matches for ${org.name}.`}
+            sub="Matches will appear here once they are scheduled."
           />
         ) : (
           <div className="space-y-2">
@@ -273,7 +273,7 @@ export default function OrgDetail({ type }) {
         {teams.length === 0 ? (
           <EmptyCard
             message="No teams yet."
-            sub="Create a team to start adding fixtures."
+            sub="Create a team to start adding matches."
           />
         ) : (
           <div className="space-y-2">

@@ -1,6 +1,6 @@
 # Create a competition
 
-A competition is the season, league or tournament your teams play in. It holds the fixtures, the standings, and the format. This is where the actual matches come together.
+A competition is the season, league or tournament your teams play in. It holds the matches, the standings, and the format. This is where the actual matches come together.
 
 ## Before you start
 
@@ -21,10 +21,10 @@ You're now the Owner of this competition, with full authority over it.
 ## What's next
 
 1. [Add teams to the competition](add-teams-to-a-competition.md).
-2. [Add fixtures](../04-fixtures/add-a-fixture.md), or [generate a full fixture list](../04-fixtures/generate-fixtures.md).
+2. [Add matches](../04-fixtures/add-a-fixture.md), or [generate a full match list](../04-fixtures/generate-fixtures.md).
 3. Score the matches as they're played.
 4. [Finalise the competition](finalise-a-competition.md) when the season's done.
 
 ## Who can do this
 
-Creating a competition makes you its Owner. As Owner you control its teams, fixtures, results and who else can help run it. More on this in [Competition ownership and authority](ownership-and-authority.md).
+Creating a competition makes you its Owner. As Owner you control its teams, matches, results and who else can help run it. More on this in [Competition ownership and authority](ownership-and-authority.md).

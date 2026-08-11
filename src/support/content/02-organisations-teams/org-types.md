@@ -5,7 +5,7 @@ When you create an organisation, you pick one of four types. The type matters be
 ## The four types
 
 **School**
-A school running its own teams and fixtures. Often part of a wider association, which you can link as a parent.
+A school running its own teams and matches. Often part of a wider association, which you can link as a parent.
 
 **Club**
 A sports club, usually with several teams across age groups or divisions. Like a school, a club can sit under an association.

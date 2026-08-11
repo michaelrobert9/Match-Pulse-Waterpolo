@@ -24,6 +24,6 @@ Put together, you get names like:
 
 ## Why it matters more than it looks
 
-The competition name appears wherever the competition does: on the fixture list, the standings, and any link you share. A consistent, dated name means anyone, including people outside your organisation, knows exactly what they're looking at. It also keeps your own admin sane once you've run a few seasons.
+The competition name appears wherever the competition does: on the match list, the standings, and any link you share. A consistent, dated name means anyone, including people outside your organisation, knows exactly what they're looking at. It also keeps your own admin sane once you've run a few seasons.
 
 To create one, see [Create a competition](create-a-competition.md).

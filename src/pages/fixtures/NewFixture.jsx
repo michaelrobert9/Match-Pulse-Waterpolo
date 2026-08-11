@@ -50,7 +50,7 @@ function SuccessBanner({ matchId, matchName, onReset }) {
     <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-4">
       <div className="flex items-center gap-2 mb-1">
         <Check className="w-4 h-4 text-emerald-600 shrink-0" />
-        <span className="text-emerald-700 text-sm font-semibold">Fixture created</span>
+        <span className="text-emerald-700 text-sm font-semibold">Match created</span>
       </div>
       <div className="text-slate-600 text-xs mb-3 pl-6">{matchName}</div>
       <div className="flex gap-4 pl-6">
@@ -215,7 +215,7 @@ function SchoolFixtureForm({ org, canChange, onChangeOrg }) {
 
   return (
     <div className="space-y-6">
-      <OrgHeader org={org} typeLabel="School Fixture" canChange={canChange} onChangeOrg={onChangeOrg} />
+      <OrgHeader org={org} typeLabel="School Match" canChange={canChange} onChangeOrg={onChangeOrg} />
 
       {done && (
         <SuccessBanner
@@ -232,7 +232,7 @@ function SchoolFixtureForm({ org, canChange, onChangeOrg }) {
           </div>
           <h3 className="text-slate-900 font-display font-bold text-base mb-1">No teams yet</h3>
           <p className="text-slate-500 text-sm mb-5 leading-relaxed max-w-xs mx-auto">
-            School fixtures require teams. Add your first team to {org.name} to get started.
+            School matches require teams. Add your first team to {org.name} to get started.
           </p>
           <Link to={`/manage/orgs/${org.id}`}
             className="inline-flex items-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-sm uppercase tracking-wider rounded-xl px-5 py-2.5 transition-colors">
@@ -322,7 +322,7 @@ function SchoolFixtureForm({ org, canChange, onChangeOrg }) {
 
           <button type="submit" disabled={!canSubmit}
             className="w-full bg-emerald-600 hover:bg-emerald-500 disabled:opacity-40 disabled:cursor-not-allowed text-white font-bold text-sm uppercase tracking-wider rounded-xl py-4 transition-colors">
-            {saving ? 'Creating…' : 'Create fixture'}
+            {saving ? 'Creating…' : 'Create match'}
           </button>
         </form>
       )}
@@ -425,7 +425,7 @@ function ClubFixtureForm({ org, canChange, onChangeOrg }) {
 
   return (
     <div className="space-y-6">
-      <OrgHeader org={org} typeLabel="Club Fixture" canChange={canChange} onChangeOrg={onChangeOrg} />
+      <OrgHeader org={org} typeLabel="Club Match" canChange={canChange} onChangeOrg={onChangeOrg} />
 
       {done && (
         <SuccessBanner
@@ -550,7 +550,7 @@ function ClubFixtureForm({ org, canChange, onChangeOrg }) {
 
         <button type="submit" disabled={!canSubmit}
           className="w-full bg-emerald-600 hover:bg-emerald-500 disabled:opacity-40 disabled:cursor-not-allowed text-white font-bold text-sm uppercase tracking-wider rounded-xl py-4 transition-colors">
-          {saving ? 'Creating…' : 'Create fixture'}
+          {saving ? 'Creating…' : 'Create match'}
         </button>
       </form>
     </div>
@@ -622,7 +622,7 @@ export default function NewFixture() {
             <ChevronLeft className="w-4 h-4" />
             {showBack ? 'Back to selection' : 'Back'}
           </button>
-          <h1 className="font-display font-black text-slate-900 text-2xl leading-tight">Create fixture</h1>
+          <h1 className="font-display font-black text-slate-900 text-2xl leading-tight">Create match</h1>
           {!selOrg && !loading && orgs.length > 1 && (
             <p className="text-slate-500 text-sm mt-2">Select a school or club to continue.</p>
           )}

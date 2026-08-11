@@ -32,7 +32,7 @@ const COLS = ['P', 'W', 'D', 'L', 'GF', 'GA', 'GD', 'Pts']
 
 export default function StandingsTable({ rows = [] }) {
   if (rows.length === 0) {
-    return <p className="text-center text-slate-500 text-sm py-12">No results yet — standings will appear once completed fixtures are recorded.</p>
+    return <p className="text-center text-slate-500 text-sm py-12">No results yet — standings will appear once completed matches are recorded.</p>
   }
 
   const items = buildManualGroups(rows)

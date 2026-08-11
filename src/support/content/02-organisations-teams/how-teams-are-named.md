@@ -1,6 +1,6 @@
 # How teams are created and named
 
-Teams live inside an organisation. A team is what gets entered into competitions and what plays in fixtures. Names are built for you from a few structured choices, so every team reads consistently across standings, fixtures and stats.
+Teams live inside an organisation. A team is what gets entered into competitions and what plays in matches. Names are built for you from a few structured choices, so every team reads consistently across standings, matches and stats.
 
 ## Where a team's name comes from
 
@@ -32,7 +32,7 @@ Because the name is built from fields rather than typed, teams sort correctly by
 
 ## How naming plays out in competitions
 
-When a team is entered into a competition, its composed name carries through to the fixture list and the standings table, led by the organisation name. You don't repeat the season or competition in the team — that context comes from the competition itself.
+When a team is entered into a competition, its composed name carries through to the match list and the standings table, led by the organisation name. You don't repeat the season or competition in the team — that context comes from the competition itself.
 
 ## Next steps
 

@@ -285,9 +285,9 @@ export default function TeamDetail() {
 
       {/* Upcoming Fixtures */}
       <section>
-        <SectionHeader title="Upcoming Fixtures" />
+        <SectionHeader title="Upcoming Matches" />
         {upcoming.length === 0 ? (
-          <EmptyCard message="No upcoming fixtures." sub="Fixtures will appear here once they are scheduled." />
+          <EmptyCard message="No upcoming matches." sub="Matches will appear here once they are scheduled." />
         ) : (
           <div className="space-y-2">
             {upcoming.map(m => <UpcomingCard key={m.id} match={m} />)}

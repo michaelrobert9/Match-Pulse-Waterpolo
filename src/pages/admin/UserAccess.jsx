@@ -10,7 +10,7 @@ import { userDisplayName, userInitial, monogram } from '../../lib/names'
 
 const ROLES = [
   { value: 'owner', label: 'Owner', desc: 'Full control — edit org, manage competitions, score matches' },
-  { value: 'staff', label: 'Staff', desc: 'Score matches and manage fixtures' },
+  { value: 'staff', label: 'Staff', desc: 'Score matches and manage matches' },
 ]
 
 function OrgBadge({ org, size = 32 }) {

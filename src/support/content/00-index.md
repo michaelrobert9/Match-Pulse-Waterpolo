@@ -32,14 +32,14 @@ If you're new, start with **Getting Started**. If you're looking for something s
 - [Competition ownership and authority](03-competitions/ownership-and-authority.md)
 - [Finalise a competition](03-competitions/finalise-a-competition.md)
 
-## 4. Fixtures
-- [Add a fixture](04-fixtures/add-a-fixture.md)
-- [Generate a full fixture list](04-fixtures/generate-fixtures.md)
-- [Edit a fixture](04-fixtures/edit-a-fixture.md)
-- [The fixture lifecycle explained](04-fixtures/fixture-lifecycle.md)
+## 4. Matches
+- [Add a match](04-fixtures/add-a-fixture.md)
+- [Generate a full match list](04-fixtures/generate-fixtures.md)
+- [Edit a match](04-fixtures/edit-a-fixture.md)
+- [The match lifecycle explained](04-fixtures/fixture-lifecycle.md)
 - [Walkovers, withdrawals and abandonments](04-fixtures/non-standard-outcomes.md)
-- [Postpone or reschedule a fixture](04-fixtures/postpone-or-reschedule.md)
-- [Delete a fixture](04-fixtures/delete-a-fixture.md)
+- [Postpone or reschedule a match](04-fixtures/postpone-or-reschedule.md)
+- [Delete a match](04-fixtures/delete-a-fixture.md)
 
 ## 5. Playoffs & Knockout Stages
 - [Build a knockout stage](05-playoffs/build-a-knockout-stage.md)

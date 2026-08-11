@@ -6,7 +6,7 @@ MatchPulse uses roles to control who can do what. This lets you bring people in 
 
 The Owner has full authority. Whoever creates an organisation or a competition is its Owner. An Owner can:
 
-- Edit settings, teams and fixtures.
+- Edit settings, teams and matches.
 - Score and finalise matches.
 - Resolve non-standard outcomes.
 - Grant roles to other people.

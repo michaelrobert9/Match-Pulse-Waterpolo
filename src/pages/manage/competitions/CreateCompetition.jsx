@@ -203,7 +203,7 @@ export default function CreateCompetition() {
 
         <h1 className="font-display font-black text-slate-900 text-2xl leading-tight">New competition</h1>
         <p className="text-slate-500 text-sm mt-2 leading-relaxed">
-          Create the competition shell. Teams, fixtures and standings come later — you can keep it in draft until it is ready.
+          Create the competition shell. Teams, matches and standings come later — you can keep it in draft until it is ready.
         </p>
         <p className="text-xs text-slate-400 mt-1 mb-8">
           New to this? <Link to="/support/competitions/create-a-competition" className="text-emerald-600 hover:text-emerald-500 font-semibold">Read: Create a competition</Link>

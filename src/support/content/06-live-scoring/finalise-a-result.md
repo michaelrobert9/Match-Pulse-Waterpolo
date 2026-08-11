@@ -18,7 +18,7 @@ It's much easier to fix something now than after finalising. See [Fix a mistake 
 2. Choose **Finalise** (or **Confirm result**).
 3. Confirm.
 
-The fixture moves to its finalised state. The result is locked.
+The match moves to its finalised state. The result is locked.
 
 ## What finalising does
 

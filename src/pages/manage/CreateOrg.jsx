@@ -101,7 +101,7 @@ export default function CreateOrg() {
             Create your {typeLabel.toLowerCase()}
           </h1>
           <p className="text-slate-500 text-sm mt-2 leading-relaxed">
-            You will become the owner and can immediately create teams, fixtures and score matches.
+            You will become the owner and can immediately create teams and matches, and score them.
           </p>
         </div>
 
@@ -242,7 +242,7 @@ export default function CreateOrg() {
           </button>
 
           <p className="text-[11px] text-slate-400 text-center">
-            You will be the owner and can manage teams, fixtures and staff.
+            You will be the owner and can manage teams, matches and staff.
           </p>
         </form>
       </div>
