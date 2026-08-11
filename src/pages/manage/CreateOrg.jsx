@@ -48,14 +48,16 @@ export default function CreateOrg() {
   const [type,         setType]         = useState('')
   const [name,         setName]         = useState('')
   const [primaryColor, setPrimaryColor] = useState('#006B3C')
-  const [genderProfile, setGenderProfile] = useState('coed')
+  const [genderProfile, setGenderProfile] = useState('')  // schools must pick — no default
   const [description,  setDescription]  = useState('')
   const [website,      setWebsite]      = useState('')
   const [logoUrl,      setLogoUrl]      = useState('')
   const [saving,       setSaving]       = useState(false)
   const [error,        setError]        = useState('')
 
-  const canSubmit = type && name.trim() && !saving
+  // Schools take their gender from the school itself, so the profile is required
+  // up front — no default, no guessing a co-ed fallback.
+  const canSubmit = type && name.trim() && !saving && (type !== 'school' || !!genderProfile)
 
   const typeLabel = type === 'school' ? 'School' : type === 'club' ? 'Club' : type === 'association' ? 'Association' : 'Organisation'
   const namePlaceholder = type === 'school' ? 'e.g. Pretoria Girls High School' : type === 'club' ? 'e.g. Crusaders Water Polo Club' : type === 'association' ? 'e.g. KZN Water Polo Association' : 'e.g. Pretoria Girls High School'

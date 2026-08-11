@@ -234,6 +234,13 @@ export default function AdminDashboard() {
       <div>
         <div className="micro-label text-slate-500 mb-3">Maintenance</div>
         <CareerRebuildCard />
+        <Link to="/admin/team-governance"
+          className="mt-3 flex items-center gap-3 bg-white rounded-xl border border-slate-200 px-4 py-3 hover:border-slate-300 transition-colors shadow-sm">
+          <span className="w-7 h-7 rounded-lg bg-slate-100 border border-slate-200 flex items-center justify-center shrink-0">
+            <AlertTriangle className="w-4 h-4 text-slate-500" />
+          </span>
+          <span className="text-sm font-medium text-slate-900">Team governance review</span>
+        </Link>
       </div>
 
       <div className="pt-2 border-t border-slate-200">

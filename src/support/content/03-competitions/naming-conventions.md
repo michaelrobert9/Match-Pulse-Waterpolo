@@ -13,7 +13,7 @@ Aim for a name that answers three things at a glance: who it's for, what it is, 
 Put together, you get names like:
 
 - Coastal Schools U16 League 2026
-- North Coast 1st XI Cup 2026
+- North Coast 1st Team Cup 2026
 - Riverside Invitational Tournament 2026
 
 ## Habits that keep it clean

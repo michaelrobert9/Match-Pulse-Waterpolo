@@ -8,7 +8,7 @@ Quick answers to the things people ask most. Each links to the full article if y
 Yes. Teams live inside an organisation, and competitions run from it. Start there. See [Set up your organisation](../01-getting-started/set-up-your-organisation.md).
 
 **What's the difference between an organisation and a team?**
-An organisation is the school, club or association. A team is a side within it (like a 1st XI). One organisation usually has several teams. See [Org types](../02-organisations-teams/org-types.md).
+An organisation is the school, club or association. A team is a side within it (like a 1st Team). One organisation usually has several teams. See [Org types](../02-organisations-teams/org-types.md).
 
 **What does a parent organisation do?**
 It links a smaller organisation to a wider one, so an association can run competitions that include teams from its member schools and clubs. See [Link a parent organisation](../02-organisations-teams/link-a-parent-organisation.md).
