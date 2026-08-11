@@ -16,30 +16,40 @@
 //                   custom sides, bare age groups with no letter, unparseable
 //                   labels, co-ed teams with no stored gender, …).
 //
-// Dry run (default — NO writes) prints the counts and the full manual list, and
-// writes team-governance-report.json:
+// Authentication — Google Application Default Credentials (ADC). Run it from
+// Cloud Shell (or anywhere `gcloud auth application-default login` has run); no
+// service-account key file is needed.
 //
-//   FIREBASE_SERVICE_ACCOUNT="$(cat service-account.json)" \
-//     node scripts/migrate-team-governance.mjs
+// Teams AND organizations live together in this sport's NAMED Firestore
+// database (users/profiles live in (default); this script never touches those).
+// The database is selected automatically per repo via DB_ID below — waterpolo
+// here — so there is nothing to point by hand. Run it once PER REPO to cover
+// all four `teams` collections. Override with FIRESTORE_DB=<name> if ever needed.
+//
+// Dry run (default — NO writes) prints the counts and the full manual list, and
+// writes team-governance-report-<db>.json:
+//
+//   node scripts/migrate-team-governance.mjs
 //
 // Live migration — writes structured fields to convertible teams and flags the
 // manual ones with needsGovernanceReview:true (which the in-app resolution
 // screen queries). Nothing is dropped and nothing is guessed:
 //
-//   APPLY=1 FIREBASE_SERVICE_ACCOUNT="$(cat service-account.json)" \
-//     node scripts/migrate-team-governance.mjs
+//   APPLY=1 node scripts/migrate-team-governance.mjs
 //
 // Idempotent — a convertible team already carrying governanceMigrated:true is
 // skipped; a manual team already flagged is left flagged.
 
-import { initializeApp, cert } from 'firebase-admin/app'
-import { getFirestore }        from 'firebase-admin/firestore'
-import { writeFileSync }       from 'fs'
+import { initializeApp, applicationDefault } from 'firebase-admin/app'
+import { getFirestore }                      from 'firebase-admin/firestore'
+import { writeFileSync }                     from 'fs'
 
-const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT)
-initializeApp({ credential: cert(serviceAccount) })
-const db    = getFirestore()
-const APPLY = !!process.env.APPLY
+const PROJECT = process.env.GCLOUD_PROJECT || 'match-pulse-4560e'
+const DB_ID   = process.env.FIRESTORE_DB    || 'waterpolo'   // this repo's named database
+const APPLY   = !!process.env.APPLY
+
+const app = initializeApp({ credential: applicationDefault(), projectId: PROJECT })
+const db  = getFirestore(app, DB_ID)
 
 // ── Standard vocabulary (mirrors src/lib/teamNaming.js) ───────────────────────
 const TEAM_LEVELS = ['1st Team','2nd Team','3rd Team','4th Team','5th Team','6th Team','7th Team','8th Team','9th Team','10th Team']
@@ -152,6 +162,7 @@ function classify(team, org) {
 
 // ── Main ──────────────────────────────────────────────────────────────────────
 async function run() {
+  console.log(`project=${PROJECT} database=${DB_ID}`)
   console.log(APPLY ? '=== LIVE migration — writes enabled ===' : '=== DRY RUN — no writes ===')
 
   const [teamSnap, orgSnap] = await Promise.all([
@@ -198,13 +209,15 @@ async function run() {
     for (const t of manual) console.log(`  [${t.reason}]  ${t.id}  "${t.displayName}"  (org: ${t.orgId})`)
   }
 
-  writeFileSync('team-governance-report.json', JSON.stringify({
+  const reportFile = `team-governance-report-${DB_ID}.json`
+  writeFileSync(reportFile, JSON.stringify({
     generatedAt: new Date().toISOString(),
+    project: PROJECT, database: DB_ID,
     mode: APPLY ? 'live' : 'dry-run',
     totals: { teams: teamSnap.size, alreadyMigrated: skipped.length, convertible: convertible.length, manual: manual.length },
     byReason, convertible, manual,
   }, null, 2))
-  console.log('\nReport written → team-governance-report.json')
+  console.log(`\nReport written → ${reportFile}`)
 
   if (!APPLY) { console.log('\nDry run complete — no writes.'); process.exit(0) }
 
