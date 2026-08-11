@@ -12,7 +12,7 @@ A team-scoped role applies to just one team. A team-scoped Scorer can score that
 
 ## Why this matters
 
-In a league with many teams, you don't want every coach able to score every match. Team-scoping lets you give each coach access to their own team's fixtures only. Everyone can help, but they stay in their lane, and there's no risk of one team's manager accidentally changing another's result.
+In a league with many teams, you don't want every coach able to score every match. Team-scoping lets you give each coach access to their own team's matches only. Everyone can help, but they stay in their lane, and there's no risk of one team's manager accidentally changing another's result.
 
 ## How it works
 

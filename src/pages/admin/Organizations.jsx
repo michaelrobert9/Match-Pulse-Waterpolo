@@ -358,7 +358,7 @@ function StaffManager({ orgId }) {
     <div className="px-4 py-5 border-t border-slate-200">
       <h2 className="font-display font-bold text-slate-900 text-base mb-1">Staff &amp; scoring access</h2>
       <p className="text-slate-500 text-xs mb-4">
-        Owners and staff can create, manage and score this organisation's fixtures.
+        Owners and staff can create, manage and score this organisation's matches.
       </p>
 
       <form onSubmit={handleAdd} className="bg-slate-50 rounded-xl border border-slate-200 p-4 space-y-3 mb-4">
@@ -440,7 +440,7 @@ export function DeleteOrgModal({ org, onCancel, onConfirmed }) {
 
         <div className="bg-red-50 border border-red-200 rounded-xl p-3 mb-4">
           <p className="text-[13px] text-red-700 leading-relaxed">
-            This cannot be undone. Deletion may affect this {entity}'s teams, fixtures and historical records.
+            This cannot be undone. Deletion may affect this {entity}'s teams, matches and historical records.
           </p>
         </div>
 

@@ -64,7 +64,7 @@ export default function CompetitionFixtures() {
     compPromise.then(comp => {
       if (!comp) { setLoading(false); return }
       setCompetition(comp)
-      document.title = `${comp.name} · Fixtures · MatchPulse`
+      document.title = `${comp.name} · Matches · MatchPulse`
       return fetchCompetitionFixtures(comp.id)
     }).then(f => {
       if (f) { prefetchMatchTeams(f); setFixtures(f) }
@@ -77,7 +77,7 @@ export default function CompetitionFixtures() {
   const groups = groupByDay(fixtures)
 
   function handleExport() {
-    downloadCSV(`${competition.name} Fixtures.csv`, [
+    downloadCSV(`${competition.name} Matches.csv`, [
       ['Date', 'Time', 'Home', 'Away', 'Home Score', 'Away Score', 'Status', 'Venue'],
       ...fixtures.map(m => {
         const d = toDate(m.scheduledAt)
@@ -109,7 +109,7 @@ export default function CompetitionFixtures() {
 
       <div className="px-4 sm:px-6 lg:px-8 py-5 space-y-6">
         {fixtures.length === 0 ? (
-          <p className="text-center text-slate-500 text-sm py-8">No fixtures scheduled yet.</p>
+          <p className="text-center text-slate-500 text-sm py-8">No matches scheduled yet.</p>
         ) : (
           Array.from(groups.entries()).map(([day, dayMatches]) => (
             <div key={day}>

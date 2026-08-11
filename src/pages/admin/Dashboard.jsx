@@ -67,7 +67,7 @@ function CareerRebuildCard() {
         <div className="flex items-center gap-2">
           <span className="inline-flex items-center gap-1.5 text-sm text-emerald-700">
             <Check className="w-4 h-4" />
-            Done — {result?.matchCount ?? 0} Final fixtures, {result?.sliceCount ?? 0} team/competition records
+            Done — {result?.matchCount ?? 0} Final matches, {result?.sliceCount ?? 0} team/competition records
             {result?.createdCount > 0 && ` (${result.createdCount} newly created from lineups)`},
             {' '}{result?.personCount ?? 0} player careers rebuilt.
           </span>
@@ -198,11 +198,11 @@ export default function AdminDashboard() {
       <div>
         <div className="micro-label text-slate-500 mb-3">Quick actions</div>
         <div className="space-y-2">
-          <Link to="/fixtures/new" className="flex items-center gap-3 bg-white rounded-xl border border-emerald-200 px-4 py-3 hover:border-emerald-300 transition-colors shadow-sm">
+          <Link to="/match/new" className="flex items-center gap-3 bg-white rounded-xl border border-emerald-200 px-4 py-3 hover:border-emerald-300 transition-colors shadow-sm">
             <span className="w-7 h-7 rounded-lg bg-emerald-50 border border-emerald-200 flex items-center justify-center shrink-0">
               <Plus className="w-4 h-4 text-emerald-600" />
             </span>
-            <span className="text-sm font-semibold text-emerald-700">Create fixture</span>
+            <span className="text-sm font-semibold text-emerald-700">Create match</span>
           </Link>
           <Link to="/manage" className="flex items-center gap-3 bg-white rounded-xl border border-slate-200 px-4 py-3 hover:border-slate-300 transition-colors shadow-sm">
             <span className="w-7 h-7 rounded-lg bg-slate-100 border border-slate-200 flex items-center justify-center shrink-0">

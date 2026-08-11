@@ -4,9 +4,9 @@ In a knockout, the winner of each match moves on to the next round. MatchPulse h
 
 ## How it works
 
-1. You play and score a knockout fixture, the same as any other match.
+1. You play and score a knockout match, the same as any other match.
 2. When you finalise the result, MatchPulse knows who won.
-3. The winner is placed into the next round's fixture automatically.
+3. The winner is placed into the next round's match automatically.
 4. Once both feeder matches in a round are finalised, the next-round matchup is complete and ready to be played.
 
 So a quarter-final winner lands in the right semi-final slot, and the two semi-final winners meet in the final, all driven by the results you enter.

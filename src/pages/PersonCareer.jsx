@@ -227,7 +227,7 @@ function FixtureCard({ match, personId, canSelfRemove, onRemoved }) {
 
   async function handleSelfRemove(e) {
     e.preventDefault()
-    if (!confirm('Remove this player from the fixture lineup?')) return
+    if (!confirm('Remove this player from the match lineup?')) return
     setRemoving(true)
     try {
       await removeSelfFromFixture(match.id, personId)
@@ -411,7 +411,7 @@ export default function PersonCareer() {
               {orgGroups.length} organisation{orgGroups.length !== 1 ? 's' : ''} · {career.length} competition{career.length !== 1 ? 's' : ''}
             </span>
             {matches.length > 0 && (
-              <span className="micro-label text-slate-400">{matches.length} fixture{matches.length !== 1 ? 's' : ''}</span>
+              <span className="micro-label text-slate-400">{matches.length} match{matches.length !== 1 ? 'es' : ''}</span>
             )}
           </div>
         </div>
@@ -433,10 +433,10 @@ export default function PersonCareer() {
         {/* ── FIXTURES ──────────────────────────────────────────────── */}
         <div>
           <h2 className="micro-label text-slate-500 mb-3">
-            Fixtures{matches.length > 0 ? ` (${matches.length})` : ''}
+            Matches{matches.length > 0 ? ` (${matches.length})` : ''}
           </h2>
           {matches.length === 0 ? (
-            <p className="text-slate-500 text-sm">No fixtures listed yet.</p>
+            <p className="text-slate-500 text-sm">No matches listed yet.</p>
           ) : (
             <>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -449,7 +449,7 @@ export default function PersonCareer() {
               </div>
               {matches.length > 20 && (
                 <p className="text-center text-sm text-slate-400 pt-2">
-                  Showing 20 of {matches.length} fixtures
+                  Showing 20 of {matches.length} matches
                 </p>
               )}
             </>

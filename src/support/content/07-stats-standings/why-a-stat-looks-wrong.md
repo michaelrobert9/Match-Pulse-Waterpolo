@@ -6,13 +6,13 @@ If a standings position or a player's tally looks off, the good news is that it'
 
 MatchPulse works out standings and stats from the actual match results rather than keeping a separate running count. Standings recompute when they're shown, and stats are rebuilt from their source results. So a stat is only ever as right as the results behind it.
 
-That's the key idea: the table and the records aren't the source of truth. The finalised fixtures are. If something looks wrong in the table, the fix lives in a fixture.
+That's the key idea: the table and the records aren't the source of truth. The finalised matches are. If something looks wrong in the table, the fix lives in a match.
 
 ## How to track it down
 
-1. **Find the result behind the number.** A team too high or too low in the table? Look at their fixtures. A player's goal count off? Look at the matches they scored in.
-2. **Check the fixture.** Is the score right? Are the goals attributed to the correct players? Was a match finalised that shouldn't have been, or not finalised that should have been?
-3. **Correct the source.** Fix the fixture, and the standings and stats recompute to match. See [Correct a finalised result](../06-live-scoring/correct-a-finalised-result.md).
+1. **Find the result behind the number.** A team too high or too low in the table? Look at their matches. A player's goal count off? Look at the matches they scored in.
+2. **Check the match.** Is the score right? Are the goals attributed to the correct players? Was a match finalised that shouldn't have been, or not finalised that should have been?
+3. **Correct the source.** Fix the match, and the standings and stats recompute to match. See [Correct a finalised result](../06-live-scoring/correct-a-finalised-result.md).
 
 ## Common causes
 

@@ -1,6 +1,6 @@
-# Generate a full fixture list
+# Generate a full match list
 
-For a league where every team plays the others, generating the fixtures is much faster than adding each one by hand. MatchPulse builds the full set from the teams you've entered.
+For a league where every team plays the others, generating the matches is much faster than adding each one by hand. MatchPulse builds the full set from the teams you've entered.
 
 ## Before you start
 
@@ -10,23 +10,23 @@ For a league where every team plays the others, generating the fixtures is much 
 ## Steps
 
 1. Open the competition.
-2. Go to the **Fixtures** section.
-3. Choose **Generate fixtures**.
+2. Go to the **Matches** section.
+3. Choose **Generate matches**.
 4. Set the options you're given, such as single or double round-robin.
 5. Generate.
 
-MatchPulse creates a fixture for each required pairing and adds them all to the list at once.
+MatchPulse creates a match for each required pairing and adds them all to the list at once.
 
 ## After generating
 
 You'll usually want to:
 
-- **Set dates and times.** Generated fixtures may need their dates filled in or spread across the season. Edit each one, or work through them in order. See [Edit a fixture](edit-a-fixture.md).
+- **Set dates and times.** Generated matches may need their dates filled in or spread across the season. Edit each one, or work through them in order. See [Edit a match](edit-a-fixture.md).
 - **Add venues** where you know them.
 - **Check the pairings** look right before the season starts.
 
 ## When generating isn't the right call
 
-If your competition is a knockout rather than a league, you don't generate a flat fixture list. You build a bracket instead. See [Build a knockout stage](../05-playoffs/build-a-knockout-stage.md).
+If your competition is a knockout rather than a league, you don't generate a flat match list. You build a bracket instead. See [Build a knockout stage](../05-playoffs/build-a-knockout-stage.md).
 
 For a hybrid competition, generate the league phase here, then build the knockout stage once the qualifying teams are known.

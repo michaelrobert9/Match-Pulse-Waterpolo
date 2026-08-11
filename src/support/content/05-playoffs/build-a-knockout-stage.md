@@ -23,12 +23,12 @@ See [Competition formats](../03-competitions/competition-formats.md) for the dif
 5. Add the teams into the bracket. You can seed them so the bracket is balanced. See [Seed the bracket](seed-the-bracket.md).
 6. Save.
 
-MatchPulse lays out the rounds and creates the fixtures for the first round.
+MatchPulse lays out the rounds and creates the matches for the first round.
 
 ## After building
 
 - Check the matchups look right.
-- Set dates, times and venues for the first-round fixtures, the same as any other fixture.
+- Set dates, times and venues for the first-round matches, the same as any other match.
 - As results come in, winners advance to the next round automatically. See [How teams advance](how-teams-advance.md).
 
 ## Changing it later

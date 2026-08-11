@@ -1,17 +1,17 @@
-# Postpone or reschedule a fixture
+# Postpone or reschedule a match
 
-Fixtures move. Rain, clashes, travel. When a match needs a new slot, you reschedule it rather than deleting it and starting over.
+Matches move. Rain, clashes, travel. When a match needs a new slot, you reschedule it rather than deleting it and starting over.
 
 ## Reschedule to a new date
 
 1. Open the competition.
-2. Go to the **Fixtures** section.
-3. Open the fixture.
+2. Go to the **Matches** section.
+3. Open the match.
 4. Click **Edit**.
 5. Change the **date and time** to the new slot.
 6. Save.
 
-The fixture keeps everything else, the same teams, the same venue if it hasn't changed, and just sits at its new time.
+The match keeps everything else, the same teams, the same venue if it hasn't changed, and just sits at its new time.
 
 ## Postpone without a new date yet
 
@@ -19,7 +19,7 @@ Sometimes you know a match won't go ahead but don't yet know when it'll be repla
 
 ## Why not just delete and re-add
 
-Deleting loses the fixture and anything attached to it. Rescheduling keeps the same fixture, which is cleaner and avoids confusion for anyone following the competition. Always move the existing fixture rather than replacing it.
+Deleting loses the match and anything attached to it. Rescheduling keeps the same match, which is cleaner and avoids confusion for anyone following the competition. Always move the existing match rather than replacing it.
 
 ## If the match was abandoned mid-play
 

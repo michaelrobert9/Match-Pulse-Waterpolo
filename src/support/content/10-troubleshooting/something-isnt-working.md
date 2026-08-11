@@ -16,7 +16,7 @@ If you're seeing an old version, try a hard refresh of the page first. Browser c
 
 ## The standings or stats look wrong
 
-These are calculated from finalised results, so a wrong-looking number nearly always traces back to a fixture. Track down the result behind it and correct that. See [Why a stat looks wrong](../07-stats-standings/why-a-stat-looks-wrong.md).
+These are calculated from finalised results, so a wrong-looking number nearly always traces back to a match. Track down the result behind it and correct that. See [Why a stat looks wrong](../07-stats-standings/why-a-stat-looks-wrong.md).
 
 ## A match won't finalise
 
@@ -36,7 +36,7 @@ If none of the above sorts it out, get in touch and we'll help. When you do, it 
 
 - What you were trying to do.
 - What you expected to happen, and what happened instead.
-- The competition, team or fixture involved.
+- The competition, team or match involved.
 - A screenshot if you have one.
 
 The more specific you can be, the faster we can pin it down.

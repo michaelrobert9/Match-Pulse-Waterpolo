@@ -380,7 +380,7 @@ export default function CompetitionStructureSection({ competition, panel = 'all'
                 const playedPlayoff = Object.values(data.matches).some(m =>
                   m.isPlayoffHolding && (['final', 'live', 'paused'].includes(m.status) || (m.goals?.length > 0)))
                 if (playedPlayoff) {
-                  setError('Cannot unverify: a playoff fixture has already been played. Reverting the pool could change who qualified.')
+                  setError('Cannot unverify: a playoff match has already been played. Reverting the pool could change who qualified.')
                   return
                 }
                 run(async () => {
@@ -398,7 +398,7 @@ export default function CompetitionStructureSection({ competition, panel = 'all'
                     const aName = aSlot ? humanSource(aSlot.source, ctx) : (m.playoffGameName ? `${m.playoffGameName} Away` : 'TBC')
                     await resetPlayoffHoldingFixtureToPlaceholders(competitionId, m.id, hName, aName)
                   }
-                }, 'Pool unverified — correct it, then re-verify once every fixture is scored.')
+                }, 'Pool unverified — correct it, then re-verify once every match is scored.')
               }}
               onManualPlace={(poolId, placements, reason) => run(() => setPoolManualPlacement(competitionId, poolId, { placements, reason }), 'Manual placement recorded.')}
               onGenerateFixtures={async (poolId) => {
@@ -416,8 +416,8 @@ export default function CompetitionStructureSection({ competition, panel = 'all'
                   })
                   await reload()
                   const warns = result.warnings.length > 0 ? ` Warning: ${result.warnings.join(' ')}` : ''
-                  flash(`${result.ids.length} fixture${result.ids.length !== 1 ? 's' : ''} generated.${warns}`)
-                } catch (err) { setError(err.message ?? 'Fixture generation failed.') }
+                  flash(`${result.ids.length} match${result.ids.length !== 1 ? 'es' : ''} generated.${warns}`)
+                } catch (err) { setError(err.message ?? 'Match generation failed.') }
                 finally { setBusy(false) }
               }}
               onFinalizePool={async (poolId) => {
@@ -686,7 +686,7 @@ function PoolCard({
   const allScored = poolMatchList.length > 0 && unscoredCount === 0
 
   function handleVerify() {
-    if (!allScored) { alert('Score every fixture in this pool before verifying.'); return }
+    if (!allScored) { alert('Score every match in this pool before verifying.'); return }
     if (tied) { alert('This pool has an unresolved tie. Record a manual placement before verifying.'); return }
     onVerify(pool.poolId, {
       rows,
@@ -757,7 +757,7 @@ function PoolCard({
       {/* Pool fixtures list */}
       {poolMatchList.length > 0 && (
         <div className="mb-3">
-          <MicroLabel>Fixtures</MicroLabel>
+          <MicroLabel>Matches</MicroLabel>
           <ul className="space-y-1.5">
             {poolMatchList.map(m => (
               <li key={m.id} className="flex items-center gap-2 text-[12px] bg-slate-50 border border-slate-100 rounded-lg px-2.5 py-2">
@@ -782,21 +782,21 @@ function PoolCard({
       {/* Auto-generate fixtures */}
       {!pool.verified && !pool.finalized && (
         <div className="mb-3">
-          <MicroLabel>Generate fixtures</MicroLabel>
+          <MicroLabel>Generate matches</MicroLabel>
           {poolMatchList.length > 0 ? (
             <div className="flex items-start gap-1.5 text-[12px] text-slate-500 bg-slate-50 border border-slate-100 rounded-lg px-3 py-2">
               <Info className="w-3.5 h-3.5 shrink-0 mt-0.5 text-slate-400" />
-              <span>Fixtures already generated. Add cross-pool or extra fixtures manually if needed.</span>
+              <span>Matches already generated. Add cross-pool or extra matches manually if needed.</span>
             </div>
           ) : (
             <div className="space-y-2">
               <div className="flex items-start gap-1.5 text-[12px] text-slate-600 bg-blue-50 border border-blue-100 rounded-lg px-3 py-2">
                 <Info className="w-3.5 h-3.5 shrink-0 mt-0.5 text-blue-400" />
-                <span>Auto-generation creates one fixture between each pair of teams in the pool. For cross-pool fixtures or extra matches against the same team, create them manually.</span>
+                <span>Auto-generation creates one match between each pair of teams in the pool. For cross-pool matches or extra matches against the same team, create them manually.</span>
               </div>
               <button onClick={() => onGenerateFixtures(pool.poolId)} disabled={busy}
                 className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-widest text-white bg-emerald-600 hover:bg-emerald-500 rounded-md px-3 py-2 disabled:opacity-40 transition-colors">
-                <Calendar className="w-3.5 h-3.5" /> Generate fixtures
+                <Calendar className="w-3.5 h-3.5" /> Generate matches
               </button>
             </div>
           )}
@@ -806,7 +806,7 @@ function PoolCard({
       {/* Group fixtures into this pool */}
       {groupableFixtures.length > 0 && !pool.verified && (
         <div className="mb-3">
-          <MicroLabel>Add fixture to pool</MicroLabel>
+          <MicroLabel>Add match to pool</MicroLabel>
           <div className="space-y-1.5">
             {groupableFixtures.map(f => {
               const m = matches[f.matchId]
@@ -843,7 +843,7 @@ function PoolCard({
           <button
             onClick={() => {
               const msg = unfilledCount > 0
-                ? `Finalizing will convert fixtures for ${unfilledCount} unfilled slot${unfilledCount !== 1 ? 's' : ''} to byes. Continue?`
+                ? `Finalizing will convert matches for ${unfilledCount} unfilled slot${unfilledCount !== 1 ? 's' : ''} to byes. Continue?`
                 : 'Finalize this pool? This locks the team roster.'
               if (window.confirm(msg)) onFinalizePool(pool.poolId)
             }}
@@ -852,7 +852,7 @@ function PoolCard({
             <Flag className="w-3.5 h-3.5" /> Finalize pool
           </button>
           <p className="text-[11px] text-slate-500 mt-1.5">
-            Locks the team roster and turns any fixture with an empty slot into a bye. Use this to close off the group schedule — it does <span className="font-semibold">not</span> publish standings.
+            Locks the team roster and turns any match with an empty slot into a bye. Use this to close off the group schedule — it does <span className="font-semibold">not</span> publish standings.
           </p>
         </div>
       )}
@@ -876,7 +876,7 @@ function PoolCard({
             Publishes these standings as official, freezes a snapshot and locks the team assignments. Playoff games that reference this pool (e.g. “1st Pool A”) then fill in with the real teams.
             {!allScored && (
               <span className="block text-amber-600 font-medium mt-0.5">
-                Available once every fixture is scored{unscoredCount > 0 ? ` — ${unscoredCount} still to play` : ''}.
+                Available once every match is scored{unscoredCount > 0 ? ` — ${unscoredCount} still to play` : ''}.
               </span>
             )}
           </p>
@@ -894,7 +894,7 @@ function PoolCard({
             <RotateCcw className="w-3.5 h-3.5" /> Unverify pool
           </button>
           <p className="text-[11px] text-slate-500 mt-1.5">
-            Reverses the verification so you can correct results or team assignments. Blocked if a playoff fixture fed by this pool has already been played.
+            Reverses the verification so you can correct results or team assignments. Blocked if a playoff match fed by this pool has already been played.
           </p>
         </div>
       )}
@@ -1019,7 +1019,7 @@ function KnockoutPanel({
   }
 
   function clearAll() {
-    if (!window.confirm('Clear all playoff games and start over? Locked advancements are removed too. Any holding fixtures created stay in the Fixtures tab.')) return
+    if (!window.confirm('Clear all playoff games and start over? Locked advancements are removed too. Any holding matches created stay in the Matches tab.')) return
     run(async () => {
       for (const s of knockout) await deleteKnockoutSlot(competitionId, s.slotId)
     }, 'Playoffs cleared.')
@@ -1081,11 +1081,11 @@ function KnockoutPanel({
             <div className="bg-emerald-50 border border-emerald-200 rounded-lg px-3 py-2.5 flex items-center gap-2">
               <Calendar className="w-4 h-4 text-emerald-600 shrink-0" />
               <p className="text-[12px] text-emerald-800 flex-1">
-                Turn {fixtureGames.length} game{fixtureGames.length !== 1 ? 's' : ''} into schedulable fixtures. They appear in the Fixtures tab as holding cards and fill in teams automatically once pools are verified.
+                Turn {fixtureGames.length} game{fixtureGames.length !== 1 ? 's' : ''} into schedulable matches. They appear in the Matches tab as holding cards and fill in teams automatically once pools are verified.
               </p>
               <button onClick={createFixtures} disabled={busy}
                 className="shrink-0 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white text-[11px] font-bold uppercase tracking-widest rounded-lg px-3 py-1.5">
-                Create fixtures
+                Create matches
               </button>
             </div>
           )}
@@ -1380,11 +1380,11 @@ function KnockoutMatchCard({
       {/* Manual result-fixture link — only when there's no auto holding fixture. */}
       {isGame && needsResultLink && !linkedMatch?.isPlayoffHolding && !allLocked && (
         <div className="flex items-center gap-2 mt-1.5 pt-1.5 border-t border-slate-100">
-          <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400 shrink-0">Result fixture</span>
+          <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400 shrink-0">Result match</span>
           <select value={linkedSlot.matchId ?? ''} disabled={busy}
             onChange={e => onUpdate(linkedSlot.slotId, { matchId: e.target.value || null })}
             className="flex-1 bg-white border border-slate-200 rounded-lg px-2 py-1 text-[12px] disabled:bg-slate-50">
-            <option value="">No fixture linked</option>
+            <option value="">No match linked</option>
             {fxMembers.map(f => {
               const m = matches[f.matchId]
               if (!m) return null
@@ -1424,7 +1424,7 @@ function PlayoffScheduleRow({ fixture, competitionId, run, busy }) {
     run(() => schedulePlayoffFixture(competitionId, fixture.id, {
       scheduledAt: when ? new Date(when) : null,
       pitch: pitch.trim(),
-    }), 'Fixture scheduled.')
+    }), 'Match scheduled.')
     setOpen(false)
   }
 

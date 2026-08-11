@@ -12,7 +12,7 @@ A one-time payment, not a subscription. Pay once and the Plus features stay unlo
 
 ## Pro — R15,000 per year
 
-The full platform, billed annually. Built for associations and larger operations running multiple competitions across a season. If you're managing a lot of teams, fixtures and competitions at once, this is the tier for you.
+The full platform, billed annually. Built for associations and larger operations running multiple competitions across a season. If you're managing a lot of teams, matches and competitions at once, this is the tier for you.
 
 ## How to decide
 

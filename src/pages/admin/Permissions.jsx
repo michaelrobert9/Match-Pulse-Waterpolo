@@ -181,7 +181,7 @@ function UserPermissionsPanel({ user, selfUid, onUserChanged, orgMap }) {
                   <div className="text-[10px] text-slate-400 uppercase tracking-widest">
                     {grant?.role ?? 'admin'}
                     <span className="ml-2 normal-case not-italic text-slate-300">
-                      · can create &amp; score fixtures
+                      · can create &amp; score matches
                     </span>
                   </div>
                 </div>

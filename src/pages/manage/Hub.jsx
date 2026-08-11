@@ -112,10 +112,10 @@ export default function ManageHub() {
         {(hasOrgs || canRunPersonalComp) && (
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-6">
             {hasOrgs && (
-              <Link to="/fixtures/new"
+              <Link to="/match/new"
                 className="flex items-center justify-center gap-2 w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-sm uppercase tracking-wider rounded-xl py-3.5 transition-colors">
                 <Plus className="w-4 h-4" />
-                Create fixture
+                Create match
               </Link>
             )}
             <Link to="/manage/competitions"
@@ -155,7 +155,7 @@ export default function ManageHub() {
               </div>
               <h3 className="text-slate-900 font-display font-bold text-base mb-1">No organisation yet</h3>
               <p className="text-slate-500 text-sm mb-6 leading-relaxed max-w-xs mx-auto">
-                Create your school, club or association to start managing teams, fixtures and results.
+                Create your school, club or association to start managing teams, matches and results.
               </p>
               <Link to="/manage/new-org"
                 className="inline-flex items-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-sm uppercase tracking-wider rounded-xl px-6 py-3 transition-colors">

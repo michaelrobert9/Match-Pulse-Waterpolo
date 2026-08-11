@@ -55,10 +55,10 @@ const ENFORCEMENT_MODES = [
 ]
 
 const STATUS_HELP = {
-  draft:     'Being set up — not ready for teams or fixtures.',
+  draft:     'Being set up — not ready for teams or matches.',
   setup:     'Teams and structure are being configured.',
   ready:     'Configured and waiting to start.',
-  active:    'In progress — fixtures being played.',
+  active:    'In progress — matches being played.',
   completed: 'Finished — results are final.',
   archived:  'Closed and hidden from active lists.',
 }
@@ -68,7 +68,7 @@ function tabsFor(competition) {
   const config    = { id: 'config',    label: 'Configuration',     Icon: SlidersHorizontal }
   const teams     = { id: 'teams',     label: 'Teams',             Icon: Users }
   const structure = { id: 'structure', label: 'Structure',         Icon: Layers }
-  const fixtures  = { id: 'fixtures',  label: 'Fixtures',          Icon: Calendar }
+  const fixtures  = { id: 'fixtures',  label: 'Matches',          Icon: Calendar }
   const results   = { id: 'results',   label: 'Results',           Icon: ClipboardCheck }
   const standings = { id: 'standings', label: 'Standings',         Icon: BarChart2 }
   const poolStand = { id: 'standings', label: 'Pools / Standings', Icon: BarChart2 }
@@ -374,7 +374,7 @@ const AUDIT_LABELS = {
   postponed: 'Postponed', cancelled: 'Cancelled',
   slot_override_team: 'Playoff slot overridden', slot_override_walkover: 'Playoff walkover',
   slot_override_reverted: 'Playoff override reverted', advancement_locked: 'Advancement locked',
-  playoff_fixtures_created: 'Playoff fixtures created', playoff_config_updated: 'Playoff settings changed',
+  playoff_fixtures_created: 'Playoff matches created', playoff_config_updated: 'Playoff settings changed',
   manual_placement_override: 'Manual pool placement', pool_verified: 'Pool verified',
   pool_unverified: 'Pool unverified', pool_finalized: 'Pool finalized',
 }
@@ -472,7 +472,7 @@ function HistoryCard({ competition }) {
                 {awaiting && (
                   <div className="mt-2 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2.5">
                     <p className="text-[12px] text-amber-800 font-medium">
-                      Undo “{auditLabel(e.eventType)}”? This returns the fixture to its pre-outcome state — its previous status and score are restored and the outcome is cleared. The undo is itself recorded in this trail.
+                      Undo “{auditLabel(e.eventType)}”? This returns the match to its pre-outcome state — its previous status and score are restored and the outcome is cleared. The undo is itself recorded in this trail.
                     </p>
                     {undoErr && <p className="text-[11px] text-red-600 mt-1.5">{undoErr}</p>}
                     <div className="flex items-center gap-2 mt-2">
@@ -515,10 +515,10 @@ function StatsRebuildCard({ competition }) {
 
   return (
     <Card title="Recalculate player stats"
-      subtitle="Rebuild this competition's stats from its Final fixtures">
+      subtitle="Rebuild this competition's stats from its Final matches">
       <p className="text-sm text-slate-600 mb-3">
         Rebuilds caps, goals, and exclusions for every player in this competition from all its Final
-        fixtures, on the server. Stats are always derived from match history, so this simply
+        matches, on the server. Stats are always derived from match history, so this simply
         re-derives them — safe to run multiple times, with identical results each run.
       </p>
       <p className="text-[11px] text-slate-500 bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 mb-3">
@@ -558,7 +558,7 @@ function StatsRebuildCard({ competition }) {
         <div className="flex items-center gap-2">
           <span className="inline-flex items-center gap-1.5 text-sm text-emerald-700">
             <Check className="w-4 h-4" />
-            Done — {result?.matchCount ?? 0} Final fixtures replayed across {result?.playerCount ?? 0} player
+            Done — {result?.matchCount ?? 0} Final matches replayed across {result?.playerCount ?? 0} player
             records.
           </span>
           <button onClick={() => setPhase('idle')} className="text-xs text-slate-400 hover:text-slate-600">
@@ -602,7 +602,7 @@ function DangerZone({ competition }) {
           <div className="min-w-0">
             <p className="text-sm font-medium text-slate-900">Delete this competition</p>
             <p className="text-[11px] text-slate-500 mt-0.5 leading-relaxed">
-              Permanently removes the competition and all of its fixtures. This cannot be undone.
+              Permanently removes the competition and all of its matches. This cannot be undone.
             </p>
           </div>
           <button onClick={() => setConfirming(true)}
@@ -652,7 +652,7 @@ function DeleteCompetitionModal({ competition, onCancel, onConfirmed }) {
 
         <div className="bg-red-50 border border-red-200 rounded-xl p-3 mb-4">
           <p className="text-[13px] text-red-700 leading-relaxed">
-            This deletes the competition and <span className="font-bold">every fixture</span> in it — including all
+            This deletes the competition and <span className="font-bold">every match</span> in it — including all
             scores, events and standings. This cannot be undone.
           </p>
         </div>
@@ -935,7 +935,7 @@ function ScoringCard({ competition, onSaved }) {
           <div className="flex-1">
             <div className="text-sm font-medium text-slate-700">Walkover result</div>
             <p className="text-[11px] text-slate-400">
-              Used when a team forfeits or fails to fulfil a fixture.
+              Used when a team forfeits or fails to fulfil a match.
               Default scoreline {walkover.opposingTeam}–{walkover.concedingTeam} to the opposing team.
             </p>
           </div>
@@ -1282,7 +1282,7 @@ function MatchFormatCard({ competition, onSaved }) {
 
   return (
     <Card title="Default match format"
-      subtitle="Applied to new fixtures — still adjustable per fixture"
+      subtitle="Applied to new matches — still adjustable per match"
       action={<EditButton editing={editing} onClick={() => { setFmt(competitionMatchFormat(competition)); setEditing(e => !e) }} />}>
       {!editing ? (
         <div className="text-sm text-slate-700">
@@ -1369,7 +1369,7 @@ function ScheduleConfigCard({ competition, onSaved }) {
   const hasConfig = (cfg.fields?.length > 0) || cfg.startDate
 
   return (
-    <Card title="Schedule" subtitle="Field & timing config for fixture generation"
+    <Card title="Schedule" subtitle="Field & timing config for match generation"
       action={<EditButton editing={editing} onClick={() => setEditing(e => !e)} />}>
       {!editing ? (
         hasConfig ? (
@@ -1483,7 +1483,7 @@ function ScheduleConfigCard({ competition, onSaved }) {
             <label className="micro-label block mb-1.5">Field allocation</label>
             <div className="flex gap-2">
               {[
-                { value: 'any',    label: 'Any field',    desc: 'Fixtures placed on whichever field is free first.' },
+                { value: 'any',    label: 'Any field',    desc: 'Matches placed on whichever field is free first.' },
                 { value: 'pinned', label: 'Pinned',       desc: 'Each pool is restricted to specific assigned fields.' },
               ].map(opt => (
                 <button key={opt.value} type="button" onClick={() => setAllocMode(opt.value)}
@@ -2202,7 +2202,7 @@ function FixturesTab({ competition, teams, fixtures, setFixtures }) {
   }
 
   async function handleDelete(fixtureId) {
-    if (!confirm('Delete this fixture?')) return
+    if (!confirm('Delete this match?')) return
     await deleteDoc(doc(db, 'matches', fixtureId))
     removeFixtureFromCompetition(competition.id, fixtureId).catch(() => {})
     setFixtures(prev => prev.filter(f => f.id !== fixtureId))
@@ -2225,7 +2225,7 @@ function FixturesTab({ competition, teams, fixtures, setFixtures }) {
     })).filter(g => g.items.length > 0)
     const grouped = new Set(groups.flatMap(g => g.items.map(i => i.id)))
     const rest = fixtures.filter(fx => !grouped.has(fx.id))
-    if (rest.length > 0) groups.push({ label: 'Knockout & ungrouped fixtures', items: rest })
+    if (rest.length > 0) groups.push({ label: 'Knockout & ungrouped matches', items: rest })
   } else if (type === 'festival') {
     const items = filter === 'results' ? fixtures.filter(f => !isScheduled(f)) : fixtures
     groups = [{ label: null, items }]
@@ -2254,7 +2254,7 @@ function FixturesTab({ competition, teams, fixtures, setFixtures }) {
         )}
         {type === 'festival' && (
           <div className="flex gap-1.5">
-            {[['all', 'Fixture wall'], ['results', 'Results']].map(([id, lbl]) => (
+            {[['all', 'Match wall'], ['results', 'Results']].map(([id, lbl]) => (
               <button key={id} onClick={() => setFilter(id)}
                 className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-colors ${
                   filter === id ? 'bg-slate-700 text-white' : 'bg-white border border-slate-200 text-slate-500 hover:text-slate-700'
@@ -2265,7 +2265,7 @@ function FixturesTab({ competition, teams, fixtures, setFixtures }) {
           </div>
         )}
         {type === 'tournament' && (
-          <p className="text-sm text-slate-500">{fixtures.length} fixture{fixtures.length !== 1 ? 's' : ''}</p>
+          <p className="text-sm text-slate-500">{fixtures.length} match{fixtures.length !== 1 ? 's' : ''}</p>
         )}
 
         <div className="flex items-center gap-2 ml-auto">
@@ -2276,7 +2276,7 @@ function FixturesTab({ competition, teams, fixtures, setFixtures }) {
                   ? 'bg-emerald-600 text-white border-emerald-600'
                   : 'border-emerald-200 text-emerald-600 hover:bg-emerald-50'
               }`}>
-              Generate fixtures
+              Generate matches
             </button>
           )}
           <button onClick={() => { setShowNew(v => !v); setShowGen(false) }}
@@ -2285,14 +2285,14 @@ function FixturesTab({ competition, teams, fixtures, setFixtures }) {
                 ? 'bg-slate-700 text-white border-slate-700'
                 : 'border-slate-200 text-slate-600 hover:bg-slate-50'
             }`}>
-            {showNew ? 'Cancel' : <><Plus className="w-3.5 h-3.5" /> New fixture</>}
+            {showNew ? 'Cancel' : <><Plus className="w-3.5 h-3.5" /> New match</>}
           </button>
         </div>
       </div>
 
       {genDone !== null && !showGen && (
         <div className="bg-emerald-50 border border-emerald-200 rounded-lg px-3 py-2 text-sm text-emerald-700 flex items-center gap-2">
-          <Check className="w-4 h-4 shrink-0" /> {genDone} fixture{genDone !== 1 ? 's' : ''} generated
+          <Check className="w-4 h-4 shrink-0" /> {genDone} match{genDone !== 1 ? 'es' : ''} generated
         </div>
       )}
 
@@ -2300,7 +2300,7 @@ function FixturesTab({ competition, teams, fixtures, setFixtures }) {
       {showGen && (
         <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-4 space-y-3">
           <p className="text-sm font-bold text-slate-700">
-            {type === 'tournament' ? 'Generate pool round-robin fixtures' : 'Generate round-robin fixtures'}
+            {type === 'tournament' ? 'Generate pool round-robin matches' : 'Generate round-robin matches'}
           </p>
 
           {type === 'tournament' && (
@@ -2321,7 +2321,7 @@ function FixturesTab({ competition, teams, fixtures, setFixtures }) {
               )}
               {genPoolId && poolTeams.length >= 2 && (
                 <p className="text-xs text-emerald-700 mt-1.5">
-                  {poolTeams.length} teams → {pairCount} fixture{pairCount !== 1 ? 's' : ''}, linked to this pool and counting toward its standings
+                  {poolTeams.length} teams → {pairCount} match{pairCount !== 1 ? 'es' : ''}, linked to this pool and counting toward its standings
                 </p>
               )}
             </div>
@@ -2330,7 +2330,7 @@ function FixturesTab({ competition, teams, fixtures, setFixtures }) {
           {type === 'league' && (
             <>
               <p className="text-xs text-slate-500">
-                {activeTeams.length} teams · {pairCount} fixture{pairCount !== 1 ? 's' : ''} will be created unscheduled
+                {activeTeams.length} teams · {pairCount} match{pairCount !== 1 ? 'es' : ''} will be created unscheduled
               </p>
               <label className="flex items-center gap-2 cursor-pointer">
                 <input type="checkbox" checked={genDbl} onChange={e => setGenDbl(e.target.checked)}
@@ -2361,7 +2361,7 @@ function FixturesTab({ competition, teams, fixtures, setFixtures }) {
                 (type === 'league' && teams.length < 2)
               }
               className="flex-1 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white font-bold text-sm uppercase tracking-wider rounded-lg py-2.5 transition-colors">
-              {genBusy ? 'Generating…' : `Generate ${pairCount || 0} fixture${pairCount !== 1 ? 's' : ''}`}
+              {genBusy ? 'Generating…' : `Generate ${pairCount || 0} match${pairCount !== 1 ? 'es' : ''}`}
             </button>
             <button onClick={() => setShowGen(false)}
               className="px-4 bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold text-sm rounded-lg transition-colors">
@@ -2424,7 +2424,7 @@ function FixturesTab({ competition, teams, fixtures, setFixtures }) {
           <button type="submit"
             disabled={saving || !newForm.homeTeamId || !newForm.awayTeamId || newForm.homeTeamId === newForm.awayTeamId}
             className="w-full bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white font-bold text-sm uppercase tracking-wider rounded-lg py-2.5 transition-colors">
-            {saving ? 'Creating…' : 'Create fixture'}
+            {saving ? 'Creating…' : 'Create match'}
           </button>
         </form>
       )}
@@ -2432,13 +2432,13 @@ function FixturesTab({ competition, teams, fixtures, setFixtures }) {
       {/* Fixture lists, grouped per competition type */}
       {fixtures.length === 0 && !showNew && !showGen ? (
         <div className="bg-white rounded-xl border border-slate-200 shadow-sm px-6 py-10 text-center">
-          <p className="text-slate-500 text-sm">No fixtures yet.</p>
+          <p className="text-slate-500 text-sm">No matches yet.</p>
           <p className="text-slate-400 text-xs mt-1">
             {type === 'festival'
-              ? 'Use New fixture to add fixtures manually — festivals have no generated schedule.'
+              ? 'Use New match to add matches manually — festivals have no generated schedule.'
               : type === 'tournament'
-              ? 'Assign teams to pools in the Structure tab, then generate each pool’s fixtures here.'
-              : 'Use Generate fixtures to create the full round-robin, or New fixture for one.'}
+              ? 'Assign teams to pools in the Structure tab, then generate each pool’s matches here.'
+              : 'Use Generate matches to create the full round-robin, or New match for one.'}
           </p>
         </div>
       ) : (
@@ -2599,7 +2599,7 @@ function ResultsTab({ competition, fixtures }) {
       {played.length === 0 ? (
         <div className="bg-white rounded-xl border border-slate-200 shadow-sm px-6 py-10 text-center">
           <p className="text-slate-500 text-sm">No results yet.</p>
-          <p className="text-slate-400 text-xs mt-1">Results appear here as fixtures are scored.</p>
+          <p className="text-slate-400 text-xs mt-1">Results appear here as matches are scored.</p>
         </div>
       ) : (
         <div className="space-y-2">
@@ -2636,10 +2636,10 @@ function LeagueStandingsTab({ competition }) {
           <ExternalLink className="w-4 h-4" />
           View standings table
         </Link>
-        <Link to={`/competitions/${competition.id}/fixtures`}
+        <Link to={`/competitions/${competition.id}/matches`}
           className="flex items-center justify-center gap-2 bg-white border border-slate-200 hover:border-slate-300 text-slate-700 font-bold text-sm uppercase tracking-wider rounded-xl px-5 py-3 transition-colors">
           <ExternalLink className="w-4 h-4" />
-          View fixtures &amp; results
+          View matches &amp; results
         </Link>
       </div>
     </Card>

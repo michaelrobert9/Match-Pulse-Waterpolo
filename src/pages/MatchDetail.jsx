@@ -429,11 +429,11 @@ export default function MatchDetail() {
   const timeline      = buildTimeline(match)
   const hasTimeline   = timeline.length > 0
   const competitionId = match.competitionId
-  // Prefer the clean competition-scoped fixtures URL when the match carries its
+  // Prefer the clean competition-scoped matches URL when the match carries its
   // competition slug + season; fall back to the legacy id-based route.
-  const competitionFixturesUrl = (match.competitionSlug && match.competitionSeason)
-    ? `/competitions/${match.competitionSeason}/${match.competitionSlug}/fixtures`
-    : competitionId ? `/competitions/${competitionId}/fixtures` : null
+  const competitionMatchesUrl = (match.competitionSlug && match.competitionSeason)
+    ? `/competitions/${match.competitionSeason}/${match.competitionSlug}/matches`
+    : competitionId ? `/competitions/${competitionId}/matches` : null
 
   return (
     <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-6 pb-12 space-y-4">
@@ -458,10 +458,10 @@ export default function MatchDetail() {
               Edit
             </Link>
           )}
-          {competitionFixturesUrl && (
-            <Link to={competitionFixturesUrl}
+          {competitionMatchesUrl && (
+            <Link to={competitionMatchesUrl}
               className="text-[11px] font-bold uppercase tracking-widest text-emerald-600 hover:text-emerald-500 transition-colors truncate">
-              Fixtures →
+              Matches →
             </Link>
           )}
         </div>
@@ -572,7 +572,7 @@ export default function MatchDetail() {
         <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-xl px-4 py-3">
           <ClipboardCheck className="w-4 h-4 text-slate-400 shrink-0" />
           <p className="text-xs text-slate-500 leading-relaxed">
-            Result submitted by an administrator — this fixture was not live scored, so there is no
+            Result submitted by an administrator — this match was not live scored, so there is no
             minute-by-minute timeline.
           </p>
         </div>

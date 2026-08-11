@@ -142,7 +142,7 @@ export default function App() {
           {/* Slug-based SEO routes */}
           <Route path="/competition/:series/:ageGroup/:season"              element={<CompetitionOverview />} />
           <Route path="/competition/:series/:ageGroup/:season/standings"    element={<CompetitionStandings />} />
-          <Route path="/competition/:series/:ageGroup/:season/fixtures"     element={<CompetitionFixtures />} />
+          <Route path="/competition/:series/:ageGroup/:season/matches"     element={<CompetitionFixtures />} />
           <Route path="/competition/:series/:ageGroup/:season/pools"        element={<CompetitionPools />} />
           <Route path="/competition/:series/:ageGroup/:season/knockout"     element={<CompetitionKnockout />} />
           <Route path="/competition/:series/:ageGroup/:season/stats"        element={<CompetitionFestivalStats />} />
@@ -150,14 +150,14 @@ export default function App() {
           {/* ID-based competition routes */}
           <Route path="/competitions/:id"               element={<CompetitionOverview />} />
           <Route path="/competitions/:id/standings"     element={<CompetitionStandings />} />
-          <Route path="/competitions/:id/fixtures"      element={<CompetitionFixtures />} />
+          <Route path="/competitions/:id/matches"      element={<CompetitionFixtures />} />
           <Route path="/competitions/:id/pools"         element={<CompetitionPools />} />
           <Route path="/competitions/:id/knockout"      element={<CompetitionKnockout />} />
           <Route path="/competitions/:id/stats"         element={<CompetitionFestivalStats />} />
           {/* Season+slug competition routes: /competitions/:season/:slug */}
           <Route path="/competitions/:season/:competitionSlug"              element={<CompetitionOverview />} />
           <Route path="/competitions/:season/:competitionSlug/standings"    element={<CompetitionStandings />} />
-          <Route path="/competitions/:season/:competitionSlug/fixtures"     element={<CompetitionFixtures />} />
+          <Route path="/competitions/:season/:competitionSlug/matches"     element={<CompetitionFixtures />} />
           <Route path="/competitions/:season/:competitionSlug/pools"        element={<CompetitionPools />} />
           <Route path="/competitions/:season/:competitionSlug/knockout"     element={<CompetitionKnockout />} />
           <Route path="/competitions/:season/:competitionSlug/stats"        element={<CompetitionFestivalStats />} />
@@ -203,7 +203,7 @@ export default function App() {
               <CompetitionManage />
             </ProtectedRoute>
           } />
-          <Route path="/fixtures/new" element={
+          <Route path="/match/new" element={
             <ProtectedRoute require="any">
               <NewFixture />
             </ProtectedRoute>
@@ -252,7 +252,7 @@ export default function App() {
           <Route path="user-access"                 element={<UserAccess />} />
           <Route path="seo"                         element={<SeoSettings />} />
           <Route path="competitions"                element={<AdminCompetitionsList />} />
-          <Route path="fixtures"                    element={<AdminFixturesList />} />
+          <Route path="matches"                    element={<AdminFixturesList />} />
           <Route path="result-queue"                element={<ResultQueue />} />
           <Route path="team-governance"             element={<TeamGovernance />} />
           {/* Old admin detail/edit/create pages redirect to the manage flow. */}

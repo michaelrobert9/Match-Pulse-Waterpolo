@@ -1,12 +1,12 @@
 # Choose a format: league, knockout, hybrid
 
-When you create a competition, you pick how it's structured. This shapes how fixtures work and how teams progress.
+When you create a competition, you pick how it's structured. This shapes how matches work and how teams progress.
 
 ## League
 
-Every team plays a set of fixtures, and standings are built from the results. Teams earn points for wins and draws, and the table ranks them. Good for a season where everyone plays everyone, or a round-robin group.
+Every team plays a set of matches, and standings are built from the results. Teams earn points for wins and draws, and the table ranks them. Good for a season where everyone plays everyone, or a round-robin group.
 
-The standings table is the heart of a league. It recalculates from the results as fixtures are finalised, so it's always up to date.
+The standings table is the heart of a league. It recalculates from the results as matches are finalised, so it's always up to date.
 
 ## Knockout
 

@@ -232,7 +232,7 @@ export default function ResultQueue() {
         <span className="text-xs text-slate-400">{matches.length} to confirm</span>
       </div>
       <p className="text-sm text-slate-500 mb-4">
-        These fixtures are over by the clock but have no confirmed result. Approve or edit each
+        These matches are over by the clock but have no confirmed result. Approve or edit each
         one to make it Final — nothing counts toward standings until you do.
       </p>
 

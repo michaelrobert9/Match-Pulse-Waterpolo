@@ -24,4 +24,4 @@ It depends on the competition:
 
 A typical eight-team bracket pairs them 1 v 8, 4 v 5, 3 v 6, 2 v 7, which keeps the top two seeds apart until the final. MatchPulse helps you lay this out when you build the stage.
 
-Once you're happy with the seeding, the first-round fixtures are set. To change the layout before matches are played, see [Edit the bracket](edit-the-bracket.md).
+Once you're happy with the seeding, the first-round matches are set. To change the layout before matches are played, see [Edit the bracket](edit-the-bracket.md).

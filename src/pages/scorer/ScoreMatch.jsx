@@ -2119,7 +2119,7 @@ function ResultSheet({
   if (o?.kind) {
     return (
       <div className="space-y-3">
-        <p className={`text-sm ${t?.muted}`}>This fixture is recorded as <strong>{o.kind.replace('_', ' ')}</strong>. Reverting restores it to a normal, unresolved fixture.</p>
+        <p className={`text-sm ${t?.muted}`}>This match is recorded as <strong>{o.kind.replace('_', ' ')}</strong>. Reverting restores it to a normal, unresolved match.</p>
         {error && <p className="text-red-500 text-sm">{error}</p>}
         <button onClick={onRevert} disabled={busy} className={danger}>Revert to normal play</button>
       </div>
@@ -2256,7 +2256,7 @@ function ResultSheet({
   if (mode === 'notplayed') {
     return (
       <div className="space-y-3">
-        <p className={`text-sm ${t?.muted}`}>Marks the fixture as not played — no score, no log impact, no stats.</p>
+        <p className={`text-sm ${t?.muted}`}>Marks the match as not played — no score, no log impact, no stats.</p>
         <textarea value={reason} onChange={e => setReason(e.target.value)} rows={2} placeholder="Reason (optional, shown publicly)" className={input} />
         {error && <p className="text-red-500 text-sm">{error}</p>}
         <button onClick={() => onNotPlayed(reason.trim() || null)} disabled={busy} className={primary}>Mark not played</button>
@@ -2268,7 +2268,7 @@ function ResultSheet({
   // ── Abandon ──
   return (
     <div className="space-y-3">
-      <p className={`text-sm ${t?.muted}`}>Freezes the current score as a record, resets live scoring to 0–0 and returns the fixture to Scheduled to await a replay. Nothing counts until the replay finalises.</p>
+      <p className={`text-sm ${t?.muted}`}>Freezes the current score as a record, resets live scoring to 0–0 and returns the match to Scheduled to await a replay. Nothing counts until the replay finalises.</p>
       <textarea value={reason} onChange={e => setReason(e.target.value)} rows={2} placeholder="Reason (optional, shown publicly)" className={input} />
       {error && <p className="text-red-500 text-sm">{error}</p>}
       <button onClick={() => onAbandon(reason.trim() || null)} disabled={busy} className={danger}>Abandon &amp; freeze</button>

@@ -409,9 +409,9 @@ function BackfillLineupPersonIds() {
   return (
     <Section icon={Wrench} title="Lineup index backfill">
       <p className="text-sm text-slate-600">
-        Player profiles show fixtures by querying the{' '}
+        Player profiles show matches by querying the{' '}
         <span className="font-mono">lineupPersonIds</span> index on each match. Matches
-        created before this index was introduced are missing it, so those fixtures don't
+        created before this index was introduced are missing it, so those matches don't
         appear on a player's profile. This button rebuilds the index from the actual lineup
         arrays on every affected match. Safe to run more than once — only matches with a
         missing or out-of-sync index are touched.
@@ -670,7 +670,7 @@ function ReconcileMatchOrgNames() {
       <p className="text-sm text-slate-600">
         Rewrites each match's denormalised organisation name, team name and colour from the current
         team and organisation records. Fixes matches where a school or club name is missing or stale
-        (e.g. an org renamed after its fixtures were created). Safe to run repeatedly.
+        (e.g. an org renamed after its matches were created). Safe to run repeatedly.
       </p>
       {log.length > 0 && (
         <div className="bg-slate-900 text-slate-100 rounded-xl px-4 py-3 font-mono text-xs leading-relaxed whitespace-pre-wrap max-h-64 overflow-y-auto">
@@ -749,7 +749,7 @@ export default function SeoSettings() {
             <Textarea
               value={form.siteDescription}
               onChange={set('siteDescription')}
-              placeholder="Live scores, fixtures, results and player records for school and club water polo in South Africa."
+              placeholder="Live scores, matches, results and player records for school and club water polo in South Africa."
               maxLength={160}
               rows={3}
             />
