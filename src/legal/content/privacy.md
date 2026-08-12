@@ -44,7 +44,7 @@ We use personal information to:
 - create and manage accounts and Player profiles;
 - calculate standings and statistics;
 - process payments for Paid Plans;
-- send service messages, including renewal reminders for recurring plans;
+- send service messages about your account and plans where needed;
 - keep the Platform secure and prevent misuse;
 - comply with our legal obligations.
 

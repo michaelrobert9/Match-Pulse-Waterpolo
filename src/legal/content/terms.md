@@ -76,13 +76,13 @@ By creating an account, purchasing a plan, or otherwise using the Platform, you 
 
 ### Renewals
 
-5.5. Some Paid Plans are once-off, and some renew automatically for a further period unless you cancel before the renewal date. Where a plan renews automatically, we will send you a reminder by email before each renewal so you can decide whether to continue. Whether a plan is once-off or recurring is shown at the time of purchase and on our [pricing page](https://matchpulse.co.za/products).
+5.5. Some Paid Plans are once-off. Others run for a fixed period — for example, a year — and then end. Plans do not renew automatically, and you are not charged again unless you make a new purchase. To continue after a plan ends, you buy it again. Whether a plan is once-off or for a fixed period, and its expiry date, are shown at the time of purchase, on your account page, and on our [pricing page](https://matchpulse.co.za/products).
 
-5.6. You can cancel automatic renewal at any time before the renewal date. Cancellation stops the next charge; it does not end your current paid period early.
+5.6. We do not currently send a reminder before a plan ends, so please check the expiry date on your account page if you want to buy again before it lapses. When a Paid Plan ends, your existing competitions, results and data are not deleted — you simply cannot create new competitions under that plan until you buy again.
 
 ### Refunds
 
-5.7. You may request a refund of a Paid Plan **before a competition has begun or holds active data** under that plan. Once a competition tied to the plan has started or contains active match data, the plan is treated as used and **no refund is payable**. This applies to both once-off and recurring plans.
+5.7. You may request a refund of a Paid Plan **before a competition has begun or holds active data** under that plan. Once a competition tied to the plan has started or contains active match data, the plan is treated as used and **no refund is payable**. This applies to both once-off and fixed-period plans.
 
 5.8. Clause 5.7 sets out your rights under this policy. It does not limit any right you have under the Consumer Protection Act or the Electronic Communications and Transactions Act that cannot be excluded by agreement.
 
