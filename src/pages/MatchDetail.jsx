@@ -274,7 +274,12 @@ function TimelineEvent({ event }) {
 export default function MatchDetail() {
   const { date, slug, child, season, competitionSlug, matchSlug } = useParams()
   const navigate = useNavigate()
-  const { canScore, isPlatformAdmin } = useAuth()
+  const { canScore, isPlatformAdmin, isOrgMember } = useAuth()
+  // Type-to-confirm safeguard for match deletion (destructive, irreversible).
+  const [deleteOpen,    setDeleteOpen]    = useState(false)
+  const [deleteText,    setDeleteText]    = useState('')
+  const [deleteBusy,    setDeleteBusy]    = useState(false)
+  const [deleteError,   setDeleteError]   = useState('')
   const [match,       setMatch]       = useState(null)
   useSeoMeta({ type: 'match', entity: match })
   const [homePlayers, setHomePlayers] = useState([])
@@ -435,21 +440,93 @@ export default function MatchDetail() {
     ? `/competitions/${match.competitionSeason}/${match.competitionSlug}/matches`
     : competitionId ? `/competitions/${competitionId}/matches` : null
 
-  // Master-admin-only: delete this match. Removes the match doc, clears its
-  // competition fixture-membership (if any), and returns to the match's parent.
-  async function handleDeleteMatch() {
-    if (!confirm(`Delete ${match.homeTeamName || 'Home'} vs ${match.awayTeamName || 'Away'}? This cannot be undone.`)) return
+  // Deleting a match is destructive and irreversible, so it sits behind a
+  // type-to-confirm dialog (not a one-click browser confirm). Available to the
+  // platform admin and to anyone with match authority over either side; the
+  // Firestore rules enforce the same on the server.
+  const canDeleteMatch = isPlatformAdmin
+    || isOrgMember(match.homeOrgId || '')
+    || isOrgMember(match.awayOrgId || '')
+  const deleteConfirmed = deleteText.trim().toUpperCase() === 'DELETE'
+
+  function openDeleteDialog() {
+    setDeleteText('')
+    setDeleteError('')
+    setDeleteOpen(true)
+  }
+
+  // Performs the delete: removes the match doc, clears its competition
+  // fixture-membership (if any), and returns to the match's parent.
+  async function confirmDeleteMatch() {
+    if (!deleteConfirmed || deleteBusy) return
+    setDeleteBusy(true)
+    setDeleteError('')
     try {
       await deleteMatch(match.id)
       if (competitionId) await removeFixtureFromCompetition(competitionId, match.id).catch(() => {})
       navigate(competitionMatchesUrl || '/admin/matches')
     } catch (e) {
-      alert(e.message || 'Delete failed.')
+      setDeleteError(e.message || 'Delete failed.')
+      setDeleteBusy(false)
     }
   }
 
   return (
     <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-6 pb-12 space-y-4">
+
+      {/* Type-to-confirm delete dialog — deliberate friction before a
+          destructive, irreversible action. */}
+      {deleteOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4"
+          onClick={() => !deleteBusy && setDeleteOpen(false)}>
+          <div className="bg-white rounded-2xl border border-slate-200 shadow-xl w-full max-w-md p-6 space-y-4"
+            onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-start gap-3">
+              <div className="w-9 h-9 rounded-full bg-red-50 flex items-center justify-center shrink-0">
+                <AlertTriangle className="w-5 h-5 text-red-600" />
+              </div>
+              <div>
+                <h3 className="font-bold text-slate-900 text-base">Delete this match?</h3>
+                <p className="text-sm text-slate-500 mt-1">
+                  {match.homeTeamName || 'Home'} vs {match.awayTeamName || 'Away'} will be permanently
+                  removed, along with its score and timeline. This cannot be undone.
+                </p>
+              </div>
+            </div>
+            <div>
+              <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">
+                Type <span className="text-red-600">DELETE</span> to confirm
+              </label>
+              <input
+                autoFocus
+                type="text"
+                value={deleteText}
+                onChange={(e) => setDeleteText(e.target.value)}
+                disabled={deleteBusy}
+                placeholder="DELETE"
+                className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-500/40 focus:border-red-400 disabled:bg-slate-50"
+              />
+            </div>
+            {deleteError && (
+              <p className="text-sm text-red-600">{deleteError}</p>
+            )}
+            <div className="flex items-center justify-end gap-2 pt-1">
+              <button
+                onClick={() => setDeleteOpen(false)}
+                disabled={deleteBusy}
+                className="text-sm font-bold text-slate-500 hover:text-slate-900 px-3 py-2 rounded-lg transition-colors disabled:opacity-50">
+                Cancel
+              </button>
+              <button
+                onClick={confirmDeleteMatch}
+                disabled={!deleteConfirmed || deleteBusy}
+                className="text-sm font-bold text-white bg-red-600 hover:bg-red-500 px-4 py-2 rounded-lg transition-colors disabled:opacity-40 disabled:cursor-not-allowed">
+                {deleteBusy ? 'Deleting…' : 'Delete match'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Back nav */}
       <div className="flex items-center gap-3">
@@ -471,9 +548,10 @@ export default function MatchDetail() {
               Edit
             </Link>
           )}
-          {/* Deleting a match is reserved for the platform (master) admin. */}
-          {isPlatformAdmin && (
-            <button onClick={handleDeleteMatch}
+          {/* Match deletion is destructive — gated to delete-authority and
+              guarded by the type-to-confirm dialog below. */}
+          {canDeleteMatch && (
+            <button onClick={openDeleteDialog}
               className="flex items-center gap-1.5 border border-red-200 hover:border-red-300 text-red-600 hover:text-red-700 font-bold text-xs uppercase tracking-wider rounded-lg px-3 py-2 transition-colors shrink-0">
               Delete
             </button>
