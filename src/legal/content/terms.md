@@ -22,7 +22,7 @@ By creating an account, purchasing a plan, or otherwise using the Platform, you 
 
 **User** means any person who uses the Platform, including Organisers, Players, Managers, Parents and Spectators.
 
-**Paid Plan** means any paid plan we offer, as described on our [pricing page](/plans). Some Paid Plans are once-off and some are recurring.
+**Paid Plan** means any paid plan we offer, as described on our [pricing page](https://matchpulse.co.za/products). Some Paid Plans are once-off and some are recurring.
 
 **Content** means any data, text, results, scores, images, team information, player information and other material submitted to or generated on the Platform.
 
@@ -66,9 +66,9 @@ By creating an account, purchasing a plan, or otherwise using the Platform, you 
 
 ## 5. Plans, pricing and payment
 
-5.1. We offer a free plan and one or more Paid Plans. The plans available at any time, what each one includes, and their prices are set out on our [pricing page](/plans). Prices are in South African Rand and include VAT where applicable.
+5.1. We offer a free plan and one or more Paid Plans. The plans available at any time, what each one includes, and their prices are set out on our [pricing page](https://matchpulse.co.za/products). Prices are in South African Rand and include VAT where applicable.
 
-5.2. We may change our plans and pricing. Any change applies to new purchases and to renewals that fall due after the change takes effect. The [pricing page](/plans) always reflects the current position.
+5.2. We may change our plans and pricing. Any change applies to new purchases and to renewals that fall due after the change takes effect. The [pricing page](https://matchpulse.co.za/products) always reflects the current position.
 
 5.3. Payments are processed by PayFast. By purchasing a Paid Plan, you also agree to PayFast's terms. We do not store your full card details.
 
@@ -76,7 +76,7 @@ By creating an account, purchasing a plan, or otherwise using the Platform, you 
 
 ### Renewals
 
-5.5. Some Paid Plans are once-off, and some renew automatically for a further period unless you cancel before the renewal date. Where a plan renews automatically, we will send you a reminder by email before each renewal so you can decide whether to continue. Whether a plan is once-off or recurring is shown at the time of purchase and on our [pricing page](/plans).
+5.5. Some Paid Plans are once-off, and some renew automatically for a further period unless you cancel before the renewal date. Where a plan renews automatically, we will send you a reminder by email before each renewal so you can decide whether to continue. Whether a plan is once-off or recurring is shown at the time of purchase and on our [pricing page](https://matchpulse.co.za/products).
 
 5.6. You can cancel automatic renewal at any time before the renewal date. Cancellation stops the next charge; it does not end your current paid period early.
 

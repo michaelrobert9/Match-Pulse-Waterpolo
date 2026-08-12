@@ -6,7 +6,7 @@ import { fetchOrganization } from '../../../lib/queries'
 import { createManagedCompetition, updateManagedCompetition } from '../../../lib/adminQueries'
 import { orgEntitlementStatus, userEntitlementStatus, consumeEventCredit, consumeUserEventCredit } from '../../../lib/entitlement'
 import { slugify } from '../../../lib/slugify'
-import { MASTER_PLANS_URL } from '../../../lib/externalLinks'
+import { plansUrl } from '../../../lib/mainSite'
 
 // Sentinel owner id for a personal (individual) competition — no org.
 const PERSONAL = '__personal__'
@@ -260,7 +260,7 @@ export default function CreateCompetition() {
                 <Lock className="w-4 h-4 text-amber-600 mt-0.5 shrink-0" />
                 <p className="text-sm text-amber-800">
                   Hosting a competition requires a Plus or Pro plan.{' '}
-                  <a href={MASTER_PLANS_URL} target="_blank" rel="noopener noreferrer" className="font-semibold underline hover:text-amber-900">See Plans</a>
+                  <a href={plansUrl({ uid, orgId: isPersonal ? undefined : ownerId, ref: 'create-competition' })} target="_blank" rel="noopener noreferrer" className="font-semibold underline hover:text-amber-900">See Plans</a>
                 </p>
               </div>
             )}

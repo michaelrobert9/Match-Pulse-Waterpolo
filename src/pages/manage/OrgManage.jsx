@@ -6,8 +6,7 @@ import { ref as storageRef, uploadBytes, getDownloadURL } from 'firebase/storage
 import { db, storage } from '../../firebase'
 import { useAuth } from '../../contexts/AuthContext'
 import { roleLabel, grantLabel, grantOf } from '../../lib/capabilities'
-import { MASTER_PLANS_URL } from '../../lib/externalLinks'
-import { MAIN_PLANS_URL } from '../../lib/mainSite'
+import { plansUrl } from '../../lib/mainSite'
 import InviteUserForm from '../../components/InviteUserForm'
 import { fetchOrganization } from '../../lib/queries'
 import {
@@ -961,7 +960,7 @@ function CompetitionsSection({ orgId, org, isPlatformAdmin, competitions, setCom
               Host a tournament, league or festival. Purchase a plan and MatchPulse activates your competition access manually within one business day.
             </p>
           </div>
-          <a href={MASTER_PLANS_URL} target="_blank" rel="noopener noreferrer"
+          <a href={plansUrl({ orgId, ref: 'org-competitions' })} target="_blank" rel="noopener noreferrer"
             className="inline-flex items-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-sm uppercase tracking-wider rounded-xl px-5 py-2.5 transition-colors">
             See plans
           </a>
@@ -1380,7 +1379,7 @@ function PlanActivationPanel({ org }) {
           Hosting a competition needs a paid plan.
         </p>
       )}
-      <a href={MAIN_PLANS_URL} target="_blank" rel="noopener noreferrer"
+      <a href={plansUrl({ orgId: org.id, ref: 'org-plan-panel' })} target="_blank" rel="noopener noreferrer"
         className="inline-flex items-center gap-2 text-emerald-600 hover:text-emerald-500 text-sm font-semibold transition-colors">
         Manage plan on MatchPulse →
       </a>

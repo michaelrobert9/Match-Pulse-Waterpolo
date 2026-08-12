@@ -11,7 +11,7 @@ For who each suits, see [Choosing a plan](../01-getting-started/choosing-a-plan.
 
 ## How to upgrade
 
-1. Go to the [Plans page](https://matchpulse.co.za/plans).
+1. Go to the [Plans page](https://matchpulse.co.za/products).
 2. Check what each tier includes and pick the one you want.
 3. Choose **Upgrade** on that plan.
 4. You'll be taken to PayFast to complete payment.

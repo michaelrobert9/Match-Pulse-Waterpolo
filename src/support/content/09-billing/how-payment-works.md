@@ -4,7 +4,7 @@ MatchPulse handles payments through PayFast, a South African payment gateway. Yo
 
 ## The flow
 
-1. You choose a plan to upgrade to on the [Plans page](https://matchpulse.co.za/plans).
+1. You choose a plan to upgrade to on the [Plans page](https://matchpulse.co.za/products).
 2. MatchPulse sends you to PayFast to pay.
 3. You complete payment with your chosen method on PayFast.
 4. PayFast confirms the payment back to MatchPulse.
