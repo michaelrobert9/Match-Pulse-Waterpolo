@@ -20,4 +20,4 @@ If you're trying MatchPulse for the first time, stay on Free until you hit a lim
 
 When you're ready, see [Upgrade to Plus or Pro](../09-billing/upgrade.md). Payments are handled through PayFast.
 
-> The exact feature breakdown for each tier is shown on the [Plans page](https://matchpulse.co.za/plans). Check there for the current details before upgrading.
+> The exact feature breakdown for each tier is shown on the [Plans page](https://matchpulse.co.za/products). Check there for the current details before upgrading.

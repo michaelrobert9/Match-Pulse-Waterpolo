@@ -1,13 +1,12 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom'
-import { ChevronRight, X, Plus, ChevronLeft, Clipboard, Users, Pencil, UserPlus, Lock } from 'lucide-react'
+import { ChevronRight, X, Plus, Clipboard, Users, Pencil, UserPlus, Lock } from 'lucide-react'
 import { collection, getDocs, query, where } from 'firebase/firestore'
 import { ref as storageRef, uploadBytes, getDownloadURL } from 'firebase/storage'
 import { db, storage } from '../../firebase'
 import { useAuth } from '../../contexts/AuthContext'
 import { roleLabel, grantLabel, grantOf } from '../../lib/capabilities'
-import { MASTER_PLANS_URL } from '../../lib/externalLinks'
-import { MAIN_PLANS_URL } from '../../lib/mainSite'
+import { plansUrl } from '../../lib/mainSite'
 import InviteUserForm from '../../components/InviteUserForm'
 import { fetchOrganization } from '../../lib/queries'
 import {
@@ -35,7 +34,7 @@ import FormatSelector from '../../components/FormatSelector'
 import { MatchTeamIdentity, MatchVersus } from '../../components/TeamIdentity'
 import { prefetchMatchTeams } from '../../lib/teamIdentity'
 import { monogram } from '../../lib/names'
-import { orgEntitlementStatus } from '../../lib/entitlement'
+import { orgEntitlementStatus, userEntitlementStatus, bestEntitlement } from '../../lib/entitlement'
 import SquadManager from '../../components/SquadManager'
 
 // ── Shared primitives ─────────────────────────────────────────────────────────
@@ -932,9 +931,16 @@ function TeamsSection({ orgId, org, competitions, teams, setTeams, defaultOpen, 
 
 // ── Competitions section ───────────────────────────────────────────────────────
 
-function CompetitionsSection({ orgId, org, isPlatformAdmin, competitions, setCompetitions, defaultOpen, canManage }) {
-  // The platform master admin always has full rights — never plan-gated.
-  const entitlement = isPlatformAdmin ? { tier: 'admin', canCreate: true } : orgEntitlementStatus(org)
+function CompetitionsSection({ orgId, org, isPlatformAdmin, userEntitlement, competitions, setCompetitions, defaultOpen, canManage }) {
+  // The platform master admin always has full rights — never plan-gated. Everyone
+  // else: an org inherits its owner's entitlement, so gate on the ACTING USER's
+  // plan (best-of their claim and this org, a fallback that is in practice
+  // unpopulated) rather than the org doc — matching the create rules and
+  // unlocking an entitled owner's own org. The existing-competition list below is
+  // never gated on this; only the create/Manage affordances are.
+  const entitlement = isPlatformAdmin
+    ? { tier: 'admin', canCreate: true }
+    : bestEntitlement([userEntitlementStatus(userEntitlement), orgEntitlementStatus(org)])
 
   return (
     <Section
@@ -961,7 +967,7 @@ function CompetitionsSection({ orgId, org, isPlatformAdmin, competitions, setCom
               Host a tournament, league or festival. Purchase a plan and MatchPulse activates your competition access manually within one business day.
             </p>
           </div>
-          <a href={MASTER_PLANS_URL} target="_blank" rel="noopener noreferrer"
+          <a href={plansUrl({ orgId, ref: 'org-competitions' })} target="_blank" rel="noopener noreferrer"
             className="inline-flex items-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-sm uppercase tracking-wider rounded-xl px-5 py-2.5 transition-colors">
             See plans
           </a>
@@ -1380,7 +1386,7 @@ function PlanActivationPanel({ org }) {
           Hosting a competition needs a paid plan.
         </p>
       )}
-      <a href={MAIN_PLANS_URL} target="_blank" rel="noopener noreferrer"
+      <a href={plansUrl({ orgId: org.id, ref: 'org-plan-panel' })} target="_blank" rel="noopener noreferrer"
         className="inline-flex items-center gap-2 text-emerald-600 hover:text-emerald-500 text-sm font-semibold transition-colors">
         Manage plan on MatchPulse →
       </a>
@@ -1423,7 +1429,7 @@ export default function OrgManage() {
   const { id } = useParams()
   const navigate = useNavigate()
   const { state: locationState } = useLocation()
-  const { uid, isPlatformAdmin, isOrgMember, orgRoles, canDo, refreshUserData } = useAuth()
+  const { uid, isPlatformAdmin, isOrgMember, orgRoles, canDo, refreshUserData, userEntitlement } = useAuth()
 
   const [org,             setOrg]             = useState(null)
   const [competitions,    setCompetitions]    = useState([])
@@ -1520,14 +1526,8 @@ export default function OrgManage() {
     <div className="min-h-screen bg-canvas">
       <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
 
-        {/* Header */}
+        {/* Header — no in-page "Back": the shell's left nav is always present. */}
         <div className="mb-6">
-          <button onClick={() => navigate('/manage')}
-            className="flex items-center gap-2 text-slate-500 hover:text-slate-900 transition-colors text-sm mb-5">
-            <ChevronLeft className="w-4 h-4" />
-            Manage
-          </button>
-
           <div className="flex items-center gap-4">
             <div className="w-14 h-14 rounded-2xl flex items-center justify-center shrink-0"
               style={{ backgroundColor: color + '25', border: `2px solid ${color}` }}>
@@ -1605,6 +1605,7 @@ export default function OrgManage() {
           <div ref={competitionRef}>
             <CompetitionsSection
               orgId={id} org={org} isPlatformAdmin={isPlatformAdmin}
+              userEntitlement={userEntitlement}
               competitions={competitions} setCompetitions={setCompetitions}
               defaultOpen={openCompetition} canManage={canDo(id, 'competition.manage')}
             />
@@ -1637,7 +1638,7 @@ export default function OrgManage() {
         <DeleteOrgModal
           org={org}
           onCancel={() => setConfirmDeleteOrg(false)}
-          onConfirmed={() => navigate('/admin/organizations')}
+          onConfirmed={() => navigate(isPlatformAdmin ? '/admin/organizations' : '/manage')}
         />
       )}
     </div>

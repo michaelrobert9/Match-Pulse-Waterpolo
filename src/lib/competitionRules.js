@@ -80,6 +80,16 @@ export function competitionLifecycle(competition, now = Date.now()) {
   return 'upcoming' // no start date yet
 }
 
+// The single effective status shown for a competition. Visibility (the
+// `published` flag) takes precedence: an unpublished competition reads as
+// "unpublished" regardless of its dates. Once published it reflects the derived
+// lifecycle. This is the one source of truth for both CompetitionStatusBadge and
+// the competitions-list status filter, so badge and filter can never disagree.
+export function competitionStatus(competition, now = Date.now()) {
+  if (competition?.published === false) return 'unpublished'
+  return competitionLifecycle(competition, now)
+}
+
 // ── Points ────────────────────────────────────────────────────────────────────
 export const DEFAULT_POINTS = { win: 3, draw: 1, loss: 0 }
 

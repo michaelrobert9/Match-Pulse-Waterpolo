@@ -38,6 +38,21 @@ export function userEntitlementStatus(user) {
   return entitlementStatusOf(user)
 }
 
+// Pick the strongest entitlement from a set of statuses: an active Pro beats an
+// active Event credit beats anything else. A person's authority to CREATE is the
+// best of their own plan and any org they act under — an org inherits its owner's
+// entitlement (plans attach to the person, not the org), which is exactly what
+// the create rules enforce (they gate on the caller's claim, ignoring the org).
+// The org doc is only ever a fallback here and is, in practice, unpopulated.
+// Nulls are ignored; an empty set resolves to no plan.
+export function bestEntitlement(statuses) {
+  const list = (statuses ?? []).filter(Boolean)
+  return list.find(s => s.tier === 'pro'   && s.canCreate)
+    ??   list.find(s => s.tier === 'event' && s.canCreate)
+    ??   list[0]
+    ??   { tier: 'none', canCreate: false }
+}
+
 // Decrement one event credit after successfully creating a competition.
 // Call immediately after createManagedCompetition() succeeds for event-tier orgs.
 // Credit consumption is CENTRAL (platform brief §2): this app must never write

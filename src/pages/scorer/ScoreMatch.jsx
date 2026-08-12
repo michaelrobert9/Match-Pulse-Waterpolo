@@ -989,7 +989,8 @@ export default function ScoreMatch() {
   const pickerSidePlayers = side => side === 'home' ? home : away
 
   return (
-    <div className={`max-w-2xl mx-auto overflow-hidden ${t.root} flex flex-col transition-colors`} style={{ height: '100dvh' }}>
+    <div className="md:flex md:justify-center md:min-h-screen md:bg-slate-950">
+      <div className={`max-w-2xl mx-auto overflow-hidden ${t.root} flex flex-col transition-colors md:border-x md:border-slate-800 md:shadow-2xl`} style={{ height: '100dvh' }}>
       {/* Header */}
       <header className={`${t.header} border-b px-4 py-3 flex items-center gap-3 shrink-0`}>
         <button onClick={() => navigate('/score')} className={`${t.muted} hover:opacity-70`}>
@@ -2061,6 +2062,7 @@ export default function ScoreMatch() {
           </div>
         </Sheet>
       )}
+      </div>
     </div>
   )
 }

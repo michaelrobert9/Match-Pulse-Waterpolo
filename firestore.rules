@@ -46,6 +46,16 @@ service cloud.firestore {
       );
     }
 
+    // Billing fields (entitlement, eventCredits, entitlementExpiresAt) are
+    // written ONLY centrally (main-site Admin SDK) and mirrored to the Auth
+    // claim. No client path may set or change them on the org doc — this is what
+    // keeps a compromised or buggy sport client from granting itself a plan.
+    function orgBillingUnchanged() {
+      return request.resource.data.get('entitlement', 'none') == resource.data.get('entitlement', 'none')
+        && request.resource.data.get('eventCredits', 0) == resource.data.get('eventCredits', 0)
+        && request.resource.data.get('entitlementExpiresAt', null) == resource.data.get('entitlementExpiresAt', null);
+    }
+
     // Owner OR staff member of the org with ORG-WIDE scope. This is the
     // authority used by canAdministerCompetition(): a team-scoped grant is
     // participation/scoring authority for one team and never confers
@@ -370,11 +380,15 @@ service cloud.firestore {
     match /organizations/{orgId} {
       allow read:   if true;
 
-      // Any signed-in user may create an org (Phase E self-service onboarding).
-      allow create: if isSignedIn();
+      // Any signed-in user may create an org (Phase E self-service onboarding),
+      // but must start with NO paid entitlement — billing is granted centrally.
+      allow create: if isSignedIn()
+        && request.resource.data.get('entitlement', 'none') == 'none'
+        && request.resource.data.get('eventCredits', 0) == 0
+        && request.resource.data.get('entitlementExpiresAt', null) == null;
 
-      // Owners and admins may update the org profile.
-      allow update: if isOrgOwner(orgId);
+      // Owners may update the org profile, but never its billing fields.
+      allow update: if isOrgOwner(orgId) && orgBillingUnchanged();
 
       // Only platform admins may delete an organisation.
       allow delete: if isPlatformAdmin();
