@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom'
-import { ChevronRight, X, Plus, ChevronLeft, Clipboard, Users, Pencil, UserPlus, Lock } from 'lucide-react'
+import { ChevronRight, X, Plus, Clipboard, Users, Pencil, UserPlus, Lock } from 'lucide-react'
 import { collection, getDocs, query, where } from 'firebase/firestore'
 import { ref as storageRef, uploadBytes, getDownloadURL } from 'firebase/storage'
 import { db, storage } from '../../firebase'
@@ -1526,14 +1526,8 @@ export default function OrgManage() {
     <div className="min-h-screen bg-canvas">
       <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
 
-        {/* Header */}
+        {/* Header — no in-page "Back": the shell's left nav is always present. */}
         <div className="mb-6">
-          <button onClick={() => navigate('/manage')}
-            className="flex items-center gap-2 text-slate-500 hover:text-slate-900 transition-colors text-sm mb-5">
-            <ChevronLeft className="w-4 h-4" />
-            Manage
-          </button>
-
           <div className="flex items-center gap-4">
             <div className="w-14 h-14 rounded-2xl flex items-center justify-center shrink-0"
               style={{ backgroundColor: color + '25', border: `2px solid ${color}` }}>
@@ -1644,7 +1638,7 @@ export default function OrgManage() {
         <DeleteOrgModal
           org={org}
           onCancel={() => setConfirmDeleteOrg(false)}
-          onConfirmed={() => navigate('/admin/organizations')}
+          onConfirmed={() => navigate(isPlatformAdmin ? '/admin/organizations' : '/manage')}
         />
       )}
     </div>

@@ -121,7 +121,7 @@ export default function CompetitionsList() {
       <div className="flex items-center justify-between">
         <h1 className="font-display font-bold text-slate-900 text-2xl">Competitions</h1>
         {canCreate && (
-          <Link to="/admin/competitions/new"
+          <Link to="/manage/competitions/new"
             className="flex items-center gap-1.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs rounded-lg px-3 py-2 transition-colors shrink-0">
             <Plus className="w-3.5 h-3.5" />
             New
@@ -171,7 +171,7 @@ export default function CompetitionsList() {
                 Competitions from schools and clubs will appear here.
               </p>
               {canCreate && (
-                <Link to="/admin/competitions/new"
+                <Link to="/manage/competitions/new"
                   className="text-emerald-600 text-sm hover:underline">
                   Create the first competition →
                 </Link>

@@ -461,6 +461,13 @@ export async function fetchCompetitionsForUser(userId) {
     .sort((a, b) => String(b.season ?? '').localeCompare(String(a.season ?? '')))
 }
 
+// Every competition on the platform — the platform-admin scope of the unified
+// competitions list. Ordinary organisers use the org/user-scoped fetchers above.
+export async function fetchAllCompetitions() {
+  const snap = await getDocs(query(collection(db, 'competitions'), orderBy('name')))
+  return snap.docs.map(d => ({ id: d.id, ...d.data() }))
+}
+
 async function generateUniqueTeamSlug(orgSlug, qualifier) {
   const base = `${slugify(orgSlug)}-${slugify(String(qualifier ?? 'team'))}`
   const existing = await getDocs(query(collection(db, 'teams'), where('slug', '==', base)))

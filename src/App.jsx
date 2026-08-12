@@ -1,10 +1,10 @@
 import { lazy, useState, useEffect } from 'react'
-import { Routes, Route, Navigate, useParams } from 'react-router-dom'
+import { Routes, Route, Navigate, Outlet, useParams } from 'react-router-dom'
 import { fetchMatchGroup } from './lib/queries'
 import { AuthProvider } from './contexts/AuthContext'
 import LazyBoundary from './components/LazyBoundary'
 import Layout from './components/Layout'
-import AdminLayout from './components/AdminLayout'
+import AppShell from './components/AppShell'
 import ProtectedRoute from './components/ProtectedRoute'
 import SiteSettingsProvider from './components/SiteSettingsProvider'
 
@@ -63,7 +63,6 @@ const EditOrganization  = lazy(() => import('./pages/admin/Organizations').then(
 const PeopleList = lazy(() => import('./pages/admin/PeopleAdmin').then(m => ({ default: m.PeopleList })))
 const NewPerson  = lazy(() => import('./pages/admin/PeopleAdmin').then(m => ({ default: m.NewPerson })))
 const EditPerson = lazy(() => import('./pages/admin/PeopleAdmin').then(m => ({ default: m.EditPerson })))
-const AdminCompetitionsList = lazy(() => import('./pages/admin/Competitions').then(m => ({ default: m.CompetitionsList })))
 const AdminFixturesList = lazy(() => import('./pages/admin/Fixtures').then(m => ({ default: m.FixturesList })))
 const ResultQueue = lazy(() => import('./pages/admin/ResultQueue'))
 const Permissions = lazy(() => import('./pages/admin/Permissions'))
@@ -161,66 +160,8 @@ export default function App() {
           <Route path="/competitions/:season/:competitionSlug/pools"        element={<CompetitionPools />} />
           <Route path="/competitions/:season/:competitionSlug/knockout"     element={<CompetitionKnockout />} />
           <Route path="/competitions/:season/:competitionSlug/stats"        element={<CompetitionFestivalStats />} />
-          <Route path="/profile"                        element={
-            <ProtectedRoute require="any">
-              <Profile />
-            </ProtectedRoute>
-          } />
-          <Route path="/my-players"                     element={
-            <ProtectedRoute require="any">
-              <MyPlayers />
-            </ProtectedRoute>
-          } />
-
-          {/* Manage hub — any signed-in user (scorer gate also admits org members) */}
-          <Route path="/manage" element={
-            <ProtectedRoute require="any">
-              <ManageHub />
-            </ProtectedRoute>
-          } />
-          <Route path="/manage/new-org" element={
-            <ProtectedRoute require="any">
-              <CreateOrg />
-            </ProtectedRoute>
-          } />
-          <Route path="/manage/orgs/:id" element={
-            <ProtectedRoute require="any">
-              <OrgManage />
-            </ProtectedRoute>
-          } />
-          <Route path="/manage/competitions" element={
-            <ProtectedRoute require="any">
-              <CompetitionsManageList />
-            </ProtectedRoute>
-          } />
-          <Route path="/manage/competitions/new" element={
-            <ProtectedRoute require="any">
-              <CreateCompetition />
-            </ProtectedRoute>
-          } />
-          <Route path="/manage/competitions/:id" element={
-            <ProtectedRoute require="any">
-              <CompetitionManage />
-            </ProtectedRoute>
-          } />
-          <Route path="/match/new" element={
-            <ProtectedRoute require="any">
-              <NewFixture />
-            </ProtectedRoute>
-          } />
-          <Route path="/match/new/group" element={
-            <ProtectedRoute require="any">
-              <CreateMatchGroup />
-            </ProtectedRoute>
-          } />
-
-          {/* Scorer match list shares the main app shell so it keeps full
-              navigation. The live scoring screen (/score/:id) stays standalone. */}
-          <Route path="/score" element={
-            <ProtectedRoute require="scorer">
-              <ScoreList />
-            </ProtectedRoute>
-          } />
+          {/* Management routes (/profile, /my-players, /manage/*, /match/new*,
+              /score list) now render inside the AppShell block below, not here. */}
 
           {/* Nested team profile: /{org-slug}/{team-segment}. All-dynamic, so it
               ranks below every static two-segment route (e.g. /schools/:slug,
@@ -235,36 +176,59 @@ export default function App() {
         <Route path="/login"   element={<Login />} />
         <Route path="/signup"  element={<Signup />} />
 
-        {/* Admin — requires platform admin */}
-        <Route path="/admin" element={
-          <ProtectedRoute require="admin">
-            <AdminLayout />
-          </ProtectedRoute>
-        }>
-          <Route index                              element={<AdminDashboard />} />
-          <Route path="organizations"               element={<OrganizationsList />} />
-          <Route path="organizations/new"           element={<NewOrganization />} />
-          <Route path="organizations/:id"           element={<EditOrganization />} />
-          <Route path="people"                      element={<PeopleList />} />
-          <Route path="people/new"                  element={<NewPerson />} />
-          <Route path="people/:id"                  element={<EditPerson />} />
-          <Route path="permissions"                 element={<Permissions />} />
-          <Route path="user-access"                 element={<UserAccess />} />
-          <Route path="seo"                         element={<SeoSettings />} />
-          <Route path="competitions"                element={<AdminCompetitionsList />} />
-          <Route path="matches"                    element={<AdminFixturesList />} />
-          <Route path="result-queue"                element={<ResultQueue />} />
-          <Route path="team-governance"             element={<TeamGovernance />} />
-          {/* Old admin detail/edit/create pages redirect to the manage flow. */}
-          <Route path="competitions/new"            element={<Navigate to="/manage/competitions/new" replace />} />
-          <Route path="competitions/:id"            element={<RedirectToCompetitionManager />} />
-          <Route path="competitions/:id/edit"       element={<RedirectToCompetitionManager />} />
+        {/* Management shell — ONE role-aware shell over both /manage and /admin.
+            Everything here used to render bare in the public Layout (or the old
+            AdminLayout); it now shares AppShell, so admins and organisers keep the
+            left-nav chrome and never drop out to the front-end layout mid-session.
+            Each route keeps its OWN ProtectedRoute guard — the shell doesn't gate. */}
+        <Route element={<AppShell />}>
+
+          {/* Organiser + shared management — any signed-in user (some stricter).
+              /profile is require="any" so a claimed-profile-only spectator keeps
+              their account page inside the shell rather than dropping out. */}
+          <Route path="/profile"             element={<ProtectedRoute require="any"><Profile /></ProtectedRoute>} />
+          <Route path="/my-players"          element={<ProtectedRoute require="any"><MyPlayers /></ProtectedRoute>} />
+          <Route path="/manage"              element={<ProtectedRoute require="any"><ManageHub /></ProtectedRoute>} />
+          <Route path="/manage/new-org"      element={<ProtectedRoute require="any"><CreateOrg /></ProtectedRoute>} />
+          <Route path="/manage/orgs/:id"     element={<ProtectedRoute require="any"><OrgManage /></ProtectedRoute>} />
+          <Route path="/manage/competitions"     element={<ProtectedRoute require="any"><CompetitionsManageList /></ProtectedRoute>} />
+          <Route path="/manage/competitions/new" element={<ProtectedRoute require="any"><CreateCompetition /></ProtectedRoute>} />
+          <Route path="/manage/competitions/:id" element={<ProtectedRoute require="any"><CompetitionManage /></ProtectedRoute>} />
+          <Route path="/match/new"           element={<ProtectedRoute require="any"><NewFixture /></ProtectedRoute>} />
+          <Route path="/match/new/group"     element={<ProtectedRoute require="any"><CreateMatchGroup /></ProtectedRoute>} />
+          {/* Scorer match list — the live scoring screen (/score/:id) stays standalone. */}
+          <Route path="/score"               element={<ProtectedRoute require="scorer"><ScoreList /></ProtectedRoute>} />
+
+          {/* Platform-admin area — one guard for the whole subtree. Its own Outlet
+              renders the matched admin child into AppShell's Outlet. */}
+          <Route path="/admin" element={<ProtectedRoute require="admin"><Outlet /></ProtectedRoute>}>
+            <Route index                              element={<AdminDashboard />} />
+            <Route path="organizations"               element={<OrganizationsList />} />
+            <Route path="organizations/new"           element={<NewOrganization />} />
+            <Route path="organizations/:id"           element={<EditOrganization />} />
+            <Route path="people"                      element={<PeopleList />} />
+            <Route path="people/new"                  element={<NewPerson />} />
+            <Route path="people/:id"                  element={<EditPerson />} />
+            <Route path="permissions"                 element={<Permissions />} />
+            <Route path="user-access"                 element={<UserAccess />} />
+            <Route path="seo"                         element={<SeoSettings />} />
+            <Route path="matches"                     element={<AdminFixturesList />} />
+            <Route path="result-queue"                element={<ResultQueue />} />
+            <Route path="team-governance"             element={<TeamGovernance />} />
+            {/* Competitions are one unified, role-scoped list at /manage/competitions
+                (admin sees all, organisers see their own). The old admin list and
+                detail/edit/create URLs redirect there. */}
+            <Route path="competitions"                element={<Navigate to="/manage/competitions" replace />} />
+            <Route path="competitions/new"            element={<Navigate to="/manage/competitions/new" replace />} />
+            <Route path="competitions/:id"            element={<RedirectToCompetitionManager />} />
+            <Route path="competitions/:id/edit"       element={<RedirectToCompetitionManager />} />
+          </Route>
         </Route>
 
         {/* Scorer — platform admins and organisation owners/staff (Phase 1D).
             Match-level org ownership is enforced when a specific match loads.
             The live scoring screen is full-screen and standalone (own back nav);
-            the /score list lives inside the main Layout shell above. */}
+            the /score list lives inside the management shell above. */}
         <Route path="/score/:id" element={
           <ProtectedRoute require="scorer">
             <LazyBoundary><ScoreMatch /></LazyBoundary>

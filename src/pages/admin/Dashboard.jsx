@@ -142,7 +142,7 @@ export default function AdminDashboard() {
           <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse shrink-0" />
           <div>
             <div className="text-red-600 text-sm font-semibold">{counts.live} match{counts.live !== 1 ? 'es' : ''} live</div>
-            <Link to="/admin/competitions" className="text-[11px] text-red-500 hover:text-red-700 transition-colors">View live →</Link>
+            <Link to="/manage/competitions" className="text-[11px] text-red-500 hover:text-red-700 transition-colors">View live →</Link>
           </div>
         </div>
       )}
@@ -190,8 +190,8 @@ export default function AdminDashboard() {
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
           <StatTile value={counts.organizations} label="Schools & Clubs"  to="/admin/organizations" />
           <StatTile value={counts.people}        label="People"           to="/admin/people" />
-          <StatTile value={counts.competitions}  label="Competitions"     to="/admin/competitions" />
-          <StatTile value={counts.live}          label="Live Now"         to="/admin/competitions" />
+          <StatTile value={counts.competitions}  label="Competitions"     to="/manage/competitions" />
+          <StatTile value={counts.live}          label="Live Now"         to="/manage/competitions" />
         </div>
       </div>
 
@@ -222,7 +222,7 @@ export default function AdminDashboard() {
             </span>
             <span className="text-sm font-medium text-slate-900">New person</span>
           </Link>
-          <Link to="/admin/competitions/new" className="flex items-center gap-3 bg-white rounded-xl border border-slate-200 px-4 py-3 hover:border-slate-300 transition-colors shadow-sm">
+          <Link to="/manage/competitions/new" className="flex items-center gap-3 bg-white rounded-xl border border-slate-200 px-4 py-3 hover:border-slate-300 transition-colors shadow-sm">
             <span className="w-7 h-7 rounded-lg bg-slate-100 border border-slate-200 flex items-center justify-center shrink-0">
               <Plus className="w-4 h-4 text-slate-500" />
             </span>

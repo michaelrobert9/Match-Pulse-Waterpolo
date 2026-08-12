@@ -2734,11 +2734,11 @@ export default function CompetitionManage() {
   }, [id])
 
   if (loading) return (
-    <div className="max-w-2xl mx-auto px-4 sm:px-6 py-8"><Spinner /></div>
+    <div className="px-4 sm:px-6 py-8"><Spinner /></div>
   )
 
   if (!competition) return (
-    <div className="max-w-2xl mx-auto px-4 sm:px-6 py-12 text-center">
+    <div className="px-4 sm:px-6 py-12 text-center">
       <p className="text-slate-500">Competition not found.</p>
       <Link to="/manage/competitions"
         className="text-emerald-600 text-sm hover:underline mt-2 inline-block">
@@ -2751,7 +2751,7 @@ export default function CompetitionManage() {
   const validTab = tabs.some(t => t.id === activeTab) ? activeTab : 'config'
 
   return (
-    <div className="max-w-2xl mx-auto px-4 sm:px-6 py-6">
+    <div className="px-4 sm:px-6 py-6">
 
       {/* Header */}
       <div className="flex items-center gap-3 mb-6">

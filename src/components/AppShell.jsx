@@ -2,26 +2,63 @@ import { useState, useEffect } from 'react'
 import { NavLink, Link, Outlet, useLocation } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import LazyBoundary from './LazyBoundary'
-import { Home, Trophy, Shield, User, KeyRound, Search, CreditCard, ArrowLeft, Menu, X, Link2, CalendarDays, Inbox } from 'lucide-react'
+import { Home, Trophy, Shield, User, KeyRound, Search, ArrowLeft, Menu, X, Link2, CalendarDays, Inbox, Radio } from 'lucide-react'
 
-export default function AdminLayout() {
-  const { user } = useAuth()
+// The single management shell. One chrome for BOTH platform admins and non-admin
+// organisers — the left-nav is filtered by role, not a separate component. Every
+// route that used to render bare in the public Layout (the /manage/* pages, match
+// creation, the scorer list, my-players, profile) now renders inside this shell,
+// so an admin or organiser never drops out to the front-end layout mid-session.
+//
+// Nav is derived from useAuth():
+//   • platformAdmin claim  → the platform sections (People, SEO, Permissions, …)
+//   • orgRoles             → "Create match" (needs an org)
+//   • canScore             → the organiser competitions/score surfaces
+// Everyone keeps a populated rail (Home, My players) so a claimed-profile-only
+// spectator sees a thin-but-real nav, never an empty one.
+function navFor({ isPlatformAdmin, orgRoles, canScore }) {
+  if (isPlatformAdmin) {
+    return [
+      { to: '/admin',               label: 'Dashboard',       Icon: Home,        end: true },
+      { to: '/manage/competitions', label: 'Competitions',    Icon: Trophy             },
+      { to: '/admin/matches',       label: 'Matches',         Icon: CalendarDays       },
+      { to: '/admin/result-queue',  label: 'Awaiting result', Icon: Inbox              },
+      { to: '/admin/organizations', label: 'Organizations',   Icon: Shield             },
+      { to: '/admin/people',        label: 'People',          Icon: User               },
+      { to: '/admin/permissions',   label: 'Administrators',  Icon: KeyRound           },
+      { to: '/admin/user-access',   label: 'User Access',     Icon: Link2              },
+      { to: '/admin/seo',           label: 'SEO',             Icon: Search             },
+    ]
+  }
+
+  // Organiser / any signed-in user. Always-present items keep the rail populated.
+  const items = [
+    { to: '/manage', label: 'Home', Icon: Home, end: true },
+  ]
+  if (canScore) {
+    items.push({ to: '/manage/competitions', label: 'Competitions', Icon: Trophy })
+  }
+  if (Object.keys(orgRoles ?? {}).length > 0) {
+    items.push({ to: '/match/new', label: 'Create match', Icon: CalendarDays })
+  }
+  items.push({ to: '/my-players', label: 'My players', Icon: User })
+  if (canScore) {
+    items.push({ to: '/score', label: 'Score matches', Icon: Radio })
+  }
+  return items
+}
+
+export default function AppShell() {
+  const { user, isPlatformAdmin, orgRoles, canScore } = useAuth()
   const { pathname } = useLocation()
   const [open, setOpen] = useState(false)
 
   useEffect(() => { setOpen(false) }, [pathname])
 
-  const navItems = [
-    { to: '/admin',               label: 'Dashboard',      Icon: Home,    end: true },
-    { to: '/admin/competitions',  label: 'Competitions',   Icon: Trophy             },
-    { to: '/admin/matches',       label: 'Matches',        Icon: CalendarDays       },
-    { to: '/admin/result-queue',  label: 'Awaiting result', Icon: Inbox             },
-    { to: '/admin/organizations', label: 'Organizations',  Icon: Shield             },
-    { to: '/admin/people',        label: 'People',         Icon: User               },
-    { to: '/admin/permissions',   label: 'Administrators', Icon: KeyRound           },
-    { to: '/admin/user-access',   label: 'User Access',    Icon: Link2              },
-    { to: '/admin/seo',           label: 'SEO',            Icon: Search             },
-  ]
+  const navItems = navFor({ isPlatformAdmin, orgRoles, canScore })
+  // Wordmark badge reads "Admin" for platform admins, "Manage" for organisers —
+  // an organiser is not an admin and shouldn't be told they're in an admin area.
+  const badge = isPlatformAdmin ? 'Admin' : 'Manage'
 
   const initials = user?.displayName?.[0]?.toUpperCase() ?? user?.email?.[0]?.toUpperCase() ?? '?'
 
@@ -42,7 +79,7 @@ export default function AdminLayout() {
             <div className="font-display font-bold text-slate-900 text-base leading-none">
               Match<span className="text-emerald-600">Pulse</span>
             </div>
-            <div className="text-[9px] font-mono uppercase tracking-widest text-amber-600 mt-0.5">Admin</div>
+            <div className="text-[9px] font-mono uppercase tracking-widest text-amber-600 mt-0.5">{badge}</div>
           </Link>
         </div>
 
@@ -82,7 +119,7 @@ export default function AdminLayout() {
             <div className="font-display font-bold text-slate-900 text-base leading-none">
               Match<span className="text-emerald-600">Pulse</span>
             </div>
-            <div className="text-[9px] font-mono uppercase tracking-widest text-amber-600 mt-0.5">Admin</div>
+            <div className="text-[9px] font-mono uppercase tracking-widest text-amber-600 mt-0.5">{badge}</div>
           </Link>
           <button onClick={() => setOpen(o => !o)}
             aria-label={open ? 'Close menu' : 'Open menu'} aria-expanded={open}
@@ -101,6 +138,11 @@ export default function AdminLayout() {
               </NavLink>
             ))}
             <div className="border-t border-slate-200 my-2" />
+            <Link to="/profile"
+              className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-slate-500 hover:text-slate-900 hover:bg-slate-100 transition-colors border border-transparent">
+              <User className="w-5 h-5 shrink-0" />
+              Account
+            </Link>
             <Link to="/"
               className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-slate-500 hover:text-slate-900 hover:bg-slate-100 transition-colors border border-transparent">
               <ArrowLeft className="w-5 h-5 shrink-0" />
