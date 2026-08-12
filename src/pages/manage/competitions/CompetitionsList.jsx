@@ -4,7 +4,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../../../contexts/AuthContext'
 import { fetchCompetitionsForOrg, fetchCompetitionsForUser } from '../../../lib/adminQueries'
 import { fetchOrganization } from '../../../lib/queries'
-import { orgEntitlementStatus, userEntitlementStatus } from '../../../lib/entitlement'
+import { orgEntitlementStatus, userEntitlementStatus, bestEntitlement } from '../../../lib/entitlement'
 import { plansUrl } from '../../../lib/mainSite'
 import CompetitionStatusBadge from '../../../components/CompetitionStatusBadge'
 
@@ -38,13 +38,9 @@ export default function CompetitionsManageList() {
       setComps(flat)
       // The platform master admin always has full rights. Otherwise pick the best
       // entitlement across the user's own plan and all managed orgs.
-      const statuses = [userEntitlementStatus(userEntitlement), ...orgs.filter(Boolean).map(orgEntitlementStatus)]
       const best = isPlatformAdmin
         ? { tier: 'admin', canCreate: true }
-        : (statuses.find(s => s.tier === 'pro' && s.canCreate)
-          ?? statuses.find(s => s.tier === 'event' && s.canCreate)
-          ?? statuses[0]
-          ?? { tier: 'none', canCreate: false })
+        : bestEntitlement([userEntitlementStatus(userEntitlement), ...orgs.filter(Boolean).map(orgEntitlementStatus)])
       setEntitlement(best)
       setLoading(false)
     })
