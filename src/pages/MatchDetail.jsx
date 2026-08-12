@@ -8,7 +8,7 @@ import {
   fetchCompetition,
   toDate,
 } from '../lib/queries'
-import { fetchCompetitionTeamSheet } from '../lib/adminQueries'
+import { fetchCompetitionTeamSheet, deleteMatch, removeFixtureFromCompetition } from '../lib/adminQueries'
 import { resolveSideLineup, isInheritedLineup } from '../lib/lineupResolve'
 import { configured } from '../firebase'
 import ShareButton from '../components/ShareButton'
@@ -435,6 +435,19 @@ export default function MatchDetail() {
     ? `/competitions/${match.competitionSeason}/${match.competitionSlug}/matches`
     : competitionId ? `/competitions/${competitionId}/matches` : null
 
+  // Master-admin-only: delete this match. Removes the match doc, clears its
+  // competition fixture-membership (if any), and returns to the match's parent.
+  async function handleDeleteMatch() {
+    if (!confirm(`Delete ${match.homeTeamName || 'Home'} vs ${match.awayTeamName || 'Away'}? This cannot be undone.`)) return
+    try {
+      await deleteMatch(match.id)
+      if (competitionId) await removeFixtureFromCompetition(competitionId, match.id).catch(() => {})
+      navigate(competitionMatchesUrl || '/admin/matches')
+    } catch (e) {
+      alert(e.message || 'Delete failed.')
+    }
+  }
+
   return (
     <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-6 pb-12 space-y-4">
 
@@ -457,6 +470,13 @@ export default function MatchDetail() {
               className="flex items-center gap-1.5 border border-slate-300 hover:border-slate-400 text-slate-600 hover:text-slate-900 font-bold text-xs uppercase tracking-wider rounded-lg px-3 py-2 transition-colors shrink-0">
               Edit
             </Link>
+          )}
+          {/* Deleting a match is reserved for the platform (master) admin. */}
+          {isPlatformAdmin && (
+            <button onClick={handleDeleteMatch}
+              className="flex items-center gap-1.5 border border-red-200 hover:border-red-300 text-red-600 hover:text-red-700 font-bold text-xs uppercase tracking-wider rounded-lg px-3 py-2 transition-colors shrink-0">
+              Delete
+            </button>
           )}
           {competitionMatchesUrl && (
             <Link to={competitionMatchesUrl}
