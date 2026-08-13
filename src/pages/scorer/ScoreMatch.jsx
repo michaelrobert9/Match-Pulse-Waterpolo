@@ -200,7 +200,7 @@ function useOnline() {
 export default function ScoreMatch() {
   const { id }   = useParams()
   const navigate = useNavigate()
-  const { isPlatformAdmin, isOrgMember, competitionRoles } = useAuth()
+  const { isPlatformAdmin, isOrgMember, competitionRoles, canAdministerCompetition } = useAuth()
   const [bright, setBright] = useScorerTheme()
   const t = theme(bright)
   const online = useOnline()
@@ -211,6 +211,12 @@ export default function ScoreMatch() {
   const [home,    setHome]    = useState([])
   const [away,    setAway]    = useState([])
   const [loading, setLoading] = useState(true)
+  // The parent competition doc — loaded so match-access authority can recognise
+  // a competition ADMIN (its creator or owning-org staff), not only someone
+  // explicitly added as competition staff. compLoaded gates the "Not authorised"
+  // screen so it never flashes while this is still resolving.
+  const [competition, setCompetition] = useState(null)
+  const [compLoaded,  setCompLoaded]  = useState(false)
   const [saving,  setSaving]  = useState(false)
   const savingRef             = useRef(false)   // ref lock: prevents double-tap races that beat React state
   const [, forceTick]         = useState(0)
@@ -304,6 +310,19 @@ export default function ScoreMatch() {
     setLoading(true)
     return subscribeMatch(id, m => { setMatch(m); setLoading(false) })
   }, [id])
+
+  // Load the parent competition so competition admins (creator / owning-org)
+  // are recognised for match access, mirroring the Firestore rules. A match
+  // with no competition resolves immediately.
+  useEffect(() => {
+    if (!match?.competitionId) { setCompetition(null); setCompLoaded(true); return }
+    let alive = true
+    setCompLoaded(false)
+    fetchCompetition(match.competitionId)
+      .then(c => { if (alive) { setCompetition(c); setCompLoaded(true) } })
+      .catch(() => { if (alive) { setCompetition(null); setCompLoaded(true) } })
+    return () => { alive = false }
+  }, [match?.competitionId])
 
   useEffect(() => {
     if (!match || lineupsLoaded.current) return
@@ -471,10 +490,23 @@ export default function ScoreMatch() {
     </div>
   )
 
-  // Match-level ownership check: org member for either side, OR competition staff for this fixture.
+  // Match-level ownership check: org member for either side, competition staff
+  // for this fixture, OR a competition ADMIN (its creator / owning-org staff —
+  // resolved from the loaded competition doc). The last clause mirrors the
+  // Firestore rules' canAdministerCompetition, which the competition-staff-only
+  // check missed: a person who CREATED a competition holds admin authority via
+  // `createdBy`, not a competitionRoles grant.
   const authorised = isPlatformAdmin
     || isOrgMember(match.homeOrgId) || isOrgMember(match.awayOrgId)
     || (match.competitionId && !!competitionRoles[match.competitionId])
+    || (competition && canAdministerCompetition(competition))
+  // Don't decide "Not authorised" for a competition match until its competition
+  // has loaded — otherwise the admin check above would falsely fail on first render.
+  if (!authorised && match.competitionId && !compLoaded) return (
+    <div className={`min-h-screen ${t.root} flex items-center justify-center`}>
+      <div className="w-6 h-6 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin" />
+    </div>
+  )
   if (!authorised) return (
     <div className={`min-h-screen ${t.root} flex flex-col items-center justify-center px-6 text-center gap-3`}>
       <p className="font-display font-bold text-lg">Not authorised</p>
