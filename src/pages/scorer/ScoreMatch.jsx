@@ -200,7 +200,7 @@ function useOnline() {
 export default function ScoreMatch() {
   const { id }   = useParams()
   const navigate = useNavigate()
-  const { isPlatformAdmin, isOrgMember, competitionRoles } = useAuth()
+  const { isPlatformAdmin, isOrgMember, competitionRoles, canAdministerCompetition } = useAuth()
   const [bright, setBright] = useScorerTheme()
   const t = theme(bright)
   const online = useOnline()
@@ -211,6 +211,12 @@ export default function ScoreMatch() {
   const [home,    setHome]    = useState([])
   const [away,    setAway]    = useState([])
   const [loading, setLoading] = useState(true)
+  // The parent competition doc — loaded so match-access authority can recognise
+  // a competition ADMIN (its creator or owning-org staff), not only someone
+  // explicitly added as competition staff. compLoaded gates the "Not authorised"
+  // screen so it never flashes while this is still resolving.
+  const [competition, setCompetition] = useState(null)
+  const [compLoaded,  setCompLoaded]  = useState(false)
   const [saving,  setSaving]  = useState(false)
   const savingRef             = useRef(false)   // ref lock: prevents double-tap races that beat React state
   const [, forceTick]         = useState(0)
@@ -277,7 +283,8 @@ export default function ScoreMatch() {
   const [outcomeBusy,    setOutcomeBusy]    = useState(false)
   const [outcomeError,   setOutcomeError]   = useState('')
   const [wkDefault,      setWkDefault]      = useState({ conceding: 0, opposing: 5 })
-  // Edit match details (platform admin only)
+  // Edit match details (platform admin, a side's org authority, or a
+  // competition admin running the fixture)
   const [editMatchOpen,  setEditMatchOpen]  = useState(false)
   const [editForm,       setEditForm]       = useState({})
   const [editSaving,     setEditSaving]     = useState(false)
@@ -303,6 +310,19 @@ export default function ScoreMatch() {
     setLoading(true)
     return subscribeMatch(id, m => { setMatch(m); setLoading(false) })
   }, [id])
+
+  // Load the parent competition so competition admins (creator / owning-org)
+  // are recognised for match access, mirroring the Firestore rules. A match
+  // with no competition resolves immediately.
+  useEffect(() => {
+    if (!match?.competitionId) { setCompetition(null); setCompLoaded(true); return }
+    let alive = true
+    setCompLoaded(false)
+    fetchCompetition(match.competitionId)
+      .then(c => { if (alive) { setCompetition(c); setCompLoaded(true) } })
+      .catch(() => { if (alive) { setCompetition(null); setCompLoaded(true) } })
+    return () => { alive = false }
+  }, [match?.competitionId])
 
   useEffect(() => {
     if (!match || lineupsLoaded.current) return
@@ -470,10 +490,23 @@ export default function ScoreMatch() {
     </div>
   )
 
-  // Match-level ownership check: org member for either side, OR competition staff for this fixture.
+  // Match-level ownership check: org member for either side, competition staff
+  // for this fixture, OR a competition ADMIN (its creator / owning-org staff —
+  // resolved from the loaded competition doc). The last clause mirrors the
+  // Firestore rules' canAdministerCompetition, which the competition-staff-only
+  // check missed: a person who CREATED a competition holds admin authority via
+  // `createdBy`, not a competitionRoles grant.
   const authorised = isPlatformAdmin
     || isOrgMember(match.homeOrgId) || isOrgMember(match.awayOrgId)
     || (match.competitionId && !!competitionRoles[match.competitionId])
+    || (competition && canAdministerCompetition(competition))
+  // Don't decide "Not authorised" for a competition match until its competition
+  // has loaded — otherwise the admin check above would falsely fail on first render.
+  if (!authorised && match.competitionId && !compLoaded) return (
+    <div className={`min-h-screen ${t.root} flex items-center justify-center`}>
+      <div className="w-6 h-6 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin" />
+    </div>
+  )
   if (!authorised) return (
     <div className={`min-h-screen ${t.root} flex flex-col items-center justify-center px-6 text-center gap-3`}>
       <p className="font-display font-bold text-lg">Not authorised</p>
@@ -481,6 +514,19 @@ export default function ScoreMatch() {
       <button onClick={() => navigate('/score')} className="text-emerald-500 text-sm font-bold mt-2">← Back to matches</button>
     </div>
   )
+
+  // Who may open "Edit match details" (date/time, venue, format, teams). Anyone
+  // authorised for this match qualifies: a side's org/match authority OR a
+  // competition admin running the fixture — not just the platform admin. The
+  // Firestore rules enforce the real limits on the write.
+  const canEditMatch = authorised
+  // Identity/ownership edits (swap sides, change the team or org) are reserved
+  // for platform admin and a side's org authority. The competition-admin write
+  // path is forbidden from changing team identity (matchTeamIdentityUnchanged),
+  // so a competition-only organiser gets schedule/venue/format editing without
+  // the identity controls that would only fail on save.
+  const canEditIdentity = isPlatformAdmin
+    || isOrgMember(match.homeOrgId) || isOrgMember(match.awayOrgId)
 
   const status     = match.status
   const isUpcoming = isScheduled(match)
@@ -1021,7 +1067,7 @@ export default function ScoreMatch() {
           title="Enter a result, or record a walkover / abandonment / not played">
           Result
         </button>
-        {isPlatformAdmin && (
+        {canEditMatch && (
           <button onClick={openEditMatch}
             className={`shrink-0 text-[10px] font-bold uppercase tracking-widest border rounded-lg px-2.5 py-1.5 ${t.neutralBtn}`}
             title="Edit match details">
@@ -1920,11 +1966,17 @@ export default function ScoreMatch() {
         </Sheet>
       )}
 
-      {/* Edit match details — platform admin only */}
+      {/* Edit match details — open to a side's org authority and competition
+          admins too; identity controls inside are gated to org/platform authority. */}
       {editMatchOpen && (
         <Sheet t={t} title="Edit match details" onClose={() => setEditMatchOpen(false)}>
           <div className="space-y-3">
 
+            {/* Team identity — swap sides, change team/org. Reserved for platform
+                admin or a side's org authority; the competition-admin write path
+                may not change team identity, so competition-only organisers skip
+                straight to schedule/venue/format below. */}
+            {canEditIdentity && (<>
             {/* Switch home & away — swaps identities, score and goal/card sides. */}
             <button onClick={handleSwapSides} disabled={editSaving}
               className={`w-full flex items-center justify-center gap-2 text-[11px] font-bold uppercase tracking-widest py-2.5 border rounded-xl transition-colors disabled:opacity-50 ${t.neutralBtn}`}>
@@ -1996,6 +2048,8 @@ export default function ScoreMatch() {
                 onChange={e => setEditForm(f => ({ ...f, awayTeamName: e.target.value }))}
                 className={`w-full rounded-xl border px-3 py-2.5 text-sm focus:outline-none focus:border-emerald-500 transition-colors ${t.neutralBtn}`} />
             </div>
+
+            </>)}
 
             {/* ── Schedule & format ── */}
             <div className={`text-[11px] font-bold uppercase tracking-widest ${t.muted} pt-1`}>Schedule &amp; format</div>

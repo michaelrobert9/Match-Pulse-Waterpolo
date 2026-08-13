@@ -763,7 +763,17 @@ service cloud.firestore {
       allow update: if isPlatformAdmin()
         || hasMatchAuthorityForSide(resource.data.get('homeOrgId', ''), resource.data.get('homeTeamId', ''))
         || hasMatchAuthorityForSide(resource.data.get('awayOrgId', ''), resource.data.get('awayTeamId', ''))
-        || (isCompetitionFixtureWrite(request.resource.data) && matchTeamIdentityUnchanged());
+        || (isCompetitionFixtureWrite(request.resource.data) && matchTeamIdentityUnchanged())
+        // A competition admin may manage a fixture that ALREADY belongs to their
+        // competition — scheduling, venue, format, scores — even when its teams
+        // are still placeholders (an unresolved knockout/placement slot with no
+        // teamId yet, so isAcceptedCompetitionMember can't pass). The competitionId
+        // may not change and team identity stays locked, so this can neither hijack
+        // a match into another competition nor rewrite the participating teams.
+        || (resource.data.get('competitionId', '') != ''
+            && request.resource.data.get('competitionId', '') == resource.data.get('competitionId', '')
+            && canAdministerCompetition(resource.data.get('competitionId', ''))
+            && matchTeamIdentityUnchanged());
 
       // Player self-removal (player.fixture.selfremove): a player (or their
       // guardian/manager) may remove exactly one entry from exactly one lineup
