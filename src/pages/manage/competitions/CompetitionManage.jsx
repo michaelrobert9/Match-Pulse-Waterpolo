@@ -28,7 +28,7 @@ import { userDisplayName, userInitial } from '../../../lib/names'
 import { useAuth } from '../../../contexts/AuthContext'
 import { matchSlug as buildMatchSlug } from '../../../lib/slugify'
 import { fetchCompetitionPools, fetchCompetitionKnockout, fetchCompetitionFixtureMembers, fetchAwaitingResultMatchesForCompetition, fetchCompetitionAuditLog, toDate } from '../../../lib/queries'
-import { POINTS_PRESETS, competitionLifecycle } from '../../../lib/competitionRules'
+import { POINTS_PRESETS, competitionLifecycle, BONUS_RULE_TYPES, DEFAULT_BONUS_POINTS } from '../../../lib/competitionRules'
 import { POM_DEFAULT_COLOR } from '../../../lib/pom'
 import TeamSheetEditor from '../../../components/TeamSheetEditor'
 import { isScheduled } from '../../../lib/fixtureStatus'
@@ -855,6 +855,40 @@ function BasicCard({ competition, onSaved }) {
   )
 }
 
+// Normalise a stored bonusPoints config into editor form-state (numbers held as
+// strings for the inputs), filling any missing rule from the defaults.
+function normalizeBonus(stored) {
+  const sr = stored?.rules ?? {}
+  const mk = (key) => {
+    const r = sr[key] ?? {}
+    const def = DEFAULT_BONUS_POINTS.rules[key]
+    return {
+      enabled: r.enabled === true,
+      threshold: String(r.threshold ?? def.threshold),
+      points: String(r.points ?? def.points),
+    }
+  }
+  return {
+    enabled: stored?.enabled === true,
+    rules: {
+      scoreThreshold: mk('scoreThreshold'),
+      winMargin: mk('winMargin'),
+      lossWithin: mk('lossWithin'),
+    },
+  }
+}
+
+// One-line human summary of an active bonus rule, e.g. "Score 4+ goals → +1".
+function bonusRuleSummary(key, rule) {
+  const t = Number(rule.threshold) || 0
+  const p = Number(rule.points) || 0
+  const plus = `+${p} pt${p === 1 ? '' : 's'}`
+  if (key === 'scoreThreshold') return `Score ${t}+ goals → ${plus}`
+  if (key === 'winMargin')      return `Win by ${t}+ → ${plus}`
+  if (key === 'lossWithin')     return `Lose by ${t} or fewer → ${plus}`
+  return plus
+}
+
 function ScoringCard({ competition, onSaved }) {
   const rules    = competition.rules ?? {}
   const points   = rules.points ?? { win: 3, draw: 1, loss: 0 }
@@ -866,6 +900,44 @@ function ScoringCard({ competition, onSaved }) {
     win: String(points.win ?? 3), draw: String(points.draw ?? 1), loss: String(points.loss ?? 0),
   })
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }))
+
+  // Bonus points get their own independent edit toggle within this card.
+  const storedBonus = rules.bonusPoints ?? DEFAULT_BONUS_POINTS
+  const [bonusEditing, setBonusEditing] = useState(false)
+  const [bonusSaving, setBonusSaving]   = useState(false)
+  const [bonus, setBonus] = useState(() => normalizeBonus(storedBonus))
+  const setBonusRule = (key, field, value) =>
+    setBonus(b => ({ ...b, rules: { ...b.rules, [key]: { ...b.rules[key], [field]: value } } }))
+
+  function startBonusEdit() {
+    setBonus(normalizeBonus(rules.bonusPoints))
+    setBonusEditing(true)
+  }
+
+  async function saveBonus() {
+    setBonusSaving(true)
+    try {
+      const cleanRule = (r) => ({
+        enabled: !!r.enabled,
+        threshold: Math.max(0, Math.round(Number(r.threshold) || 0)),
+        points: Math.max(0, Math.round(Number(r.points) || 0)),
+      })
+      const newBonus = {
+        enabled: !!bonus.enabled,
+        rules: {
+          scoreThreshold: cleanRule(bonus.rules.scoreThreshold),
+          winMargin:      cleanRule(bonus.rules.winMargin),
+          lossWithin:     cleanRule(bonus.rules.lossWithin),
+        },
+      }
+      const newRules = { ...rules, bonusPoints: newBonus }
+      await updateCompetition(competition.id, { rules: newRules })
+      onSaved({ ...competition, rules: newRules })
+      setBonusEditing(false)
+    } finally { setBonusSaving(false) }
+  }
+
+  const activeBonusRules = BONUS_RULE_TYPES.filter(t => storedBonus?.enabled && storedBonus?.rules?.[t.key]?.enabled)
 
   const activePreset = POINTS_PRESETS.find(p =>
     String(p.points.win) === form.win && String(p.points.draw) === form.draw && String(p.points.loss) === form.loss)
@@ -921,16 +993,89 @@ function ScoringCard({ competition, onSaved }) {
         </div>
       )}
 
+      {/* Bonus points — live, editable. */}
+      <div className="border-t border-slate-100 pt-3">
+        <div className="flex items-start gap-3">
+          <div className="flex-1">
+            <div className="text-sm font-medium text-slate-700">Bonus points</div>
+            <p className="text-[11px] text-slate-400">Extra league points for goals scored, winning margins or a close loss.</p>
+          </div>
+          {!bonusEditing && (
+            <button type="button" onClick={startBonusEdit}
+              className="text-[11px] font-bold uppercase tracking-widest text-emerald-600 hover:text-emerald-500 shrink-0">
+              Edit
+            </button>
+          )}
+        </div>
+
+        {!bonusEditing ? (
+          <div className="mt-2">
+            {activeBonusRules.length === 0 ? (
+              <p className="text-xs text-slate-400">Off — no bonus points awarded.</p>
+            ) : (
+              <ul className="space-y-1">
+                {activeBonusRules.map(t => (
+                  <li key={t.key} className="text-xs text-slate-600 flex items-center gap-2">
+                    <span className="w-1.5 h-1.5 rounded-full bg-amber-400 shrink-0" />
+                    {bonusRuleSummary(t.key, normalizeBonus(storedBonus).rules[t.key])}
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        ) : (
+          <div className="mt-3 space-y-3">
+            <label className="flex items-center gap-2 text-sm font-medium text-slate-700 cursor-pointer">
+              <input type="checkbox" checked={bonus.enabled}
+                onChange={e => setBonus(b => ({ ...b, enabled: e.target.checked }))}
+                className="w-4 h-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500" />
+              Award bonus points in this competition
+            </label>
+            <div className={`space-y-3 ${bonus.enabled ? '' : 'opacity-50 pointer-events-none'}`}>
+              {BONUS_RULE_TYPES.map(t => {
+                const r = bonus.rules[t.key]
+                return (
+                  <div key={t.key} className="rounded-lg border border-slate-200 p-3 space-y-2">
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input type="checkbox" checked={r.enabled}
+                        onChange={e => setBonusRule(t.key, 'enabled', e.target.checked)}
+                        className="w-4 h-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500" />
+                      <span className="text-sm font-medium text-slate-700">{t.label}</span>
+                    </label>
+                    <p className="text-[11px] text-slate-400">{t.help}</p>
+                    <div className={`grid grid-cols-2 gap-3 ${r.enabled ? '' : 'opacity-50 pointer-events-none'}`}>
+                      <div>
+                        <label className="micro-label block mb-1.5">{t.thresholdLabel}</label>
+                        <Input type="number" min={0} max={99} value={r.threshold}
+                          onChange={e => setBonusRule(t.key, 'threshold', e.target.value)} />
+                      </div>
+                      <div>
+                        <label className="micro-label block mb-1.5">Bonus points</label>
+                        <Input type="number" min={0} max={9} value={r.points}
+                          onChange={e => setBonusRule(t.key, 'points', e.target.value)} />
+                      </div>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+            <div className="flex items-center gap-2 pt-1">
+              <button type="button" onClick={saveBonus} disabled={bonusSaving}
+                className="flex-1 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white font-bold text-sm uppercase tracking-wider rounded-lg py-2.5 transition-colors">
+                {bonusSaving ? 'Saving…' : 'Save'}
+              </button>
+              <button type="button" onClick={() => setBonusEditing(false)}
+                className="text-xs font-bold text-slate-500 hover:text-slate-900 px-4 py-2.5">
+                Cancel
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+
       {/* Settings that exist in the rules schema but are not yet applied by
           the engine are shown disabled — never as unexplained live settings. */}
       <div className="space-y-2 border-t border-slate-100 pt-3">
-        <div className="flex items-start gap-3 opacity-60">
-          <div className="flex-1">
-            <div className="text-sm font-medium text-slate-700">Bonus points</div>
-            <p className="text-[11px] text-slate-400">Extra points for goals scored or margins.</p>
-          </div>
-          <span className="text-[9px] font-bold uppercase tracking-widest text-slate-400 bg-slate-100 rounded px-1.5 py-0.5 shrink-0">Coming soon</span>
-        </div>
         <div className="flex items-start gap-3 opacity-60">
           <div className="flex-1">
             <div className="text-sm font-medium text-slate-700">Walkover result</div>

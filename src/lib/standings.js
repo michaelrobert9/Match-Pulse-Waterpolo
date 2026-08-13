@@ -31,10 +31,36 @@ const CONFIRMED = new Set(['accepted', 'admin_approved'])
 const FAIR_PLAY_WEIGHTS = { yellow: 1, red: 3 }
 
 function mkStats(teamId) {
-  return { teamId, P: 0, W: 0, D: 0, L: 0, GF: 0, GA: 0, GD: 0, Pts: 0, fairPlayScore: 0 }
+  return { teamId, P: 0, W: 0, D: 0, L: 0, GF: 0, GA: 0, GD: 0, BP: 0, Pts: 0, fairPlayScore: 0 }
 }
 
-function applyResult(stats, homeId, awayId, homeGoals, awayGoals, pts) {
+// Bonus points earned by one team from a single played result, given the goals
+// it scored and conceded and the competition's bonus config. Rule types stack:
+// a decisive high-scoring win can earn both a margin and a score-threshold
+// bonus. Returns 0 when bonus points are disabled or the config is absent.
+export function bonusPointsFor(scored, conceded, bonusCfg) {
+  if (!bonusCfg || bonusCfg.enabled !== true) return 0
+  const r = bonusCfg.rules ?? {}
+  const margin = scored - conceded
+  let bp = 0
+
+  const st = r.scoreThreshold
+  if (st?.enabled && scored >= (st.threshold ?? Infinity)) bp += st.points ?? 0
+
+  // A winning-margin bonus requires an actual win (margin > 0).
+  const wm = r.winMargin
+  if (wm?.enabled && margin > 0 && margin >= (wm.threshold ?? Infinity)) bp += wm.points ?? 0
+
+  // A losing bonus requires an actual loss (margin < 0) within the threshold.
+  const lw = r.lossWithin
+  if (lw?.enabled && margin < 0 && (conceded - scored) <= (lw.threshold ?? -Infinity)) bp += lw.points ?? 0
+
+  return bp
+}
+
+// bonus is the competition's bonusPoints config, or null to skip bonus scoring
+// (e.g. awarded/walkover allocations, which are not genuinely-played results).
+function applyResult(stats, homeId, awayId, homeGoals, awayGoals, pts, bonus = null) {
   const h = stats[homeId]
   const a = stats[awayId]
   if (!h || !a) return
@@ -50,6 +76,12 @@ function applyResult(stats, homeId, awayId, homeGoals, awayGoals, pts) {
   } else {
     h.D++; a.D++
     h.Pts += pts.draw ?? 1; a.Pts += pts.draw ?? 1
+  }
+  if (bonus) {
+    const hb = bonusPointsFor(homeGoals, awayGoals, bonus)
+    const ab = bonusPointsFor(awayGoals, homeGoals, bonus)
+    h.BP += hb; h.Pts += hb
+    a.BP += ab; a.Pts += ab
   }
 }
 
@@ -76,7 +108,7 @@ function getStatValue(key, row) {
 
 // Compute mini-table stats restricted to matches BETWEEN teams in the group.
 // Returns an array of { teamId, Pts, GD, GF } — only what H2H sorting needs.
-function computeH2HStats(group, fixtures, matches, pts) {
+function computeH2HStats(group, fixtures, matches, pts, bonus = null) {
   const groupIds = new Set(group.map(t => t.teamId))
   const h2h = {}
   for (const t of group) h2h[t.teamId] = { teamId: t.teamId, Pts: 0, GD: 0, GF: 0, GA: 0 }
@@ -94,6 +126,12 @@ function computeH2HStats(group, fixtures, matches, pts) {
     if (hg > ag)      { h2h[hId].Pts += pts.win ?? 3;  h2h[aId].Pts += pts.loss ?? 0 }
     else if (ag > hg) { h2h[hId].Pts += pts.loss ?? 0; h2h[aId].Pts += pts.win ?? 3 }
     else              { h2h[hId].Pts += pts.draw ?? 1;  h2h[aId].Pts += pts.draw ?? 1 }
+    // Bonus points count in the head-to-head mini-table too, so a team's points
+    // mean the same here as in the full table.
+    if (bonus) {
+      h2h[hId].Pts += bonusPointsFor(hg, ag, bonus)
+      h2h[aId].Pts += bonusPointsFor(ag, hg, bonus)
+    }
   }
   return Object.values(h2h)
 }
@@ -117,7 +155,7 @@ function splitEqualRuns(sorted, equalFn, recurse) {
 // Sort a group of teams by the tie-breaker chain.
 // Returns: Array<{ teams: Team[], manual: boolean }>
 //   manual=true → these teams could not be separated; UI must show warning.
-function sortGroup(group, tieBreakers, fixtures, matches, pts) {
+function sortGroup(group, tieBreakers, fixtures, matches, pts, bonus = null) {
   if (group.length <= 1) return [{ teams: group, manual: false }]
   if (tieBreakers.length === 0) return [{ teams: group, manual: true }]
 
@@ -126,7 +164,7 @@ function sortGroup(group, tieBreakers, fixtures, matches, pts) {
   if (tb.key === 'manualDecision') return [{ teams: group, manual: true }]
 
   if (tb.key === 'headToHeadMiniTable') {
-    const h2hRows = computeH2HStats(group, fixtures, matches, pts)
+    const h2hRows = computeH2HStats(group, fixtures, matches, pts, bonus)
     const h2hById = Object.fromEntries(h2hRows.map(r => [r.teamId, r]))
     const sorted = [...group].sort((a, b) => {
       const ha = h2hById[a.teamId], hb = h2hById[b.teamId]
@@ -138,7 +176,7 @@ function sortGroup(group, tieBreakers, fixtures, matches, pts) {
         const ha = h2hById[a.teamId], hb = h2hById[b.teamId]
         return ha.Pts === hb.Pts && ha.GD === hb.GD && ha.GF === hb.GF
       },
-      g => sortGroup(g, rest, fixtures, matches, pts),
+      g => sortGroup(g, rest, fixtures, matches, pts, bonus),
     )
   }
 
@@ -151,13 +189,14 @@ function sortGroup(group, tieBreakers, fixtures, matches, pts) {
   return splitEqualRuns(
     sorted,
     (a, b) => getStatValue(tb.key, a) === getStatValue(tb.key, b),
-    g => sortGroup(g, rest, fixtures, matches, pts),
+    g => sortGroup(g, rest, fixtures, matches, pts, bonus),
   )
 }
 
 export function computeStandings(competition, members, fixtures, matchesInput, { manualOverrides = [] } = {}) {
   const pts = competition.rules?.points ?? { win: 3, draw: 1, loss: 0 }
   const tieBreakers = competition.rules?.tieBreakers ?? []
+  const bonus = competition.rules?.bonusPoints ?? null
 
   // Flatten recorded manual placements to teamId → position. Later overrides
   // win (they are appended chronologically by setPoolManualPlacement).
@@ -196,8 +235,9 @@ export function computeStandings(competition, members, fixtures, matchesInput, {
     const hId = fx.homeTeamId ?? match.homeTeamId
     const aId = fx.awayTeamId ?? match.awayTeamId
     if (!confirmedIds.has(hId) || !confirmedIds.has(aId)) continue
-    applyResult(stats, hId, aId, c.home, c.away, pts)
-    // Cards apply for genuinely-played results only (not awarded allocations).
+    // Bonus points, like cards, count for genuinely-played results only — not
+    // awarded (walkover / no-show) allocations with a default scoreline.
+    applyResult(stats, hId, aId, c.home, c.away, pts, c.stats ? bonus : null)
     if (c.stats) applyCards(stats, hId, aId, match.cards)
     played++
   }
@@ -217,7 +257,7 @@ export function computeStandings(competition, members, fixtures, matchesInput, {
     }
   }
 
-  const groups = sortGroup(teams, tieBreakers, fixtures ?? [], matchesMap, pts)
+  const groups = sortGroup(teams, tieBreakers, fixtures ?? [], matchesMap, pts, bonus)
 
   const rows = []
   const manualDecisionRequired = []

@@ -28,14 +28,19 @@ function buildManualGroups(rows) {
   return groups
 }
 
-const COLS = ['P', 'W', 'D', 'L', 'GF', 'GA', 'GD', 'Pts']
+const BASE_COLS = ['P', 'W', 'D', 'L', 'GF', 'GA', 'GD']
 
-export default function StandingsTable({ rows = [] }) {
+// showBonus: force the BP (bonus points) column on. When omitted, the column
+// appears automatically as soon as any team has earned a bonus point, so tables
+// for competitions without bonus scoring stay clean.
+export default function StandingsTable({ rows = [], showBonus }) {
   if (rows.length === 0) {
     return <p className="text-center text-slate-500 text-sm py-12">No results yet — standings will appear once completed matches are recorded.</p>
   }
 
+  const bonusOn = showBonus ?? rows.some(r => (r.BP ?? 0) !== 0)
   const items = buildManualGroups(rows)
+  const cols = [...BASE_COLS, ...(bonusOn ? ['BP'] : []), 'Pts']
 
   return (
     <div className="overflow-x-auto">
@@ -43,8 +48,9 @@ export default function StandingsTable({ rows = [] }) {
       <div className="flex items-center gap-0 px-3 py-2 mb-1">
         <div className="w-6 shrink-0" />
         <div className="flex-1 min-w-0" />
-        {COLS.map(c => (
-          <div key={c} className={`w-8 text-center text-[9px] font-bold uppercase tracking-widest ${c === 'Pts' ? 'text-emerald-600 w-10' : 'text-slate-500'}`}>
+        {cols.map(c => (
+          <div key={c} className={`text-center text-[9px] font-bold uppercase tracking-widest ${
+            c === 'Pts' ? 'text-emerald-600 w-10' : c === 'BP' ? 'text-amber-600 w-8' : 'text-slate-500 w-8'}`}>
             {c}
           </div>
         ))}
@@ -57,7 +63,7 @@ export default function StandingsTable({ rows = [] }) {
             return (
               <div key={`manual-${idx}`} className="rounded-xl border border-amber-300 bg-amber-50 overflow-hidden">
                 {item.rows.map(row => (
-                  <TeamRow key={row.teamId} row={row} />
+                  <TeamRow key={row.teamId} row={row} bonusOn={bonusOn} />
                 ))}
                 <div className="flex items-center gap-2 px-3 py-2 border-t border-amber-200">
                   <AlertTriangle className="w-3.5 h-3.5 text-amber-600 shrink-0" />
@@ -68,14 +74,14 @@ export default function StandingsTable({ rows = [] }) {
               </div>
             )
           }
-          return <TeamRow key={item.row.teamId} row={item.row} />
+          return <TeamRow key={item.row.teamId} row={item.row} bonusOn={bonusOn} />
         })}
       </div>
     </div>
   )
 }
 
-function TeamRow({ row }) {
+function TeamRow({ row, bonusOn }) {
   const gd = row.GD ?? 0
   return (
     <div className="flex items-center gap-0 bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm">
@@ -89,6 +95,9 @@ function TeamRow({ row }) {
         <div key={ci} className="w-8 text-center font-mono text-xs text-slate-500 py-3">{val ?? 0}</div>
       ))}
       <div className={`w-8 text-center font-mono text-xs py-3 ${gdColor(gd)}`}>{gdLabel(gd)}</div>
+      {bonusOn && (
+        <div className="w-8 text-center font-mono text-xs text-amber-600 py-3">{row.BP ?? 0}</div>
+      )}
       <div className="w-10 text-center font-mono font-black text-sm text-slate-900 py-3 pr-2">{row.Pts ?? 0}</div>
     </div>
   )
