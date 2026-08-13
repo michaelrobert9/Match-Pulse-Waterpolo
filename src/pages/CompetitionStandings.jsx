@@ -122,7 +122,7 @@ export default function CompetitionStandings() {
             </button>
           </div>
         )}
-        <StandingsTable rows={standingsRows} />
+        <StandingsTable rows={standingsRows} showBonus={competition?.rules?.bonusPoints?.enabled === true} />
       </div>
     </div>
   )

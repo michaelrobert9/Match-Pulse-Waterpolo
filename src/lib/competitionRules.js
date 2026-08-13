@@ -98,6 +98,55 @@ export const POINTS_PRESETS = [
   { label: '2 / 1 / 0', points: { win: 2, draw: 1, loss: 0 } },
 ]
 
+// ── Bonus points ────────────────────────────────────────────────────────────
+// Optional extra league points awarded on top of the win/draw/loss points,
+// based on how a team performed in a single match. Three independent rule
+// types, each separately toggleable with its own threshold and points value:
+//
+//   scoreThreshold — a team that SCORES ≥ threshold goals earns the points
+//                    (rewards attacking play; either side can earn it).
+//   winMargin      — the WINNER of a match won by ≥ threshold goals earns it
+//                    (rewards a decisive win, e.g. "win by 3+ → +1").
+//   lossWithin     — the LOSER of a match lost by ≤ threshold goals earns it
+//                    (the classic "losing bonus point" for a close defeat).
+//
+// More than one rule can fire in the same match (a big, high-scoring win can
+// earn both a margin and a score-threshold bonus). Bonus points are added into
+// the team's total points AND tracked separately (the BP column) so a table
+// makes clear how many bonus points each team has collected. Off by default.
+export const DEFAULT_BONUS_POINTS = {
+  enabled: false,
+  rules: {
+    scoreThreshold: { enabled: false, threshold: 4, points: 1 },
+    winMargin:      { enabled: false, threshold: 3, points: 1 },
+    lossWithin:     { enabled: false, threshold: 1, points: 1 },
+  },
+}
+
+// The canonical bonus rule types, in display order, with the labels/help the
+// scoring editor renders. Keeping this beside the defaults means the config UI
+// and the engine share one source of truth for what a bonus rule can be.
+export const BONUS_RULE_TYPES = [
+  {
+    key: 'scoreThreshold',
+    label: 'Score threshold',
+    help: 'Awarded to a team that scores at least this many goals in a match.',
+    thresholdLabel: 'Goals scored (≥)',
+  },
+  {
+    key: 'winMargin',
+    label: 'Winning margin',
+    help: 'Awarded to the winner when they win by at least this many goals.',
+    thresholdLabel: 'Win by (≥)',
+  },
+  {
+    key: 'lossWithin',
+    label: 'Losing bonus',
+    help: 'Awarded to the loser when they lose by this many goals or fewer.',
+    thresholdLabel: 'Lose by (≤)',
+  },
+]
+
 // ── Tie-breakers ──────────────────────────────────────────────────────────────
 // Default recommended water polo order, following World Aquatics ranking of
 // tied teams: points, then the head-to-head result between the level teams,
@@ -136,6 +185,14 @@ export function defaultRulesForType(type) {
     points:        { ...DEFAULT_POINTS },
     tieBreakers:   DEFAULT_TIE_BREAKERS.map(t => ({ ...t })),
     walkoverScore: { ...DEFAULT_WALKOVER_SCORE },
+    bonusPoints:   {
+      enabled: DEFAULT_BONUS_POINTS.enabled,
+      rules: {
+        scoreThreshold: { ...DEFAULT_BONUS_POINTS.rules.scoreThreshold },
+        winMargin:      { ...DEFAULT_BONUS_POINTS.rules.winMargin },
+        lossWithin:     { ...DEFAULT_BONUS_POINTS.rules.lossWithin },
+      },
+    },
   }
   if (type === 'tournament') rules.stages = []
   if (type === 'festival')   rules.statsTable = { enabled: false, columns: [...FESTIVAL_STATS_COLUMNS] }

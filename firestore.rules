@@ -790,9 +790,9 @@ service cloud.firestore {
            && request.resource.data.get('homeLineup', []) == resource.data.get('homeLineup', []))
         );
 
-      // Delete: team authority only. Removing a fixture from a competition is a
-      // membership-record delete (handled under competitions/.../fixtures), and
-      // never deletes the underlying match.
+      // Delete: platform admin or a side's match authority. Removing a fixture
+      // from a competition is a membership-record delete (handled under
+      // competitions/.../fixtures), and never deletes the underlying match.
       allow delete: if isPlatformAdmin()
         || hasMatchAuthorityForSide(resource.data.get('homeOrgId', ''), resource.data.get('homeTeamId', ''))
         || hasMatchAuthorityForSide(resource.data.get('awayOrgId', ''), resource.data.get('awayTeamId', ''));
