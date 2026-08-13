@@ -277,7 +277,8 @@ export default function ScoreMatch() {
   const [outcomeBusy,    setOutcomeBusy]    = useState(false)
   const [outcomeError,   setOutcomeError]   = useState('')
   const [wkDefault,      setWkDefault]      = useState({ conceding: 0, opposing: 5 })
-  // Edit match details (platform admin only)
+  // Edit match details (platform admin, a side's org authority, or a
+  // competition admin running the fixture)
   const [editMatchOpen,  setEditMatchOpen]  = useState(false)
   const [editForm,       setEditForm]       = useState({})
   const [editSaving,     setEditSaving]     = useState(false)
@@ -481,6 +482,19 @@ export default function ScoreMatch() {
       <button onClick={() => navigate('/score')} className="text-emerald-500 text-sm font-bold mt-2">← Back to matches</button>
     </div>
   )
+
+  // Who may open "Edit match details" (date/time, venue, format, teams). Anyone
+  // authorised for this match qualifies: a side's org/match authority OR a
+  // competition admin running the fixture — not just the platform admin. The
+  // Firestore rules enforce the real limits on the write.
+  const canEditMatch = authorised
+  // Identity/ownership edits (swap sides, change the team or org) are reserved
+  // for platform admin and a side's org authority. The competition-admin write
+  // path is forbidden from changing team identity (matchTeamIdentityUnchanged),
+  // so a competition-only organiser gets schedule/venue/format editing without
+  // the identity controls that would only fail on save.
+  const canEditIdentity = isPlatformAdmin
+    || isOrgMember(match.homeOrgId) || isOrgMember(match.awayOrgId)
 
   const status     = match.status
   const isUpcoming = isScheduled(match)
@@ -1021,7 +1035,7 @@ export default function ScoreMatch() {
           title="Enter a result, or record a walkover / abandonment / not played">
           Result
         </button>
-        {isPlatformAdmin && (
+        {canEditMatch && (
           <button onClick={openEditMatch}
             className={`shrink-0 text-[10px] font-bold uppercase tracking-widest border rounded-lg px-2.5 py-1.5 ${t.neutralBtn}`}
             title="Edit match details">
@@ -1920,11 +1934,17 @@ export default function ScoreMatch() {
         </Sheet>
       )}
 
-      {/* Edit match details — platform admin only */}
+      {/* Edit match details — open to a side's org authority and competition
+          admins too; identity controls inside are gated to org/platform authority. */}
       {editMatchOpen && (
         <Sheet t={t} title="Edit match details" onClose={() => setEditMatchOpen(false)}>
           <div className="space-y-3">
 
+            {/* Team identity — swap sides, change team/org. Reserved for platform
+                admin or a side's org authority; the competition-admin write path
+                may not change team identity, so competition-only organisers skip
+                straight to schedule/venue/format below. */}
+            {canEditIdentity && (<>
             {/* Switch home & away — swaps identities, score and goal/card sides. */}
             <button onClick={handleSwapSides} disabled={editSaving}
               className={`w-full flex items-center justify-center gap-2 text-[11px] font-bold uppercase tracking-widest py-2.5 border rounded-xl transition-colors disabled:opacity-50 ${t.neutralBtn}`}>
@@ -1996,6 +2016,8 @@ export default function ScoreMatch() {
                 onChange={e => setEditForm(f => ({ ...f, awayTeamName: e.target.value }))}
                 className={`w-full rounded-xl border px-3 py-2.5 text-sm focus:outline-none focus:border-emerald-500 transition-colors ${t.neutralBtn}`} />
             </div>
+
+            </>)}
 
             {/* ── Schedule & format ── */}
             <div className={`text-[11px] font-bold uppercase tracking-widest ${t.muted} pt-1`}>Schedule &amp; format</div>
