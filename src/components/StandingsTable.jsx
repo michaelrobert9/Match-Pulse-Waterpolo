@@ -1,4 +1,5 @@
 import { AlertTriangle } from 'lucide-react'
+import { competitionTeamLabel } from '../lib/teamNaming'
 
 function gdLabel(gd) {
   if (gd > 0) return `+${gd}`
@@ -89,7 +90,7 @@ function TeamRow({ row, bonusOn }) {
         {row.pos}
       </div>
       <div className="flex-1 min-w-0 flex items-center gap-2 px-2 py-3">
-        <span className="text-slate-900 text-sm font-semibold truncate">{row.orgName ? `${row.orgName} ${row.teamName}` : row.teamName}</span>
+        <span className="text-slate-900 text-sm font-semibold truncate">{competitionTeamLabel({ orgName: row.orgName, teamName: row.teamName })}</span>
       </div>
       {[row.P, row.W, row.D, row.L, row.GF, row.GA].map((val, ci) => (
         <div key={ci} className="w-8 text-center font-mono text-xs text-slate-500 py-3">{val ?? 0}</div>

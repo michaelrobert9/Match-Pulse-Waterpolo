@@ -42,7 +42,7 @@ function Input({ ...props }) {
 function OrgForm({ initial = {}, onSave, onDelete, saving }) {
   const isNew = !initial.id
   const [form, setForm] = useState({
-    name: '', shortCode: '', primaryColor: '#006B3C', secondaryColor: '#FFFFFF',
+    name: '', matchName: '', primaryColor: '#006B3C', secondaryColor: '#FFFFFF',
     type: 'school', region: '', logoUrl: '', website: '', genderProfile: '', ...initial,
   })
 
@@ -56,6 +56,13 @@ function OrgForm({ initial = {}, onSave, onDelete, saving }) {
       <Field label="Full name">
         <Input value={form.name} onChange={e => set('name', e.target.value)} placeholder="Western Province" required />
       </Field>
+
+      {form.type !== 'association' && (
+        <Field label="Match name (optional)">
+          <Input value={form.matchName || ''} onChange={e => set('matchName', e.target.value)} placeholder="e.g. Kearsney" />
+          <p className="text-[11px] text-slate-400 mt-1">Short name shown on match cards and results. Blank uses the full name.</p>
+        </Field>
+      )}
 
       {/* Slug preview — live when creating, frozen when editing */}
       <div className="rounded-lg bg-slate-50 border border-slate-200 px-3 py-2.5">
@@ -297,7 +304,10 @@ export function NewOrganization() {
   async function handleSave(form) {
     setSaving(true)
     try {
-      await createOrganization(form)
+      await createOrganization({
+        ...form,
+        matchName: form.type !== 'association' ? (form.matchName?.trim() || null) : null,
+      })
       navigate('/admin/organizations')
     } finally { setSaving(false) }
   }
@@ -489,7 +499,13 @@ export function EditOrganization() {
 
   async function handleSave(form) {
     setSaving(true)
-    try { await updateOrganization(id, form); navigate('/admin/organizations') }
+    try {
+      await updateOrganization(id, {
+        ...form,
+        matchName: form.type !== 'association' ? (form.matchName?.trim() || null) : null,
+      })
+      navigate('/admin/organizations')
+    }
     finally { setSaving(false) }
   }
 

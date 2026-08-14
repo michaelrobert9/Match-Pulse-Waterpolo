@@ -18,8 +18,14 @@
 // are generated from the fields, never parsed back out of a label, so seniority
 // ordering and duplicate detection read the fields directly.
 //
-//   School:  { gender, ageGroup, teamLevel }   girls + U16 + A     → "Girls U16A"
-//   Club:    { division, ageGroup, teamLevel }  men + '' + 1st Team → "Men's 1st Team"
+// Display format (gender LAST; the dash comes from composeTeamDisplay):
+//
+//   [name] – [age/level][letter] [gender]
+//
+//   School (co-ed):  { gender, ageGroup, teamLevel }  girls + U16 + A → "U16A Girls"
+//   School (boys):   same fields, single-sex profile omits the word   → "U16A"
+//   Club/assoc:      { gender, ageGroup, teamLevel }  men + 1st Team  → "1st Team Men"
+//   Legacy division: { division, … } renders identically via clubTeamName
 //
 // CANONICAL — this file is shared byte-identical across netball, hockey, rugby
 // and water polo. Keep it self-contained apart from the local slugify import.
@@ -43,9 +49,28 @@ export function schoolGenderProfile(org) {
   return (p === 'boys' || p === 'girls' || p === 'coed') ? p : null
 }
 
-// ── Club / association division ───────────────────────────────────────────────
-// The selectable divisions. Masters and Open live here as first-class selector
-// values (they are never free-typed level names).
+// ── Team gender (all organisation types) ─────────────────────────────────────
+// Gender is a separate stored field on every team — never folded into a typed
+// division string — because the co-ed rule needs to be able to omit it.
+// Schools keep boys/girls (taken from the school's profile); clubs and
+// associations select from this list.
+export const TEAM_GENDERS = [
+  { value: 'men',   label: 'Men'   },
+  { value: 'women', label: 'Women' },
+  { value: 'boys',  label: 'Boys'  },
+  { value: 'girls', label: 'Girls' },
+  { value: 'mixed', label: 'Mixed' },
+]
+// Gender word used inside a team name, for every stored gender value.
+export const GENDER_LABEL = {
+  boys: 'Boys', girls: 'Girls', men: 'Men', women: 'Women', mixed: 'Mixed',
+}
+
+// ── Legacy club / association divisions ──────────────────────────────────────
+// RETIRED as a selector: club divisions are split into level + gender so all
+// organisation types store gender the same way. Kept only to RECOGNISE and
+// render division values still sitting on legacy team documents (and to drive
+// the one-off split migration). Never rendered as a create option.
 export const CLUB_DIVISIONS = [
   { value: 'men',         label: "Men's"   },
   { value: 'ladies',      label: 'Ladies'  },
@@ -60,12 +85,33 @@ export const CLUB_DIVISIONS = [
 const CLUB_DIVISION_VALUES = new Set([
   ...CLUB_DIVISIONS.map(d => d.value), 'mixed',
 ])
+// Gender word for a legacy division value, used when rendering un-migrated
+// teams: the gendered divisions map onto the shared gender vocabulary; the
+// legacy masters/open divisions render their rank word until migrated (they
+// are RANKS in the new model — see TEAM_LEVELS — with gender picked per team).
+const DIVISION_GENDER_WORD = {
+  men: 'Men', ladies: 'Women', juniorBoys: 'Boys', juniorGirls: 'Girls',
+  masters: 'Masters', open: 'Open', mixed: 'Mixed',
+}
+// The division→gender mapping the split migration applies. Exported for the
+// migration script and the lazy migrate-on-edit path. masters/open are absent
+// because they are not genders — the migration moves them onto the level axis
+// (DIVISION_TO_RANK) and the team's gender is picked per team as normal.
+export const DIVISION_TO_GENDER = {
+  men: 'men', ladies: 'women', juniorBoys: 'boys', juniorGirls: 'girls', mixed: 'mixed',
+}
+// Legacy masters/open divisions become rank values on the level axis.
+export const DIVISION_TO_RANK = { masters: 'Masters', open: 'Open' }
 
 // ── Level ─────────────────────────────────────────────────────────────────────
-// Senior ordinals, 1st … 10th. Identical for schools, clubs and associations.
+// Senior ordinals, 1st … 10th, plus the Masters and Open rank categories.
+// Masters/Open are AGE/RANK values, not gender exceptions — a Masters or Open
+// team still picks its gender as normal ("Riverside – Masters Men").
+// Identical for schools, clubs and associations.
 export const TEAM_LEVELS = [
   '1st Team', '2nd Team', '3rd Team', '4th Team', '5th Team',
   '6th Team', '7th Team', '8th Team', '9th Team', '10th Team',
+  'Masters', 'Open',
 ]
 // Age-side letters, A … J.
 export const TEAM_LETTERS = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J']
@@ -105,36 +151,54 @@ export function levelLabel(fields = {}) {
 
 // ── Name generation ───────────────────────────────────────────────────────────
 
-// School team name: "[Gender] [Level]" e.g. "Girls U16A". A single-gender school
-// (orgGenderProfile boys/girls) omits the gender word — the school identity
-// already carries it — so "U16A", not "Girls U16A".
+// School team name: "[Level] [Gender]" e.g. "U16A Girls" — gender goes LAST.
+// A single-gender school (orgGenderProfile boys/girls) omits the gender word —
+// the school identity already carries it — so "U16A", not "U16A Girls". An
+// unset profile falls through to showing the gender (default to showing).
+// THE CO-ED GENDER RULE LIVES IN THIS GATE — do not change the condition.
 export function schoolTeamName(gender, levelFields, orgGenderProfile = null) {
   const level = levelLabel(levelFields)
   if (orgGenderProfile === 'boys' || orgGenderProfile === 'girls') {
     return level.replace(/\s+/g, ' ').trim()
   }
-  const g = SCHOOL_GENDER_LABEL[gender] ?? ''
-  return `${g} ${level}`.replace(/\s+/g, ' ').trim()
+  const g = GENDER_LABEL[gender] ?? ''
+  return `${level} ${g}`.replace(/\s+/g, ' ').trim()
 }
 
-// Club / association team name: "[Division] [Level]" e.g. "Men's 1st Team".
+// Legacy club / association team name from an un-migrated division value:
+// "[Level] [Gender word]" e.g. "1st Team Men". Same order as the shared rule
+// so legacy and migrated teams read identically.
 export function clubTeamName(division, levelFields) {
-  const dLabel = divisionLabel(division)
-  const level  = levelLabel(levelFields)
-  return `${dLabel} ${level}`.replace(/\s+/g, ' ').trim()
+  const word  = DIVISION_GENDER_WORD[division] ?? divisionLabel(division)
+  const level = levelLabel(levelFields)
+  return `${level} ${word}`.replace(/\s+/g, ' ').trim()
 }
 
-// Full competition-facing team label: "[Organisation] [Team]" — e.g.
-// "Coastal Girls U12". Org teams always lead with the organisation name; named
+// ── Display composition ───────────────────────────────────────────────────────
+// The one place the display format lives:
+//
+//   [name] – [age/level][letter] [gender]
+//
+// The dash separates the name portion (team name → org match name → org full
+// name) from the division part. If there is no division part, drop the dash
+// and show the name alone; a division part with no name renders alone too.
+export function composeTeamDisplay(namePortion, teamLabel) {
+  const name  = (namePortion ?? '').trim()
+  const label = (teamLabel ?? '').trim()
+  if (!name)  return label
+  if (!label) return name
+  return `${name} – ${label}`
+}
+
+// Full competition-facing team label: "[Organisation] – [Team]" — e.g.
+// "Coastal – U12 Girls". Org teams lead with the organisation name; named
 // (non-org) entrants have no orgName and render as just the team name. Guards
 // against doubling when the team name already starts with the org name.
 export function competitionTeamLabel(snapshot) {
   const org  = (snapshot?.orgName  ?? '').trim()
   const team = (snapshot?.teamName ?? '').trim()
-  if (!org)  return team
-  if (!team) return org
-  if (team.toLowerCase().startsWith(org.toLowerCase())) return team
-  return `${org} ${team}`
+  if (team.toLowerCase().startsWith(org.toLowerCase()) && org) return team
+  return composeTeamDisplay(org, team)
 }
 
 // Human-readable label for a stored division/gender value.

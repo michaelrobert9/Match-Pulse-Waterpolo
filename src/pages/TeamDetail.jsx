@@ -8,7 +8,7 @@ import {
 import { useAuth } from '../contexts/AuthContext'
 import { assignPlayer, removePlayer, updatePlayer } from '../lib/adminQueries'
 import { playerUrl, orgUrl, matchUrl } from '../lib/slugify'
-import { generatedTeamName } from '../lib/teamNaming'
+import { generatedTeamName, composeTeamDisplay } from '../lib/teamNaming'
 import { prefetchMatchTeams, resolveTeamProfileIdentity } from '../lib/teamIdentity'
 import { monogram } from '../lib/names'
 import { useSeoMeta } from '../lib/useSeoMeta'
@@ -195,7 +195,7 @@ export default function TeamDetail() {
   // Resolve display identity (image / name / bio) with the org inherit-vs-own rule.
   const identity = team ? resolveTeamProfileIdentity(team, org) : null
   const name     = identity ? (identity.name || generatedTeamName(team) || team.displayName || team.name) : ''
-  const fullName = org ? `${org.name} ${name}`.replace(/\s+/g, ' ').trim() : name
+  const fullName = composeTeamDisplay(team?.teamName || org?.name, name)
   useSeoMeta({ type: 'team', entity: team ? { ...team, displayName: fullName, orgSlug: org?.slug ?? null } : null })
 
   if (loading) return <Spinner />

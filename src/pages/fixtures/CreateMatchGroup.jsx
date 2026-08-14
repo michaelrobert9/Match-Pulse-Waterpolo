@@ -69,7 +69,6 @@ function orgSide(org) {
     type:          org.type ?? null,
     primaryColor:  org.primaryColor ?? null,
     genderProfile: org.genderProfile ?? null,
-    shortCode:     org.shortCode ?? null,
   }
 }
 

@@ -923,7 +923,6 @@ export default function ScoreMatch() {
           if (homeTeam) {
             patch.homeTeamColor     = homeTeam.primaryColor || null
             patch.homeTeamSlug      = homeTeam.slug         || null
-            patch.homeTeamShortCode = homeTeam.shortCode    || null
             patch.homeRegistered    = true
           }
         } else if (editForm.homeOrgId !== (match.homeOrgId || '')) {
@@ -931,7 +930,6 @@ export default function ScoreMatch() {
           patch.homeTeamId        = null
           patch.homeTeamColor     = null
           patch.homeTeamSlug      = null
-          patch.homeTeamShortCode = null
           patch.homeRegistered    = false
         }
       }
@@ -946,14 +944,12 @@ export default function ScoreMatch() {
           if (awayTeam) {
             patch.awayTeamColor     = awayTeam.primaryColor || null
             patch.awayTeamSlug      = awayTeam.slug         || null
-            patch.awayTeamShortCode = awayTeam.shortCode    || null
             patch.awayRegistered    = true
           }
         } else if (editForm.awayOrgId !== (match.awayOrgId || '')) {
           patch.awayTeamId        = null
           patch.awayTeamColor     = null
           patch.awayTeamSlug      = null
-          patch.awayTeamShortCode = null
           patch.awayRegistered    = false
         }
       }

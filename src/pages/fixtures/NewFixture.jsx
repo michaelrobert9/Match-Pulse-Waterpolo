@@ -10,6 +10,7 @@ import { DEFAULT_PERIODS, DEFAULT_PERIOD_MINUTES, DEFAULT_BREAK_MINUTES } from '
 import OpponentSelector from '../../components/OpponentSelector'
 import FormatSelector from '../../components/FormatSelector'
 import { monogram } from '../../lib/names'
+import { composeTeamDisplay } from '../../lib/teamNaming'
 
 // ── Shared primitives ─────────────────────────────────────────────────────────
 
@@ -202,8 +203,8 @@ function SchoolFixtureForm({ org, canChange, onChangeOrg }) {
           id: ref.id, homeTeamId: homeTeam.id ?? null, awayTeamId: awayTeam.id ?? null,
         })
       }
-      const homeLabel = homeTeam.orgName ? `${homeTeam.orgName} ${homeTeam.displayName}` : homeTeam.displayName
-      const awayLabel = awayTeam.orgName ? `${awayTeam.orgName} ${awayTeam.displayName}` : awayTeam.displayName
+      const homeLabel = composeTeamDisplay(homeTeam.teamName || homeTeam.orgName, homeTeam.displayName)
+      const awayLabel = composeTeamDisplay(awayTeam.teamName || awayTeam.orgName, awayTeam.displayName)
       setDone({ matchId: ref.id, matchName: `${homeLabel} vs ${awayLabel}` })
       setForm(f => ({ ...f, yourTeamId: '', opponent: null, scheduledAt: '', pitch: '', side: 'home' }))
     } catch (err) {
@@ -371,7 +372,6 @@ function ClubFixtureForm({ org, canChange, onChangeOrg }) {
   const clubAsSide = {
     id:             null,
     displayName:    org.name,
-    shortCode:      org.shortCode,
     primaryColor:   org.primaryColor || null,
     organizationId: org.id,
   }
@@ -410,8 +410,8 @@ function ClubFixtureForm({ org, canChange, onChangeOrg }) {
           id: ref.id, homeTeamId: homeTeam.id ?? null, awayTeamId: awayTeam.id ?? null,
         })
       }
-      const homeLabel = homeTeam.orgName ? `${homeTeam.orgName} ${homeTeam.displayName}` : homeTeam.displayName
-      const awayLabel = awayTeam.orgName ? `${awayTeam.orgName} ${awayTeam.displayName}` : awayTeam.displayName
+      const homeLabel = composeTeamDisplay(homeTeam.teamName || homeTeam.orgName, homeTeam.displayName)
+      const awayLabel = composeTeamDisplay(awayTeam.teamName || awayTeam.orgName, awayTeam.displayName)
       setDone({ matchId: ref.id, matchName: `${homeLabel} vs ${awayLabel}` })
       setForm(f => ({ ...f, yourSide: 'club', opponent: null, scheduledAt: '', pitch: '', side: 'home' }))
     } catch (err) {

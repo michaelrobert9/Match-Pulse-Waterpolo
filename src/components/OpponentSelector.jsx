@@ -2,23 +2,24 @@ import { useRef, useState } from 'react'
 import { X, Plus, ChevronDown } from 'lucide-react'
 import { createManualOpponent, searchOpponents } from '../lib/adminQueries'
 import { monogram } from '../lib/names'
-import { CLUB_DIVISIONS, generatedTeamName } from '../lib/teamNaming'
+import { TEAM_GENDERS, generatedTeamName, composeTeamDisplay } from '../lib/teamNaming'
 import { LevelPicker, BLANK_LEVEL, levelFieldsOf, levelComplete } from './LevelPicker'
 
 // The opponent's structured team fields, derived from the create-form state.
 function opponentFields(form) {
   const isSchool = form.orgType === 'school'
   const effectiveGender = form.orgGenderProfile !== 'coed' ? form.orgGenderProfile : form.gender
+  // Gender is the shared axis for every org type; divisions are retired.
   return isSchool
     ? { gender: effectiveGender || null, orgGenderProfile: form.orgGenderProfile, ...levelFieldsOf(form.level) }
-    : { division: form.division || null,                                          ...levelFieldsOf(form.level) }
+    : { gender: form.gender || null,                                              ...levelFieldsOf(form.level) }
 }
 
 function computeOpponentName(form) {
   const org = form.orgName.trim()
   if (!org) return ''
   const suffix = generatedTeamName(opponentFields(form))
-  return `${org} ${suffix}`.replace(/\s+/g, ' ').trim()
+  return composeTeamDisplay(org, suffix)
 }
 
 const BLANK_FORM = {
@@ -26,9 +27,7 @@ const BLANK_FORM = {
   orgName:          '',
   orgGenderProfile: 'coed',
   gender:           'girls',
-  division:         'men',
   level:            BLANK_LEVEL,
-  shortCode:        '',
 }
 
 export default function OpponentSelector({ orgTeams = [], excludeTeamId, orgId, excludeOrgId, value, onChange }) {
@@ -65,11 +64,11 @@ export default function OpponentSelector({ orgTeams = [], excludeTeamId, orgId, 
   }
 
   function selectTeam(team) {
-    onChange({ id: team.id, displayName: team.displayName, orgName: team.orgName || null, shortCode: team.shortCode || null, primaryColor: team.primaryColor || null, organizationId: team.organizationId || null, registered: true })
+    onChange({ id: team.id, displayName: team.displayName, orgName: team.orgName || null, primaryColor: team.primaryColor || null, organizationId: team.organizationId || null, registered: true })
   }
 
   function selectManual(opp) {
-    onChange({ id: null, displayName: opp.name, shortCode: opp.shortCode || null, primaryColor: null, organizationId: null, manualOpponentId: opp.id, registered: false })
+    onChange({ id: null, displayName: opp.name, primaryColor: null, organizationId: null, manualOpponentId: opp.id, registered: false })
   }
 
   async function handleCreate() {
@@ -80,12 +79,10 @@ export default function OpponentSelector({ orgTeams = [], excludeTeamId, orgId, 
     try {
       const ref = await createManualOpponent({
         name:             computedName,
-        shortCode:        newForm.shortCode || null,
         type:             newForm.orgType,
         orgName:          newForm.orgName.trim(),
         orgGenderProfile: newForm.orgType === 'school' ? newForm.orgGenderProfile : null,
         gender:           fields.gender ?? null,
-        division:         fields.division ?? null,
         ageGroup:         fields.ageGroup ?? null,
         teamLevel:        fields.teamLevel ?? null,
         createdByOrgId:   orgId,
@@ -93,7 +90,6 @@ export default function OpponentSelector({ orgTeams = [], excludeTeamId, orgId, 
       onChange({
         id:               null,
         displayName:      computedName,
-        shortCode:        newForm.shortCode || null,
         primaryColor:     null,
         organizationId:   null,
         manualOpponentId: ref.id,
@@ -107,7 +103,7 @@ export default function OpponentSelector({ orgTeams = [], excludeTeamId, orgId, 
   // ── Selected state ────────────────────────────────────────────────────────
   if (value) {
     const selectedFullName = value.orgName
-      ? `${value.orgName} ${value.displayName}`
+      ? composeTeamDisplay(value.orgName, value.displayName)
       : value.displayName
     return (
       <div className="flex items-center gap-2 bg-white border border-emerald-300 rounded-lg px-3 py-2.5 shadow-sm">
@@ -152,7 +148,7 @@ export default function OpponentSelector({ orgTeams = [], excludeTeamId, orgId, 
           {allowInternal && (
             <div className="flex flex-wrap gap-2">
               {availableOrgTeams.map(t => {
-                const fullName = t.orgName ? `${t.orgName} ${t.displayName}` : t.displayName
+                const fullName = composeTeamDisplay(t.teamName || t.orgName, t.displayName)
                 return (
                   <button type="button" key={t.id} onClick={() => selectTeam(t)}
                     className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-amber-200 hover:border-amber-400 text-amber-700 hover:text-amber-900 text-xs font-medium transition-colors bg-amber-50">
@@ -180,7 +176,7 @@ export default function OpponentSelector({ orgTeams = [], excludeTeamId, orgId, 
             <div>
               <p className="text-[9px] font-bold uppercase tracking-widest text-slate-500 px-3 pt-2 pb-1">MatchPulse teams</p>
               {searchResults.teams.map(t => {
-                const fullName = t.orgName ? `${t.orgName} ${t.displayName}` : t.displayName
+                const fullName = composeTeamDisplay(t.teamName || t.orgName, t.displayName)
                 return (
                   <button type="button" key={t.id} onClick={() => selectTeam(t)}
                     className="w-full flex items-center gap-2.5 px-3 py-2 hover:bg-slate-50 transition-colors text-left">
@@ -294,15 +290,16 @@ export default function OpponentSelector({ orgTeams = [], excludeTeamId, orgId, 
             </div>
           )}
 
-          {/* Club / association: division */}
+          {/* Club / association: gender (shared axis, divisions retired) */}
           {newForm.orgType !== 'school' && (
             <div>
-              <label className="text-[10px] font-bold uppercase tracking-widest text-slate-500 block mb-1.5">Division</label>
+              <label className="text-[10px] font-bold uppercase tracking-widest text-slate-500 block mb-1.5">Gender</label>
               <select
                 className="w-full bg-white border border-slate-200 rounded-lg px-3 py-2.5 text-slate-900 text-sm focus:outline-none focus:border-sky-500 transition-colors"
-                value={newForm.division}
-                onChange={e => setNewForm(f => ({ ...f, division: e.target.value }))}>
-                {CLUB_DIVISIONS.map(d => <option key={d.value} value={d.value}>{d.label}</option>)}
+                value={newForm.gender}
+                onChange={e => setNewForm(f => ({ ...f, gender: e.target.value }))}>
+                <option value="">— select —</option>
+                {TEAM_GENDERS.map(d => <option key={d.value} value={d.value}>{d.label}</option>)}
               </select>
             </div>
           )}
@@ -317,17 +314,6 @@ export default function OpponentSelector({ orgTeams = [], excludeTeamId, orgId, 
             />
           </div>
 
-          {/* Short code */}
-          <div>
-            <label className="text-[10px] font-bold uppercase tracking-widest text-slate-500 block mb-1.5">
-              Short code <span className="text-slate-400 normal-case tracking-normal font-normal">optional</span>
-            </label>
-            <input
-              className="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-slate-900 text-sm placeholder-slate-400 focus:outline-none focus:border-sky-500 transition-colors"
-              placeholder="e.g. WBH" value={newForm.shortCode} maxLength={6}
-              onChange={e => setNewForm(f => ({ ...f, shortCode: e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '') }))}
-            />
-          </div>
 
           {/* Name preview */}
           {previewName && (

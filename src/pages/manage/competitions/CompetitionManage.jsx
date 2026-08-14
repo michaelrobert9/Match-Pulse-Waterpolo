@@ -37,6 +37,7 @@ import CompetitionStatusBadge from '../../../components/CompetitionStatusBadge'
 import CompetitionStructureSection from './CompetitionStructureSection'
 import FormatSelector from '../../../components/FormatSelector'
 import { DEFAULT_PERIODS, DEFAULT_PERIOD_MINUTES, DEFAULT_BREAK_MINUTES, competitionMatchFormat } from '../../../lib/matchClock'
+import { composeTeamDisplay } from '../../../lib/teamNaming'
 
 // ── Constants ──────────────────────────────────────────────────────────────────
 
@@ -1896,7 +1897,7 @@ function CompetitionTeamRow({ team, onRename, onRemove, onTeamSheet }) {
           </div>
         ) : (
           <div className="text-slate-900 text-sm font-medium truncate">
-            {team.orgName ? `${team.orgName} ${team.displayName}` : team.displayName}
+            {composeTeamDisplay(team.teamName || team.orgName, team.displayName)}
           </div>
         )}
       </div>
@@ -1979,7 +1980,6 @@ function TeamsTab({ competition, teams, setTeams }) {
       setTeams(prev => [...prev, {
         id: team.id, organizationId: org.id, orgName: org.name,
         displayName: team.displayName || org.name,
-        shortCode: team.shortCode || org.shortCode,
         primaryColor: team.primaryColor || org.primaryColor,
         memberStatus: 'admin_approved',
       }])
@@ -2290,11 +2290,9 @@ function FixturesTab({ competition, teams, fixtures, setFixtures }) {
       const ref = await addDoc(collection(db, 'matches'), {
         competitionId: competition.id,
         ownerOrgId: competition.ownerOrgId || null,
-        homeTeamId: home.id, homeTeamName: home.displayName,
-        homeTeamShortCode: home.shortCode || null, homeTeamColor: home.primaryColor || null,
+        homeTeamId: home.id, homeTeamName: home.displayName, homeTeamColor: home.primaryColor || null,
         homeOrgId: home.organizationId ?? null, homeOrgName: home.orgName || null, homeRegistered: !!home.organizationId,
-        awayTeamId: away.id, awayTeamName: away.displayName,
-        awayTeamShortCode: away.shortCode || null, awayTeamColor: away.primaryColor || null,
+        awayTeamId: away.id, awayTeamName: away.displayName, awayTeamColor: away.primaryColor || null,
         awayOrgId: away.organizationId ?? null, awayOrgName: away.orgName || null, awayRegistered: !!away.organizationId,
         homeScore: 0, awayScore: 0,
         periods: Number(newForm.periods), periodMinutes: Number(newForm.periodMinutes),
@@ -2864,7 +2862,6 @@ export default function CompetitionManage() {
             orgName:        snap.orgName ?? null,
             organizationId: m.organizationId ?? null,
             primaryColor:   snap.primaryColor ?? null,
-            shortCode:      null,
             memberStatus:   m.status,
             claimed:        !!m.organizationId,
           }

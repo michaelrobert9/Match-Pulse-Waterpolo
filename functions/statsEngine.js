@@ -266,7 +266,6 @@ async function ensureSlicesFromLineups(db, matches, slices) {
         competitionSeason: c.season ?? null,
         competitionStatus: c.status ?? null,
         teamDisplayName: t.displayName ?? null,
-        teamShortCode: t.shortCode ?? null,
         teamPrimaryColor: t.primaryColor ?? null,
         createdBy: 'system:stats-selfheal',
         createdAt: admin.firestore.FieldValue.serverTimestamp(),

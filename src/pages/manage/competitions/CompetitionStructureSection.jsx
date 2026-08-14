@@ -216,7 +216,7 @@ async function stampResolvedHoldingFixtures({ competition, members, pools, knock
     const m = members.find(x => x.teamId === teamId)
     const snap = m?.displaySnapshot ?? {}
     return { teamId, teamName: snap.teamName ?? teamId, orgName: snap.orgName ?? null,
-      color: snap.primaryColor ?? null, shortCode: snap.shortCode ?? null, orgId: m?.organizationId ?? null }
+      color: snap.primaryColor ?? null, orgId: m?.organizationId ?? null }
   }
 
   let any = false

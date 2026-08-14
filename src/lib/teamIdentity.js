@@ -12,7 +12,7 @@
 // The optional identifier is NEVER merged into the primary line.
 
 import { getTeam, getOrg, peekTeam, peekOrg, prefetchTeams, prefetchOrgs } from './teamCache'
-import { generatedTeamName } from './teamNaming'
+import { generatedTeamName, composeTeamDisplay } from './teamNaming'
 
 // Compose an identity from a (possibly null) team doc, its (possibly null) org
 // doc, and the match-side fallback fields.
@@ -25,12 +25,15 @@ export function buildIdentity({ team, org, fallback }) {
   const teamLabel = team
     ? (generatedTeamName({ ...team, orgGenderProfile: org?.genderProfile }) || team.displayName || fb.teamName || '')
     : (fb.teamName ?? '')
-  // Name prefix: live org name, else the team's denormalised orgName, else the
-  // match's stored org name.
-  const orgName = org?.name ?? team?.orgName ?? fb.orgName ?? null
-  const primary = orgName
-    ? `${orgName} ${teamLabel}`.replace(/\s+/g, ' ').trim()
-    : teamLabel
+  // Name portion, in resolution order: the team's own name (associations and
+  // leagues — the organisation then appears nowhere on the card), else the
+  // org's MATCH name (the short form schools asked for), else the org's full
+  // name, else the denormalised copies.
+  const namePortion = team?.teamName
+    || org?.matchName || org?.name
+    || team?.orgName || fb.orgName || null
+  // "[name] – [level][letter] [gender]"; no division part → name alone.
+  const primary = composeTeamDisplay(namePortion, teamLabel)
   // Logo: apply the same inherit-vs-own rule as resolveTeamProfileIdentity —
   // a team's own logo only when team-level management is on, otherwise the
   // org's logo. Manual opponents fall back to the match-side stored logo.
