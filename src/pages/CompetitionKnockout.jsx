@@ -12,6 +12,8 @@ import {
 } from '../lib/competitionStructure'
 import { matchUrl } from '../lib/slugify'
 import CompetitionNav from '../components/CompetitionNav'
+import { useAuth } from '../contexts/AuthContext'
+import { competitionViewableBy } from '../lib/competitionRules'
 
 function Spinner() {
   return <div className="flex justify-center py-12"><div className="w-5 h-5 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin"/></div>
@@ -20,6 +22,7 @@ function Spinner() {
 export default function CompetitionKnockout() {
   const { id, series, ageGroup, season, competitionSlug } = useParams()
   const [competition, setCompetition] = useState(null)
+  const auth = useAuth()
   const [slots, setSlots] = useState([])
   const [resolved, setResolved] = useState({})
   const [teamNames, setTeamNames] = useState({})
@@ -93,7 +96,8 @@ export default function CompetitionKnockout() {
   }, [id, series, ageGroup, season, competitionSlug])
 
   if (loading) return <Spinner />
-  if (!competition) return <div className="px-4 py-12 text-center text-slate-500 text-sm">Competition not found.</div>
+  if (!competition || !competitionViewableBy(competition, auth))
+    return <div className="px-4 py-12 text-center text-slate-500 text-sm">Competition not found.</div>
 
   // Group slots into ROUNDS, then pair consecutive slots into GAMES (home/away)
   // so each match shows as one card with its score — not two disconnected rows.

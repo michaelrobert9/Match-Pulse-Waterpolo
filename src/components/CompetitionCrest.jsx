@@ -7,17 +7,22 @@ import { monogram } from '../lib/names'
 export default function CompetitionCrest({ competition, size = 40, className = '' }) {
   const [ok, setOk] = useState(true)
   const logo = competition?.logoUrl
+  const color = competition?.primaryColor || '#059669'
   useEffect(() => setOk(true), [logo])
   const showImg = !!logo && ok
   return (
     <div
-      className={`rounded-xl shrink-0 flex items-center justify-center overflow-hidden ${showImg ? 'bg-white border border-slate-200' : 'bg-emerald-50 border border-emerald-100'} ${className}`}
-      style={{ width: size, height: size }}
+      className={`rounded-xl shrink-0 flex items-center justify-center overflow-hidden ${className}`}
+      style={{
+        width: size, height: size,
+        backgroundColor: showImg ? '#fff' : color + '14',
+        border: `1px solid ${showImg ? 'rgba(15,23,42,0.08)' : color + '33'}`,
+      }}
     >
       {showImg
         ? <img src={logo} alt="" className="w-full h-full object-contain" onError={() => setOk(false)} />
-        : <span className="font-display font-black text-emerald-700 leading-none"
-            style={{ fontSize: Math.round(size * 0.32) }}>
+        : <span className="font-display font-black leading-none"
+            style={{ fontSize: Math.round(size * 0.32), color }}>
             {monogram(competition?.name)}
           </span>
       }

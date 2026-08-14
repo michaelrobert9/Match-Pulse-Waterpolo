@@ -18,6 +18,8 @@ import { prefetchMatchTeams } from '../lib/teamIdentity'
 import { MatchTeamIdentity, MatchTeamCrest } from '../components/TeamIdentity'
 import CompetitionNav from '../components/CompetitionNav'
 import { useSeoMeta } from '../lib/useSeoMeta'
+import { useAuth } from '../contexts/AuthContext'
+import { competitionViewableBy } from '../lib/competitionRules'
 
 function Spinner() {
   return <div className="flex justify-center py-12"><div className="w-5 h-5 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin"/></div>
@@ -31,6 +33,7 @@ function fmtShortDate(val) {
 
 export default function CompetitionOverview() {
   const { id, series, ageGroup, season, competitionSlug } = useParams()
+  const auth = useAuth()
   const [competition, setCompetition] = useState(null)
   useSeoMeta({ type: 'competition', entity: competition })
   const [teams,       setTeams]       = useState([])
@@ -77,9 +80,11 @@ export default function CompetitionOverview() {
   }, [id, series, ageGroup, season, competitionSlug])
 
   if (loading) return <Spinner />
-  if (!competition) return <div className="px-4 py-12 text-center text-slate-500 text-sm">Competition not found.</div>
+  if (!competition || !competitionViewableBy(competition, auth))
+    return <div className="px-4 py-12 text-center text-slate-500 text-sm">Competition not found.</div>
 
   const isFestival = competition.type === 'festival'
+  const color = competition.primaryColor || '#059669'
   // Festivals show a focused snapshot: one most-recent result + one next fixture.
   const recentN   = isFestival ? 1 : 3
   const upcomingN = isFestival ? 1 : 3
@@ -178,7 +183,7 @@ export default function CompetitionOverview() {
   })()
 
   return (
-    <div className="max-w-4xl mx-auto pb-8">
+    <div className="max-w-4xl mx-auto pb-8" style={{ '--ca': color }}>
       <CompetitionNav competition={competition} />
 
       <div className="px-4 sm:px-6 lg:px-8 py-5 space-y-6">
@@ -226,7 +231,7 @@ export default function CompetitionOverview() {
               })}
               {knockout.length > 0 && (
                 <Link to={competitionUrl(competition) + '/knockout'}
-                  className="block text-center text-[11px] text-emerald-600 hover:text-emerald-500 py-2.5 border-t border-slate-100 transition-colors">
+                  className="block text-center text-[11px] text-[color:var(--ca)] hover:opacity-80 py-2.5 border-t border-slate-100 transition-colors">
                   Full bracket →
                 </Link>
               )}
@@ -261,7 +266,7 @@ export default function CompetitionOverview() {
                         <span className="text-slate-900 font-black text-xl leading-tight truncate">{name}</span>
                       </div>
                     </div>
-                    <span className="font-mono font-black text-emerald-600 text-lg tabular-nums shrink-0">{row.Pts ?? 0}<span className="text-[10px] font-normal text-slate-400 ml-0.5">pts</span></span>
+                    <span className="font-mono font-black text-[color:var(--ca)] text-lg tabular-nums shrink-0">{row.Pts ?? 0}<span className="text-[10px] font-normal text-slate-400 ml-0.5">pts</span></span>
                   </div>
                 )
                 return (
@@ -270,12 +275,12 @@ export default function CompetitionOverview() {
                       style={{ border: `1.5px solid ${p.ring}` }}>{i + 1}</span>
                     <span className="w-2.5 h-2.5 rounded-sm shrink-0" style={{ backgroundColor: teamColorById[row.teamId] }} />
                     <div className="flex-1 min-w-0 text-slate-900 text-sm font-semibold truncate">{name}</div>
-                    <span className="font-mono font-black text-emerald-600 text-sm tabular-nums shrink-0">{row.Pts ?? 0}<span className="text-[10px] font-normal text-slate-400 ml-0.5">pts</span></span>
+                    <span className="font-mono font-black text-[color:var(--ca)] text-sm tabular-nums shrink-0">{row.Pts ?? 0}<span className="text-[10px] font-normal text-slate-400 ml-0.5">pts</span></span>
                   </div>
                 )
               })}
               <Link to={competitionUrl(competition) + '/standings'}
-                className="block text-center text-[11px] text-emerald-600 hover:text-emerald-500 py-2.5 border-t border-slate-100 transition-colors">
+                className="block text-center text-[11px] text-[color:var(--ca)] hover:opacity-80 py-2.5 border-t border-slate-100 transition-colors">
                 Full final standings →
               </Link>
             </div>
@@ -318,7 +323,7 @@ export default function CompetitionOverview() {
               { value: fixtures.filter(isScheduled).length, label: 'Remaining' },
             ].map(({ value, label }) => (
               <div key={label} className="bg-white rounded-xl border border-slate-200 p-3 text-center shadow-sm">
-                <div className="font-mono font-black text-2xl text-emerald-600 tabular-nums">{value}</div>
+                <div className="font-mono font-black text-2xl text-[color:var(--ca)] tabular-nums">{value}</div>
                 <div className="micro-label mt-0.5">{label}</div>
               </div>
             ))}
@@ -339,7 +344,7 @@ export default function CompetitionOverview() {
                     <div className="micro-label">{player.teamDisplayName} · {player.position}</div>
                   </div>
                   <div className="text-right shrink-0">
-                    <div className="font-mono font-black text-emerald-600 text-xl tabular-nums">{player.goals}</div>
+                    <div className="font-mono font-black text-[color:var(--ca)] text-xl tabular-nums">{player.goals}</div>
                     <div className="micro-label">goals</div>
                   </div>
                 </div>
@@ -402,7 +407,7 @@ export default function CompetitionOverview() {
               ))}
             </div>
             <Link to={competitionUrl(competition) + '/matches'}
-              className="block text-center text-[11px] text-emerald-600 hover:text-emerald-500 mt-3 transition-colors">
+              className="block text-center text-[11px] text-[color:var(--ca)] hover:opacity-80 mt-3 transition-colors">
               All matches →
             </Link>
           </div>
@@ -447,7 +452,7 @@ export default function CompetitionOverview() {
                   <span className="micro-label w-3 text-right shrink-0">{i + 1}</span>
                   <span className="w-2 h-2 rounded-sm shrink-0" style={{ backgroundColor: teamColorById[row.teamId] }} />
                   <span className="text-slate-900 text-xs flex-1 truncate">{row.orgName ? `${row.orgName} ${row.teamName}` : row.teamName}</span>
-                  <span className="font-mono font-bold text-emerald-600 text-xs">{row.Pts ?? 0}pts</span>
+                  <span className="font-mono font-bold text-[color:var(--ca)] text-xs">{row.Pts ?? 0}pts</span>
                 </div>
               ))}
             </div>

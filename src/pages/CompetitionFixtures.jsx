@@ -6,6 +6,8 @@ import { outcomeBanner } from '../lib/fixtureResult'
 import { fetchCompetition, fetchCompetitionFixtures, toDate, fetchCompetitionByPath, fetchCompetitionBySlugSeason } from '../lib/queries'
 import { matchUrl } from '../lib/slugify'
 import CompetitionNav from '../components/CompetitionNav'
+import { useAuth } from '../contexts/AuthContext'
+import { competitionViewableBy } from '../lib/competitionRules'
 import { MatchTeamIdentity } from '../components/TeamIdentity'
 import { prefetchMatchTeams } from '../lib/teamIdentity'
 
@@ -50,6 +52,7 @@ function groupByDay(fixtures) {
 export default function CompetitionFixtures() {
   const { id, series, ageGroup, season, competitionSlug } = useParams()
   const [competition, setCompetition] = useState(null)
+  const auth = useAuth()
   const [fixtures,    setFixtures]    = useState([])
   const [loading,     setLoading]     = useState(true)
 
@@ -72,7 +75,8 @@ export default function CompetitionFixtures() {
   }, [id, series, ageGroup, season, competitionSlug])
 
   if (loading) return <Spinner />
-  if (!competition) return <div className="px-4 py-12 text-center text-slate-500 text-sm">Competition not found.</div>
+  if (!competition || !competitionViewableBy(competition, auth))
+    return <div className="px-4 py-12 text-center text-slate-500 text-sm">Competition not found.</div>
 
   const groups = groupByDay(fixtures)
 

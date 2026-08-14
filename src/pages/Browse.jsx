@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { ChevronRight } from 'lucide-react'
 import { fetchOrganizationsByType, fetchAllCompetitions } from '../lib/queries'
+import { isPubliclyVisible } from '../lib/competitionRules'
 import { orgUrl, competitionUrl } from '../lib/slugify'
 import CompetitionStatusBadge from '../components/CompetitionStatusBadge'
 import { monogram } from '../lib/names'
@@ -92,7 +93,7 @@ export default function Browse() {
     setLoading(true)
     setError(false)
     ;(segment === 'competition' ? fetchAllCompetitions() : fetchOrganizationsByType(segment))
-      .then(setItems)
+      .then(items => setItems(segment === 'competition' ? items.filter(isPubliclyVisible) : items))
       .catch(() => setError(true))
       .finally(() => setLoading(false))
   }, [segment])

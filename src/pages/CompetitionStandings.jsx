@@ -7,6 +7,8 @@ import {
 } from '../lib/queries'
 import { computeStandings } from '../lib/standings'
 import CompetitionNav from '../components/CompetitionNav'
+import { useAuth } from '../contexts/AuthContext'
+import { competitionViewableBy } from '../lib/competitionRules'
 import StandingsTable from '../components/StandingsTable'
 
 function Spinner() {
@@ -35,6 +37,7 @@ function NeutralMessage({ heading, body }) {
 export default function CompetitionStandings() {
   const { id, series, ageGroup, season, competitionSlug } = useParams()
   const [competition, setCompetition] = useState(null)
+  const auth = useAuth()
   const [standingsRows, setStandingsRows] = useState([])
   const [loading, setLoading] = useState(true)
 
@@ -82,7 +85,8 @@ export default function CompetitionStandings() {
   }
 
   if (loading) return <Spinner />
-  if (!competition) return <div className="px-4 py-12 text-center text-slate-500 text-sm">Competition not found.</div>
+  if (!competition || !competitionViewableBy(competition, auth))
+    return <div className="px-4 py-12 text-center text-slate-500 text-sm">Competition not found.</div>
 
   if (competition.type === 'tournament') {
     return (

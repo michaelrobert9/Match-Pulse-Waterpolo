@@ -90,6 +90,27 @@ export function competitionStatus(competition, now = Date.now()) {
   return competitionLifecycle(competition, now)
 }
 
+// A competition is visible to the public only once published. An unpublished
+// competition (published === false) is hidden from every public surface — the
+// competitions list, search, browse and its own detail page. Admins/owners can
+// still reach it (callers pass their own override). Missing/undefined published
+// is treated as published, matching the rest of the app.
+export function isPubliclyVisible(competition) {
+  return competition?.published !== false
+}
+
+// Whether the current viewer may open a competition's detail pages. The public
+// sees it only once published; a platform admin, its owning user, or a member
+// of its owning org may preview it while still unpublished. Pass the value of
+// useAuth() as `auth`.
+export function competitionViewableBy(competition, auth = {}) {
+  if (isPubliclyVisible(competition)) return true
+  if (auth.isPlatformAdmin) return true
+  if (competition?.ownerUserId && competition.ownerUserId === auth.uid) return true
+  if (competition?.ownerOrgId && auth.orgRoles && auth.orgRoles[competition.ownerOrgId]) return true
+  return false
+}
+
 // ── Points ────────────────────────────────────────────────────────────────────
 export const DEFAULT_POINTS = { win: 3, draw: 1, loss: 0 }
 

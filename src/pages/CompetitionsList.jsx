@@ -4,7 +4,7 @@ import { ChevronRight, Plus } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
 import { fetchAllCompetitions } from '../lib/queries'
 import { competitionUrl } from '../lib/slugify'
-import { competitionLifecycle } from '../lib/competitionRules'
+import { competitionLifecycle, isPubliclyVisible } from '../lib/competitionRules'
 import CompetitionStatusBadge from '../components/CompetitionStatusBadge'
 import CompetitionCrest from '../components/CompetitionCrest'
 
@@ -93,6 +93,9 @@ export default function CompetitionsList() {
   const seasons = [...new Set(comps.map(c => c.season).filter(Boolean))].sort().reverse()
 
   const filtered = comps.filter(c => {
+    // Unpublished competitions are hidden from the public list; platform admins
+    // still see them so they can preview before publishing.
+    if (!isPubliclyVisible(c) && !isPlatformAdmin) return false
     if (filterSeason   && c.season   !== filterSeason)   return false
     if (filterGender   && c.gender   !== filterGender)   return false
     if (filterAgeGroup && c.ageGroup !== filterAgeGroup) return false
