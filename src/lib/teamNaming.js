@@ -86,25 +86,32 @@ const CLUB_DIVISION_VALUES = new Set([
   ...CLUB_DIVISIONS.map(d => d.value), 'mixed',
 ])
 // Gender word for a legacy division value, used when rendering un-migrated
-// teams: the gendered divisions map onto the shared gender vocabulary; masters
-// and open have no gender equivalent and keep their own word (flagged for a
-// manual call in the split migration).
+// teams: the gendered divisions map onto the shared gender vocabulary; the
+// legacy masters/open divisions render their rank word until migrated (they
+// are RANKS in the new model — see TEAM_LEVELS — with gender picked per team).
 const DIVISION_GENDER_WORD = {
   men: 'Men', ladies: 'Women', juniorBoys: 'Boys', juniorGirls: 'Girls',
   masters: 'Masters', open: 'Open', mixed: 'Mixed',
 }
 // The division→gender mapping the split migration applies. Exported for the
 // migration script and the lazy migrate-on-edit path. masters/open are absent
-// deliberately — they need a human decision.
+// because they are not genders — the migration moves them onto the level axis
+// (DIVISION_TO_RANK) and the team's gender is picked per team as normal.
 export const DIVISION_TO_GENDER = {
   men: 'men', ladies: 'women', juniorBoys: 'boys', juniorGirls: 'girls', mixed: 'mixed',
 }
+// Legacy masters/open divisions become rank values on the level axis.
+export const DIVISION_TO_RANK = { masters: 'Masters', open: 'Open' }
 
 // ── Level ─────────────────────────────────────────────────────────────────────
-// Senior ordinals, 1st … 10th. Identical for schools, clubs and associations.
+// Senior ordinals, 1st … 10th, plus the Masters and Open rank categories.
+// Masters/Open are AGE/RANK values, not gender exceptions — a Masters or Open
+// team still picks its gender as normal ("Riverside – Masters Men").
+// Identical for schools, clubs and associations.
 export const TEAM_LEVELS = [
   '1st Team', '2nd Team', '3rd Team', '4th Team', '5th Team',
   '6th Team', '7th Team', '8th Team', '9th Team', '10th Team',
+  'Masters', 'Open',
 ]
 // Age-side letters, A … J.
 export const TEAM_LETTERS = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J']
