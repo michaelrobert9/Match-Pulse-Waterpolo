@@ -47,6 +47,7 @@ export default function CompetitionNav({ competition }) {
             className="w-full h-40 sm:h-56 object-cover" />
         </div>
       )}
+      <div className="h-2 bg-gradient-to-r from-emerald-500 to-emerald-400" />
       <div className="px-4 sm:px-6 lg:px-8 pt-4 pb-0">
         <div className="flex items-start justify-between gap-3 mb-3">
           <div className="flex items-start gap-3 min-w-0">

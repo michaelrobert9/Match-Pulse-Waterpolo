@@ -124,7 +124,6 @@ function TeamBlock({ team }) {
 
   return (
     <div className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm">
-      <div className="h-1" style={{ backgroundColor: team.teamPrimaryColor || '#94a3b8' }} />
       <div className="p-4">
         <div className="flex items-center gap-2 mb-3">
           <div className="w-3 h-3 rounded-sm shrink-0"
@@ -225,7 +224,6 @@ function FixtureCard({ match, personId, canSelfRemove, onRemoved }) {
   return (
     <Link to={matchUrl(match)}
       className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm hover:border-slate-300 transition-colors block">
-      <div className="h-1" style={{ backgroundColor: teamColor || '#94a3b8' }} />
       <div className="px-4 py-3">
         <div className="flex items-center justify-between gap-2 mb-2">
           {dateStr && <span className="font-mono text-[10px] text-slate-500">{dateStr}</span>}
