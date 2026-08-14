@@ -204,6 +204,9 @@ export default function OrgDetail({ type }) {
 
       {/* Hero */}
       <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm">
+        {org.bannerUrl && (
+          <img src={org.bannerUrl} alt="" className="w-full h-40 sm:h-56 object-cover" />
+        )}
         <div className="h-2" style={{ background: `linear-gradient(90deg, ${color}, ${secondary})` }} />
         <div className="p-5 flex items-start gap-4">
           <div className="w-16 h-16 rounded-xl flex items-center justify-center shrink-0 overflow-hidden"

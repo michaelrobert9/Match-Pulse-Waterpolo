@@ -632,7 +632,7 @@ function ProfileBanner({ person, canEdit, onSaved }) {
   return (
     <div className="relative">
       {person.bannerUrl ? (
-        <img src={person.bannerUrl} alt="" className="w-full h-32 sm:h-44 object-cover" loading="lazy" />
+        <img src={person.bannerUrl} alt="" className="w-full h-40 sm:h-56 object-cover" loading="lazy" />
       ) : (
         <label className={`flex flex-col items-center justify-center gap-0.5 h-16 border-b border-dashed border-slate-200 cursor-pointer transition-colors ${busy ? 'text-slate-300' : 'text-slate-400 hover:text-emerald-600 hover:bg-emerald-50/50'}`}>
           <span className="text-[11px] font-bold uppercase tracking-widest">{busy ? 'Uploading…' : '+ Add banner image'}</span>

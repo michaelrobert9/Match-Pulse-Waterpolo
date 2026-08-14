@@ -33,15 +33,19 @@ function PlayerCard({ person }) {
     <Link to={playerUrl(person)}
       className="block bg-white rounded-2xl border border-slate-200 overflow-hidden hover:border-slate-300 hover:shadow-md transition-all duration-200 shadow-sm group">
 
-      {/* Banner — dark gradient with centred portrait */}
-      <div className="relative aspect-video overflow-hidden flex items-center justify-center">
-        <div className="absolute inset-0 bg-gradient-to-br from-slate-700 to-slate-900" />
-        <div className="relative w-20 h-20 rounded-full overflow-hidden border-2 border-white/20 shadow-lg bg-slate-600 shrink-0">
+      {/* Banner — the profile banner image (gradient fallback), with the
+          portrait as a bottom-left rounded-square badge, matching the org and
+          competition cards. */}
+      <div className="relative aspect-video overflow-hidden">
+        {person.bannerUrl
+          ? <img src={person.bannerUrl} alt="" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+          : <div className="absolute inset-0 bg-gradient-to-br from-slate-700 to-slate-900" />
+        }
+        {/* Portrait badge — bottom-left */}
+        <div className="absolute bottom-3 left-4 w-12 h-12 rounded-xl bg-white shadow border border-white/80 flex items-center justify-center overflow-hidden shrink-0">
           {hasPhoto
-            ? <img src={person.photoUrl} alt="" className="w-full h-full object-cover object-top group-hover:scale-105 transition-transform duration-500" />
-            : <div className="w-full h-full flex items-center justify-center">
-                <span className="text-2xl font-black text-white/70 leading-none">{initials(person.fullName)}</span>
-              </div>
+            ? <img src={person.photoUrl} alt="" className="w-full h-full object-cover object-top" />
+            : <span className="text-sm font-black font-mono text-slate-500 leading-none">{initials(person.fullName)}</span>
           }
         </div>
       </div>

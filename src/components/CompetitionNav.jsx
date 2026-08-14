@@ -44,7 +44,7 @@ export default function CompetitionNav({ competition }) {
       {competition.bannerUrl && (
         <div className="w-full">
           <img src={competition.bannerUrl} alt=""
-            className="w-full h-32 sm:h-44 object-cover" />
+            className="w-full h-40 sm:h-56 object-cover" />
         </div>
       )}
       <div className="px-4 sm:px-6 lg:px-8 pt-4 pb-0">
