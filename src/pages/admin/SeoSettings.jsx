@@ -4,6 +4,7 @@ import { collection, getDocs, updateDoc, doc } from 'firebase/firestore'
 import { db } from '../../firebase'
 import { fetchSeoSettings, saveSeoSettings, DEFAULT_SEO } from '../../lib/seoSettings'
 import { slugify, matchSlug as buildMatchSlug } from '../../lib/slugify'
+import { matchPath, competitionMatchPath } from '../../lib/matchPaths'
 import { useAuth } from '../../contexts/AuthContext'
 
 function Field({ label, hint, children }) {
@@ -194,10 +195,24 @@ function BackfillMatchSlugs() {
         }
       }
 
+      // Canonical stored path for a match, from whatever URL identity it has.
+      // MatchDetail resolves by the stored `path` field, so a match without one
+      // is unreachable even when its card links look right (pool-generated
+      // fixtures had this gap).
+      const pathFor = (m) => {
+        if (m.competitionId && m.competitionSeason && m.competitionSlug && m.matchSlug) {
+          return competitionMatchPath(String(m.competitionSeason), m.competitionSlug, m.matchSlug)
+        }
+        if (m.matchDate && m.matchSlug) return matchPath(m.matchDate, m.matchSlug)
+        return null
+      }
+
       const needSlug    = allMatches.filter(m => !m.matchSlug)
       const needCompRef = allMatches.filter(m => m.matchSlug && m.competitionId && !m.competitionSlug)
+      const needPath    = allMatches.filter(m => m.matchSlug && !m.path
+        && !needCompRef.includes(m) && pathFor(m))
 
-      if (needSlug.length === 0 && needCompRef.length === 0) {
+      if (needSlug.length === 0 && needCompRef.length === 0 && needPath.length === 0) {
         addLog('All matches already have slugs and competition references — nothing to do.')
         setState('done')
         return
@@ -206,6 +221,9 @@ function BackfillMatchSlugs() {
       addLog(`Found ${needSlug.length} match(es) without a slug.`)
       if (needCompRef.length > 0) {
         addLog(`Found ${needCompRef.length} match(es) missing competitionSlug (will be linked).`)
+      }
+      if (needPath.length > 0) {
+        addLog(`Found ${needPath.length} match(es) with a slug but no stored path (will be repaired).`)
       }
 
       let updated = 0
@@ -234,6 +252,8 @@ function BackfillMatchSlugs() {
           const cSeason = compById[m.competitionId].season || m.season
           if (cSeason) update.competitionSeason = String(cSeason)
         }
+        const p1 = pathFor({ ...m, ...update, matchSlug: slug })
+        if (p1) update.path = p1
 
         addLog(`  "${homeDisplay} vs ${awayDisplay}" → ${slug}${m.season ? ' (' + m.season + ')' : ''}`)
         await updateDoc(doc(db, 'matches', m.id), update)
@@ -246,8 +266,18 @@ function BackfillMatchSlugs() {
         const update = { competitionSlug: comp.slug }
         const cSeason = comp.season || m.season
         if (cSeason) update.competitionSeason = String(cSeason)
+        const p2 = pathFor({ ...m, ...update })
+        if (p2 && !m.path) update.path = p2
         addLog(`  Match ${m.id}: linked to competition ${comp.slug}`)
         await updateDoc(doc(db, 'matches', m.id), update)
+        updated++
+      }
+
+      for (const m of needPath) {
+        const p3 = pathFor(m)
+        if (!p3) continue
+        addLog(`  Match ${m.id}: path → ${p3}`)
+        await updateDoc(doc(db, 'matches', m.id), { path: p3 })
         updated++
       }
 
@@ -264,8 +294,9 @@ function BackfillMatchSlugs() {
       <p className="text-sm text-slate-600">
         Matches created before SEO-friendly URLs were introduced have no slug and show a
         Firebase ID in their URL. This also links any existing matches to their competition's
-        slug (run after backfilling competition slugs above). Safe to run more than once —
-        existing slugs are never changed.
+        slug (run after backfilling competition slugs above), and repairs matches that have a
+        slug but no stored path — pool-generated fixtures whose cards linked to the home page.
+        Safe to run more than once — existing slugs and paths are never changed.
       </p>
       {log.length > 0 && (
         <div className="bg-slate-900 text-slate-100 rounded-xl px-4 py-3 font-mono text-xs leading-relaxed whitespace-pre-wrap max-h-64 overflow-y-auto">
@@ -395,6 +426,14 @@ function BackfillLineupPersonIds() {
       for (const { id, expected, homeTeam, awayTeam } of toUpdate) {
         addLog(`  "${homeTeam ?? 'Home'} vs ${awayTeam ?? 'Away'}" (${id}) → ${expected.length} player id(s)`)
         await updateDoc(doc(db, 'matches', id), { lineupPersonIds: expected })
+        updated++
+      }
+
+      for (const m of needPath) {
+        const p3 = pathFor(m)
+        if (!p3) continue
+        addLog(`  Match ${m.id}: path → ${p3}`)
+        await updateDoc(doc(db, 'matches', m.id), { path: p3 })
         updated++
       }
 

@@ -12,13 +12,22 @@
 
 import { competitionUrl, teamUrl, playerUrl, orgUrl, matchUrl } from './slugify'
 
+// The public origin is environment-configured; in the browser the current
+// origin is the correct fallback, so canonicals and share links always match
+// the domain actually being viewed (the old hardcoded matchpulse.co.za sent
+// copied/shared links to the MAIN site, which has no sport routes and
+// redirects to its home page). VITE_PUBLIC_BASE_URL pins one canonical domain
+// once a custom domain is decided.
+const PUBLIC_ORIGIN = (import.meta.env?.VITE_PUBLIC_BASE_URL || '').replace(/\/$/, '')
+  || (typeof window !== 'undefined' ? window.location.origin : '')
+
 export const SITE = {
-  origin:        'https://matchpulse.co.za',
+  origin:        PUBLIC_ORIGIN,
   name:          'MatchPulse',
   titleSuffix:   ' | MatchPulse',
   defaultTitle:  'MatchPulse — Live Water Polo Scores, Fixtures & Results SA',
   description:   'Follow live scores, fixtures, log tables and player records for South African school and club water polo. Free to follow every competition.',
-  ogImage:       'https://matchpulse.co.za/og-default.png', // export og-default.svg → PNG before deploy
+  ogImage:       `${PUBLIC_ORIGIN}/og-default.png`, // export og-default.svg → PNG before deploy
   twitterCard:   'summary_large_image',
   twitterSite:   '@matchpulse',
   themeColor:    '#059669',
