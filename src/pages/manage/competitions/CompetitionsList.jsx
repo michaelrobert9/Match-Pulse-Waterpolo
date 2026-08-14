@@ -8,6 +8,7 @@ import { orgEntitlementStatus, userEntitlementStatus, bestEntitlement } from '..
 import { competitionStatus } from '../../../lib/competitionRules'
 import { plansUrl } from '../../../lib/mainSite'
 import CompetitionStatusBadge from '../../../components/CompetitionStatusBadge'
+import CompetitionCrest from '../../../components/CompetitionCrest'
 
 const TYPE_ICON = { league: Trophy, tournament: ListOrdered, festival: Sparkles }
 
@@ -192,9 +193,11 @@ export default function CompetitionsManageList() {
               return (
                 <Link key={c.id} to={`/manage/competitions/${c.id}`}
                   className="flex items-center gap-3 bg-white rounded-xl border border-slate-200 px-4 py-3 hover:border-slate-300 transition-colors shadow-sm">
-                  <div className="w-9 h-9 rounded-lg bg-slate-100 flex items-center justify-center shrink-0">
-                    <Icon className="w-4 h-4 text-slate-500" />
-                  </div>
+                  {c.logoUrl
+                    ? <CompetitionCrest competition={c} size={36} className="rounded-lg" />
+                    : <div className="w-9 h-9 rounded-lg bg-slate-100 flex items-center justify-center shrink-0">
+                        <Icon className="w-4 h-4 text-slate-500" />
+                      </div>}
                   <div className="flex-1 min-w-0">
                     <div className="text-slate-900 text-sm font-semibold truncate">{c.name}</div>
                     <div className="text-[11px] text-slate-500">

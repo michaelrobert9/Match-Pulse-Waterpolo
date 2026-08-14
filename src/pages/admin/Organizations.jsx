@@ -9,9 +9,9 @@ import {
 } from '../../lib/adminQueries'
 import { slugify } from '../../lib/slugify'
 import { userDisplayName, userInitial } from '../../lib/names'
+import OrgCrest from '../../components/OrgCrest'
 import { SCHOOL_GENDER_PROFILES } from '../../lib/teamNaming'
 import { useAuth } from '../../contexts/AuthContext'
-import { monogram } from '../../lib/names'
 
 const ORG_TYPES = ['school', 'club', 'association']
 
@@ -128,12 +128,7 @@ function OrgForm({ initial = {}, onSave, onDelete, saving }) {
 
       {/* Preview */}
       <div className="bg-slate-50 rounded-xl p-3 flex items-center gap-3 border border-slate-200">
-        <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0"
-          style={{ backgroundColor: form.primaryColor + '30', border: `2px solid ${form.primaryColor}` }}>
-          <span className="text-[10px] font-bold font-mono" style={{ color: form.primaryColor }}>
-            {monogram(form.name)}
-          </span>
-        </div>
+        <OrgCrest org={form} size={32} />
         <div>
           <div className="text-slate-900 text-sm font-semibold">{form.name || 'Organisation name'}</div>
           <div className="micro-label">{ORG_TYPE_LABELS[form.type] ?? form.type} · {form.region}</div>
@@ -254,12 +249,7 @@ export function OrganizationsList() {
         <div className="space-y-2">
           {visible.map(org => (
             <div key={org.id} className="flex items-center gap-3 bg-white rounded-xl border border-slate-200 px-4 py-3 shadow-sm">
-              <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0"
-                style={{ backgroundColor: (org.primaryColor || '#555') + '20', border: `2px solid ${org.primaryColor || '#555'}` }}>
-                <span className="text-[9px] font-bold font-mono" style={{ color: org.primaryColor || '#555' }}>
-                  {monogram(org.name)}
-                </span>
-              </div>
+              <OrgCrest org={org} size={32} />
               <div className="flex-1 min-w-0">
                 <div className="text-slate-900 text-sm font-semibold truncate">{org.name}</div>
                 <div className="micro-label">{org.region}</div>
