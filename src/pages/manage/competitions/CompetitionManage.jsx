@@ -703,11 +703,12 @@ function BasicCard({ competition, onSaved }) {
   const [uploading, setUploading] = useState(false)
   const [uploadError, setUploadError] = useState('')
   const [form, setForm] = useState({
-    name:      competition.name      ?? '',
-    type:      competition.type      ?? 'league',
-    season:    competition.season    ?? '',
-    logoUrl:   competition.logoUrl   ?? '',
-    bannerUrl: competition.bannerUrl ?? '',
+    name:         competition.name         ?? '',
+    type:         competition.type         ?? 'league',
+    season:       competition.season       ?? '',
+    primaryColor: competition.primaryColor ?? '#059669',
+    logoUrl:      competition.logoUrl      ?? '',
+    bannerUrl:    competition.bannerUrl    ?? '',
   })
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }))
 
@@ -741,11 +742,12 @@ function BasicCard({ competition, onSaved }) {
     setSaving(true)
     try {
       const patch = {
-        name:      form.name.trim(),
-        type:      form.type,
-        season:    form.season,
-        logoUrl:   form.logoUrl.trim() || null,
-        bannerUrl: form.bannerUrl.trim() || null,
+        name:         form.name.trim(),
+        type:         form.type,
+        season:       form.season,
+        primaryColor: form.primaryColor || null,
+        logoUrl:      form.logoUrl.trim() || null,
+        bannerUrl:    form.bannerUrl.trim() || null,
       }
       await updateCompetition(competition.id, patch)
       onSaved({ ...competition, ...patch })
@@ -808,6 +810,16 @@ function BasicCard({ competition, onSaved }) {
               <label className="micro-label block mb-1.5">Season</label>
               <Input value={form.season} onChange={e => set('season', e.target.value)} placeholder="2025" />
             </div>
+          </div>
+          <div>
+            <label className="micro-label block mb-1.5">Colour</label>
+            <div className="flex items-center gap-2">
+              <input type="color" value={form.primaryColor || '#059669'}
+                onChange={e => set('primaryColor', e.target.value)}
+                className="w-10 h-10 rounded cursor-pointer bg-transparent border-0 p-0 shrink-0" />
+              <Input value={form.primaryColor} onChange={e => set('primaryColor', e.target.value)} placeholder="#059669" />
+            </div>
+            <p className="text-[11px] text-slate-400 mt-1">Themes the competition page — the accent bar, tabs and highlights.</p>
           </div>
           <div>
             <label className="micro-label block mb-1.5">Logo</label>

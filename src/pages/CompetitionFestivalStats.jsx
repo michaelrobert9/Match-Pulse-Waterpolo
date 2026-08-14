@@ -9,6 +9,8 @@ import {
 } from '../lib/queries'
 import { computeFestivalStats } from '../lib/standings'
 import CompetitionNav from '../components/CompetitionNav'
+import { useAuth } from '../contexts/AuthContext'
+import { competitionViewableBy } from '../lib/competitionRules'
 import { competitionTeamLabel } from '../lib/teamNaming'
 
 function Spinner() {
@@ -25,6 +27,7 @@ const COLS = [
 export default function CompetitionFestivalStats() {
   const { id, series, ageGroup, season, competitionSlug } = useParams()
   const [competition, setCompetition] = useState(null)
+  const auth = useAuth()
   const [rows, setRows] = useState([])
   const [loading, setLoading] = useState(true)
 
@@ -65,7 +68,8 @@ export default function CompetitionFestivalStats() {
   }, [id, series, ageGroup, season, competitionSlug])
 
   if (loading) return <Spinner />
-  if (!competition) return <div className="px-4 py-12 text-center text-slate-500 text-sm">Competition not found.</div>
+  if (!competition || !competitionViewableBy(competition, auth))
+    return <div className="px-4 py-12 text-center text-slate-500 text-sm">Competition not found.</div>
 
   const enabled = competition.rules?.statsTable?.enabled === true
 
