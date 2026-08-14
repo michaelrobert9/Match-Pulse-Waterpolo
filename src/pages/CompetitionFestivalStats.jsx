@@ -9,6 +9,7 @@ import {
 } from '../lib/queries'
 import { computeFestivalStats } from '../lib/standings'
 import CompetitionNav from '../components/CompetitionNav'
+import { competitionTeamLabel } from '../lib/teamNaming'
 
 function Spinner() {
   return <div className="flex justify-center py-12"><div className="w-5 h-5 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin"/></div>
@@ -97,7 +98,7 @@ export default function CompetitionFestivalStats() {
                     {/* Name zone — wraps freely, with a hard right boundary the
                         data zone can never cross. */}
                     <div className="flex-1 min-w-0 py-3 pr-3">
-                      <span className="text-slate-900 text-sm font-semibold break-words">{r.orgName ? `${r.orgName} ${r.teamName}` : r.teamName}</span>
+                      <span className="text-slate-900 text-sm font-semibold break-words">{competitionTeamLabel({ orgName: r.orgName, teamName: r.teamName })}</span>
                     </div>
                     {/* Data zone — fixed-width block of centred, tabular numbers. */}
                     <div className="flex shrink-0">

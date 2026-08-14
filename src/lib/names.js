@@ -27,7 +27,9 @@ export function userInitial(record) {
 // for display). Takes the first letter of up to `max` words: "Maritzburg
 // College" → "MC", "Fatima" → "F".
 export function monogram(name, max = 3) {
-  const words = String(name ?? '').trim().split(/\s+/).filter(Boolean)
+  // Skip punctuation-only tokens (the "–" separator in "Kearsney – U16A")
+  // so the dash never becomes an initial.
+  const words = String(name ?? '').trim().split(/\s+/).filter(w => /[a-z0-9]/i.test(w))
   if (words.length === 0) return '?'
   return words.slice(0, max).map(w => w[0].toUpperCase()).join('')
 }

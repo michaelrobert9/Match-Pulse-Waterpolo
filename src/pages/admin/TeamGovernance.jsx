@@ -12,7 +12,7 @@ import { AlertTriangle, Check } from 'lucide-react'
 import { fetchTeamsNeedingGovernanceReview, updateTeam } from '../../lib/adminQueries'
 import { fetchOrganization } from '../../lib/queries'
 import {
-  CLUB_DIVISIONS, schoolGenderProfile, generatedTeamName, divisionLabel,
+  TEAM_GENDERS, DIVISION_TO_GENDER, schoolGenderProfile, generatedTeamName, composeTeamDisplay,
 } from '../../lib/teamNaming'
 import { LevelPicker, chipCls, BLANK_LEVEL, levelFieldsOf, levelComplete, levelStateOf } from '../../components/LevelPicker'
 
@@ -37,14 +37,15 @@ function ResolveCard({ team, org, onResolved }) {
 
   const [axis,  setAxis]  = useState(isSchool
     ? (team.gender ?? (asksGender ? '' : (profile ?? '')))
-    : (team.division ?? (CLUB_DIVISIONS.some(d => d.value === team.gender) ? team.gender : '')))
+    : (TEAM_GENDERS.some(d => d.value === team.gender) ? team.gender
+        : (DIVISION_TO_GENDER[team.division ?? team.gender] ?? '')))
   const [level, setLevel] = useState(team.ageGroup || team.teamLevel ? levelStateOf(team) : BLANK_LEVEL)
   const [saving, setSaving] = useState(false)
 
   const effGender = isSchool && !asksGender ? profile : axis
   const fields = isSchool
     ? { gender: effGender || null, ...levelFieldsOf(level) }
-    : { division: axis || null,    ...levelFieldsOf(level) }
+    : { gender: axis || null, division: null, ...levelFieldsOf(level) }
   const preview = generatedTeamName({ ...fields, orgGenderProfile: profile })
   const canSave = !genderUnset && levelComplete(level) && (isSchool ? !!effGender : !!axis)
 
@@ -98,9 +99,9 @@ function ResolveCard({ team, org, onResolved }) {
           )}
           {!isSchool && (
             <div>
-              <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-2">Division</p>
+              <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-2">Gender</p>
               <div className="grid grid-cols-3 gap-1.5">
-                {CLUB_DIVISIONS.map(d => (
+                {TEAM_GENDERS.map(d => (
                   <button type="button" key={d.value} onClick={() => setAxis(d.value)} className={chipCls(axis === d.value)}>{d.label}</button>
                 ))}
               </div>
@@ -113,7 +114,7 @@ function ResolveCard({ team, org, onResolved }) {
 
           {preview && (
             <div className="text-xs text-slate-400">
-              New name: <span className="text-slate-900 font-semibold">{(org?.name ? `${org.name} ` : '') + preview}</span>
+              New name: <span className="text-slate-900 font-semibold">{composeTeamDisplay(team.teamName || org?.matchName || org?.name, preview)}</span>
             </div>
           )}
 

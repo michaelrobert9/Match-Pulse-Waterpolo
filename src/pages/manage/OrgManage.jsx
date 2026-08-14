@@ -22,8 +22,8 @@ import { DeleteOrgModal } from '../admin/Organizations'
 import { toDate } from '../../lib/queries'
 import { userDisplayName, userInitial } from '../../lib/names'
 import {
-  SCHOOL_GENDER_PROFILES, SCHOOL_GENDER_LABEL, CLUB_DIVISIONS,
-  schoolGenderProfile, divisionLabel, generatedTeamName, levelLabel,
+  SCHOOL_GENDER_PROFILES, SCHOOL_GENDER_LABEL, TEAM_GENDERS, DIVISION_TO_GENDER,
+  schoolGenderProfile, generatedTeamName, levelLabel, composeTeamDisplay,
 } from '../../lib/teamNaming'
 import { LevelPicker, chipCls, levelFieldsOf, levelComplete, levelStateOf } from '../../components/LevelPicker'
 import { DEFAULT_PERIODS, DEFAULT_PERIOD_MINUTES, DEFAULT_BREAK_MINUTES } from '../../lib/matchClock'
@@ -125,7 +125,6 @@ function UpcomingFixturesSection({ orgId, org, competitions, teams, matches, set
     id:             null,
     displayName:    org?.name,
     orgName:        null,
-    shortCode:      org?.shortCode,
     primaryColor:   org?.primaryColor || null,
     organizationId: orgId,
   }
@@ -438,8 +437,9 @@ function TeamsSection({ orgId, org, competitions, teams, setTeams, defaultOpen, 
   const [deleteConfirmText, setDeleteConfirmText] = useState('')
 
   // Structured edit state — mirrors the create controls.
-  const [editAxis,  setEditAxis]  = useState('')   // school: boys/girls · club: division value
+  const [editAxis,  setEditAxis]  = useState('')   // school: boys/girls · club/assoc: gender value
   const [editLevel, setEditLevel] = useState(null) // { mode, ordinal, ageGroup, letter }
+  const [editTeamName, setEditTeamName] = useState('') // assoc/league per-team name override
 
   // Team-identity edit state — only editable when team-level management is on.
   // These are display OVERRIDES; when empty the team inherits the org identity.
@@ -449,9 +449,11 @@ function TeamsSection({ orgId, org, competitions, teams, setTeams, defaultOpen, 
   const teamMgmtOn = org?.teamLevelManagement === true
 
   // Create state. `axis` is the school gender (co-ed only) or the club/assoc
-  // division; `level` is the shared level-picker state.
+  // gender; `level` is the shared level-picker state. `newTeamName` is the
+  // association/league per-team name ("Durban Panthers").
   const [axis,  setAxis]  = useState('')
   const [level, setLevel] = useState({ mode: 'senior', ordinal: '', ageGroup: '', letter: '' })
+  const [newTeamName, setNewTeamName] = useState('')
 
   useEffect(() => { if (defaultOpen) setShowAdd(true) }, [defaultOpen])
 
@@ -465,11 +467,18 @@ function TeamsSection({ orgId, org, competitions, teams, setTeams, defaultOpen, 
     ? (asksGender ? axis : profile)
     : null
 
-  // The team's axis field: school → gender (in `gender`); club/assoc → `division`.
+  const isAssoc = orgType === 'association'
+
+  // Gender is a separate stored field for EVERY organisation type — schools
+  // take it from the school (co-ed picks per team); clubs and associations
+  // select from the shared gender list. Divisions are no longer written.
   const createFields = isSchool
     ? { gender: effectiveSchoolGender || null, ...levelFieldsOf(level) }
-    : { division: axis || null,               ...levelFieldsOf(level) }
+    : { gender: axis || null,                  ...levelFieldsOf(level) }
   const previewName = generatedTeamName({ ...createFields, orgGenderProfile: profile })
+  // Full-card preview: [team name → org match name → org name] – [label]
+  const previewFull = composeTeamDisplay(
+    (isAssoc && newTeamName.trim()) || org?.matchName || org?.name, previewName)
   const canAdd = !genderUnset
     && levelComplete(level)
     && (isSchool ? !!effectiveSchoolGender : !!axis)
@@ -477,6 +486,7 @@ function TeamsSection({ orgId, org, competitions, teams, setTeams, defaultOpen, 
   function resetCreate() {
     setAxis('')
     setLevel({ mode: 'senior', ordinal: '', ageGroup: '', letter: '' })
+    setNewTeamName('')
   }
 
   async function handleCreate(e) {
@@ -490,15 +500,16 @@ function TeamsSection({ orgId, org, competitions, teams, setTeams, defaultOpen, 
     setSaving(true)
     setAddError('')
     try {
-      const ref = await createTeam(org, name, createFields)
+      const teamName = isAssoc ? (newTeamName.trim() || null) : null
+      const ref = await createTeam(org, name, { ...createFields, teamName })
       setTeams(prev => [...prev, {
         id: ref.id, organizationId: orgId, orgName: org.name,
         displayName: name,
-        gender: createFields.gender ?? null, division: createFields.division ?? null,
+        ...(teamName ? { teamName } : {}),
+        gender: createFields.gender ?? null, division: null,
         ageGroup: createFields.ageGroup ?? null, teamLevel: createFields.teamLevel ?? null,
         teamLabel: levelLabel(createFields) || null,
-        active: true,
-        shortCode: org.shortCode, primaryColor: org.primaryColor,
+        active: true, primaryColor: org.primaryColor,
         secondaryColor: org.secondaryColor || '#FFFFFF', logoUrl: org.logoUrl || null,
         played: 0, won: 0, drawn: 0, lost: 0, goalsFor: 0, goalsAgainst: 0, points: 0,
       }])
@@ -523,10 +534,15 @@ function TeamsSection({ orgId, org, competitions, teams, setTeams, defaultOpen, 
   function startEdit(team) {
     setEditId(team.id)
     // Axis: school → gender (single-gender schools apply the school's gender);
-    // club/assoc → division.
+    // club/assoc → gender. A legacy division prefills its mapped gender
+    // (men→men, ladies→women, juniorBoys→boys, juniorGirls→girls); masters/
+    // open have no gender equivalent, so the admin picks one on save (that
+    // save completes the division→gender split for the team).
+    const clubAxis = (g) => TEAM_GENDERS.some(o => o.value === g) ? g : (DIVISION_TO_GENDER[g] ?? '')
     setEditAxis(isSchool
       ? (team.gender ?? (asksGender ? '' : (profile ?? '')))
-      : (team.division ?? team.gender ?? ''))
+      : clubAxis(team.gender ?? team.division ?? ''))
+    setEditTeamName(team.teamName ?? '')
     setEditLevel(levelStateOf(team))
     // Identity overrides — stored values are kept even when the toggle is off
     // (hide-not-clear), so they reappear here when editing with the toggle on.
@@ -535,11 +551,13 @@ function TeamsSection({ orgId, org, competitions, teams, setTeams, defaultOpen, 
     setEditBio(team.bio ?? '')
   }
 
-  // Effective gender/division for the edited team, and its structured fields.
+  // Effective gender for the edited team, and its structured fields. Saving a
+  // club/assoc team writes gender and CLEARS any legacy division — the lazy
+  // half of the division→gender split.
   const editGenderEffective = isSchool && !asksGender ? profile : editAxis
   const editFields = isSchool
     ? { gender: editGenderEffective || null, ...levelFieldsOf(editLevel) }
-    : { division: editAxis || null,          ...levelFieldsOf(editLevel) }
+    : { gender: editAxis || null, division: null, ...levelFieldsOf(editLevel) }
   const editPreview = editId
     ? generatedTeamName({ ...editFields, orgGenderProfile: profile })
     : ''
@@ -555,6 +573,9 @@ function TeamsSection({ orgId, org, competitions, teams, setTeams, defaultOpen, 
       (editFields.division  ?? null) !== (team.division  ?? null) ||
       (editFields.ageGroup  ?? null) !== (team.ageGroup  ?? null) ||
       (editFields.teamLevel ?? null) !== (team.teamLevel ?? null)
+    // Assoc/league per-team name — separate from the teamMgmt identity overrides.
+    const teamNameNext    = isAssoc ? (editTeamName.trim() || null) : (team.teamName ?? null)
+    const teamNameChanged = isAssoc && teamNameNext !== (team.teamName ?? null)
 
     // Identity overrides only persist when team-level management is on. Empty
     // string normalises to null (inherit). Bio capped at 140.
@@ -575,7 +596,7 @@ function TeamsSection({ orgId, org, competitions, teams, setTeams, defaultOpen, 
     )
 
     // Nothing changed → just close.
-    if (!structuralChanged && !identityChanged) { setEditId(null); return }
+    if (!structuralChanged && !identityChanged && !teamNameChanged) { setEditId(null); return }
 
     setEditSaving(true)
     try {
@@ -583,6 +604,7 @@ function TeamsSection({ orgId, org, competitions, teams, setTeams, defaultOpen, 
       // structured fields.
       await updateTeam(team.id, {
         ...(structuralChanged ? { ...editFields, orgGenderProfile: profile } : {}),
+        ...(teamNameChanged ? { teamName: teamNameNext } : {}),
         ...(identityChanged ? identityPatch : {}),
       })
       if (structuralChanged) {
@@ -599,6 +621,7 @@ function TeamsSection({ orgId, org, competitions, teams, setTeams, defaultOpen, 
               teamLabel: levelLabel(editFields) || null,
               displayName: name, searchName: name.toLowerCase(),
             } : {}),
+            ...(teamNameChanged ? { teamName: teamNameNext } : {}),
             ...(identityChanged ? identityPatch : {}),
           }
         : t))
@@ -673,12 +696,24 @@ function TeamsSection({ orgId, org, competitions, teams, setTeams, defaultOpen, 
               </div>
             </div>
           ) : (
-            /* ── Club / association: division → level selector ── */
+            /* ── Club / association: (team name for assoc) → gender → level ── */
             <div className="space-y-3">
+              {isAssoc && (
+                <div>
+                  <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-2">Team name</p>
+                  <input type="text" value={newTeamName}
+                    onChange={e => setNewTeamName(e.target.value)}
+                    placeholder="e.g. Durban Panthers"
+                    className="w-full bg-white border border-slate-200 rounded-lg px-3 py-2.5 text-slate-900 text-sm focus:outline-none focus:border-emerald-500 transition-colors" />
+                  <p className="text-[11px] text-slate-500 mt-1">
+                    Shown instead of the organisation on match cards. Leave blank to use the organisation name.
+                  </p>
+                </div>
+              )}
               <div>
-                <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-2">Division</p>
+                <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-2">Gender</p>
                 <div className="grid grid-cols-3 gap-1.5">
-                  {CLUB_DIVISIONS.map(g => (
+                  {TEAM_GENDERS.map(g => (
                     <button type="button" key={g.value} onClick={() => setAxis(g.value)} className={chipCls(axis === g.value)}>
                       {g.label}
                     </button>
@@ -696,7 +731,7 @@ function TeamsSection({ orgId, org, competitions, teams, setTeams, defaultOpen, 
 
           {previewName && (
             <div className="text-xs text-slate-400">
-              Preview: <span className="text-slate-900 font-semibold">{previewName}</span>
+              Preview: <span className="text-slate-900 font-semibold">{previewFull || previewName}</span>
             </div>
           )}
 
@@ -732,7 +767,11 @@ function TeamsSection({ orgId, org, competitions, teams, setTeams, defaultOpen, 
 
       <div className="divide-y divide-slate-200">
         {teams.map(team => {
-          const teamName = generatedTeamName(team) || team.displayName
+          // Pass the org's gender profile so a single-sex school's teams omit
+          // the gender word here too (same rule as every other display), and
+          // lead with the per-team name where one is set (assoc/league).
+          const teamName = composeTeamDisplay(team.teamName,
+            generatedTeamName({ ...team, orgGenderProfile: profile }) || team.displayName)
           return (
           <div key={team.id}>
             <div className={`flex items-center gap-3 px-4 py-3 ${team.active === false ? 'opacity-60' : ''}`}>
@@ -796,10 +835,19 @@ function TeamsSection({ orgId, org, competitions, teams, setTeams, defaultOpen, 
                   </>
                 ) : (
                   <>
+                    {isAssoc && (
+                      <div>
+                        <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-2">Team name</p>
+                        <input type="text" value={editTeamName}
+                          onChange={e => setEditTeamName(e.target.value)}
+                          placeholder="e.g. Durban Panthers"
+                          className="w-full bg-white border border-slate-200 rounded-lg px-3 py-2.5 text-slate-900 text-sm focus:outline-none focus:border-emerald-500 transition-colors" />
+                      </div>
+                    )}
                     <div>
-                      <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-2">Division</p>
+                      <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-2">Gender</p>
                       <div className="grid grid-cols-3 gap-1.5">
-                        {CLUB_DIVISIONS.map(g => (
+                        {TEAM_GENDERS.map(g => (
                           <button type="button" key={g.value} onClick={() => setEditAxis(g.value)} className={chipCls(editAxis === g.value)}>
                             {g.label}
                           </button>
@@ -815,7 +863,11 @@ function TeamsSection({ orgId, org, competitions, teams, setTeams, defaultOpen, 
 
                 {editPreview && (
                   <div className="text-xs text-slate-400">
-                    Preview: <span className="text-slate-900 font-semibold">{(org?.name ? `${org.name} ` : '') + editPreview}</span>
+                    Preview: <span className="text-slate-900 font-semibold">
+                      {composeTeamDisplay(
+                        (isAssoc && editTeamName.trim()) || org?.matchName || org?.name,
+                        editPreview)}
+                    </span>
                   </div>
                 )}
 
@@ -879,7 +931,7 @@ function TeamsSection({ orgId, org, competitions, teams, setTeams, defaultOpen, 
       {deleteTarget && (
         <div className="mx-4 mb-4 bg-red-50 border border-red-200 rounded-xl p-4 space-y-3">
           <div>
-            <p className="text-sm font-semibold text-red-800 mb-0.5">Delete "{generatedTeamName(deleteTarget) || deleteTarget.displayName}"?</p>
+            <p className="text-sm font-semibold text-red-800 mb-0.5">Delete "{composeTeamDisplay(deleteTarget.teamName, generatedTeamName({ ...deleteTarget, orgGenderProfile: profile }) || deleteTarget.displayName)}"?</p>
             <p className="text-xs text-red-700">This cannot be undone. Type <span className="font-mono font-bold">delete</span> to confirm.</p>
           </div>
           <input
@@ -1110,6 +1162,7 @@ function SettingsSection({ org, onSaved }) {
   const [form,   setForm]   = useState({
     name:          org.name           ?? '',
     type:          org.type           ?? 'school',
+    matchName:     org.matchName      ?? '',
     region:        org.region         ?? '',
     primaryColor:  org.primaryColor   ?? '#006B3C',
     secondaryColor:org.secondaryColor ?? '#FFFFFF',
@@ -1161,6 +1214,9 @@ function SettingsSection({ org, onSaved }) {
     try {
       const patch = {
         name:                form.name.trim(),
+        // Short name for match cards; blank falls back to the full name.
+        // Associations/leagues name each team instead, so theirs stays null.
+        matchName:           form.type !== 'association' ? (form.matchName.trim() || null) : null,
         type:                form.type,
         region:              form.region || null,
         primaryColor:        form.primaryColor,
@@ -1193,6 +1249,16 @@ function SettingsSection({ org, onSaved }) {
       <form onSubmit={handleSave} className="px-4 py-4 space-y-3">
         <Input label={`${entityLabel} name`} value={form.name} required
           onChange={e => setForm(f => ({ ...f, name: e.target.value }))} />
+        {form.type !== 'association' && (
+          <div>
+            <Input label="Match name" value={form.matchName}
+              onChange={e => setForm(f => ({ ...f, matchName: e.target.value }))} />
+            <p className="text-[11px] text-slate-500 mt-1">
+              Short name shown on match cards and results (e.g. “Kearsney”).
+              Blank uses the full name.
+            </p>
+          </div>
+        )}
         <div>
           <label className="text-[10px] font-bold uppercase tracking-widest text-slate-500 block mb-1.5">Organisation type</label>
           <select value={form.type} onChange={e => setForm(f => ({ ...f, type: e.target.value }))}

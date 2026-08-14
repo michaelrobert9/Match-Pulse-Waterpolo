@@ -47,6 +47,7 @@ export default function CreateOrg() {
 
   const [type,         setType]         = useState('')
   const [name,         setName]         = useState('')
+  const [matchName,    setMatchName]    = useState('')   // short name for match cards (schools/clubs)
   const [primaryColor, setPrimaryColor] = useState('#006B3C')
   const [genderProfile, setGenderProfile] = useState('')  // schools must pick — no default
   const [description,  setDescription]  = useState('')
@@ -71,6 +72,10 @@ export default function CreateOrg() {
       const ref = await selfCreateOrganization({
         type,
         name:          name.trim(),
+        // Match name: the short form used on match cards ("Kearsney"). Only
+        // schools and clubs are asked; associations/leagues name each team
+        // instead. Blank falls back to the full name everywhere.
+        ...(type !== 'association' ? { matchName: matchName.trim() || null } : {}),
         primaryColor,
         description:   description.trim() || null,
         website:       website.trim() || null,
@@ -135,6 +140,23 @@ export default function CreateOrg() {
             placeholder={namePlaceholder}
             required
           />
+
+          {/* Match name — schools and clubs only. Associations/leagues name
+              each team instead, so they never see this field. */}
+          {type && type !== 'association' && (
+            <div>
+              <Input
+                label="Match name"
+                value={matchName}
+                onChange={e => setMatchName(e.target.value)}
+                placeholder={type === 'school' ? 'e.g. Pretoria Girls' : 'e.g. Crusaders'}
+              />
+              <p className="text-[11px] text-slate-500 mt-1.5">
+                The short name shown on match cards and results — full school names
+                clutter a match card. Leave blank to use the full name.
+              </p>
+            </div>
+          )}
 
           {/* School gender profile */}
           {type === 'school' && (
