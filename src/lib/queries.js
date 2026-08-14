@@ -344,11 +344,13 @@ export async function fetchTeamByOrgPath(orgSlug, teamSeg) {
   if (!org) return { org: null, team: null }
   const teams = await fetchTeamsForOrganization(org.id)
   const full = `${orgSlug}-${teamSeg}`
+  const matchesSeg = s =>
+    s === full || s === teamSeg ||
+    (s?.startsWith(`${orgSlug}-`) && s.slice(orgSlug.length + 1) === teamSeg)
   const team = teams.find(t =>
-    t.slug === full ||
-    t.slug === teamSeg ||
-    (t.slug?.startsWith(`${orgSlug}-`) && t.slug.slice(orgSlug.length + 1) === teamSeg) ||
-    slugify(t.displayName ?? '') === teamSeg
+    matchesSeg(t.slug) ||
+    slugify(t.displayName ?? '') === teamSeg ||
+    (t.previousSlugs ?? []).some(matchesSeg)   // tolerate a slug superseded by a backfill
   ) ?? null
   return { org, team }
 }
@@ -717,7 +719,11 @@ export async function fetchPersonBySlug(slug) {
 
 export async function fetchTeamBySlug(slug) {
   if (!configured) return []
-  const snap = await getDocs(query(collection(db, 'teams'), where('slug', '==', slug)))
+  let snap = await getDocs(query(collection(db, 'teams'), where('slug', '==', slug)))
+  if (snap.empty) {
+    // Tolerate a slug superseded by a backfill so old shared links still resolve.
+    snap = await getDocs(query(collection(db, 'teams'), where('previousSlugs', 'array-contains', slug)))
+  }
   return snap.docs
     .map(d => ({ id: d.id, ...d.data() }))
     .sort((a, b) => String(b.competitionSeason ?? '').localeCompare(String(a.competitionSeason ?? '')))

@@ -532,9 +532,6 @@ export async function createTeam(orgData, displayName, options = {}) {
     teamName = null,
   } = options
   const orgSlug = orgData.slug || slugify(orgData.name)
-  // Always generate a slug. Season-based teams use "{org}-{season}";
-  // non-season teams use "{org}-{displayName}" so every team has a profile URL.
-  const slug = await generateUniqueTeamSlug(orgSlug, season ?? displayName ?? orgSlug)
   const name = displayName || orgData.name
   // Structured naming fields are the source of truth: gender (school) OR
   // division (club/association), plus ageGroup + teamLevel (a letter for age
@@ -544,6 +541,14 @@ export async function createTeam(orgData, displayName, options = {}) {
   const fields = { ageGroup, gender, division, teamLevel }
   const teamLabel     = levelLabel(fields) || null
   const structuralKey = teamStructuralKey(fields) || null
+  // The slug follows the SAME structured rules as the display name. The URL
+  // already carries the org (/{orgSlug}/…), so the team segment is the team's
+  // own identity: the optional per-team name (associations/leagues) plus the
+  // level + gender/division label — i.e. the display name minus the org. Falls
+  // back to the display name / season so every team still gets a unique URL.
+  const slugSegment = [teamName, generatedTeamName({ ...fields, orgGenderProfile: orgData.genderProfile })]
+    .map(s => (s ?? '').trim()).filter(Boolean).join(' ') || name || season || orgSlug
+  const slug = await generateUniqueTeamSlug(orgSlug, slugSegment)
   return addDoc(collection(db, 'teams'), {
     organizationId: orgData.id,
     orgName:        orgData.name,
