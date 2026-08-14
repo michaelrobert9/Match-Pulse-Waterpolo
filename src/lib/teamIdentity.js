@@ -32,8 +32,10 @@ export function buildIdentity({ team, org, fallback }) {
   const namePortion = team?.teamName
     || org?.matchName || org?.name
     || team?.orgName || fb.orgName || null
-  // "[name] – [level][letter] [gender]"; no division part → name alone.
-  const primary = composeTeamDisplay(namePortion, teamLabel)
+  // "[name] – [level][letter] [gender]"; no division part → name alone. A
+  // snapshotted match display (the frozen H1) wins when present, so the match
+  // header and its URL derive from one frozen string.
+  const primary = fb.display || composeTeamDisplay(namePortion, teamLabel)
   // Logo: apply the same inherit-vs-own rule as resolveTeamProfileIdentity —
   // a team's own logo only when team-level management is on, otherwise the
   // org's logo. Manual opponents fall back to the match-side stored logo.
@@ -74,6 +76,9 @@ export function resolveTeamProfileIdentity(team, org) {
 
 function sideFallback(match, side) {
   return {
+    // Frozen composed name (the "H1") snapshotted on the match at creation. When
+    // present it IS the display name — independent of where org data lives later.
+    display:   match[`${side}Display`] ?? null,
     teamName:  match[`${side}TeamName`],
     orgName:   match[`${side}OrgName`],
     orgSlug:   match[`${side}OrgSlug`] ?? null,

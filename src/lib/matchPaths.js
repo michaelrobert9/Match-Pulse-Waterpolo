@@ -29,19 +29,6 @@ export function pairSlug(homeName, awayName) {
   return `${slugify(homeName)}-vs-${slugify(awayName)}`
 }
 
-// Name used for a team side inside a match slug. The org's match-name/name is
-// folded in front of the team label, so a school-vs-school slug is meaningful
-// ("kearsney-u13a-vs-hilton-u13a") instead of label-only ("u13a-vs-u13a").
-// Frozen into the slug at creation — a later rename never rewrites the stored
-// path. Falls back to the label (or org) alone when one part is missing
-// (e.g. manual opponents). Accepts a team object or a { orgName, displayName }.
-export function matchSideName(side = {}) {
-  const org   = String(side.matchName || side.orgName || '').trim()
-  const label = String(side.displayName || side.teamName || side.name || '').trim()
-  if (org && label && !label.toLowerCase().includes(org.toLowerCase())) return `${org} ${label}`
-  return label || org || 'team'
-}
-
 // Age slug: lowercase, no spaces. "U16B" → "u16b", "1st Team" → "1st-team".
 // A gender prefix is added by the caller ONLY when a group spans both genders
 // (e.g. "girls-u14a"); leave it off for a single-gender group.
