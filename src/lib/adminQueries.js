@@ -3126,7 +3126,16 @@ export async function generatePoolFixtures(competitionId, poolId, options = {}) 
   }
 
   // Batch-write all match docs + fixture membership docs atomically
-  const seasonStr  = season ? String(season) : null
+  const seasonStr  = season ? String(season) : (competition.season ? String(competition.season) : null)
+  const compSlug   = competition.slug || null
+  // URL identity: every generated fixture gets a matchSlug (unique within the
+  // competition, including within this batch) and — when the competition has a
+  // slug + season — the competitionSlug/Season fields and the canonical path.
+  // Without these, matchUrl() falls through to '/' and the fixture card links
+  // to the home page, and MatchDetail (which resolves by stored `path`) can
+  // never find the match.
+  const slugSnap   = await getDocs(query(collection(db, 'matches'), where('competitionId', '==', competitionId)))
+  const takenSlugs = new Set(slugSnap.docs.map(d => d.data().matchSlug).filter(Boolean))
   const batchWrite = writeBatch(db)
   const createdIds = []
 
@@ -3146,9 +3155,18 @@ export async function generatePoolFixtures(competitionId, poolId, options = {}) 
     const scheduledAt = assignment ? new Date(assignment.startMs) : null
     const pitch       = assignment?.fieldName ?? ''
 
+    const matchSlug = dedupeSlug(buildMatchSlug(homeTeamName, awayTeamName), takenSlugs)
+    takenSlugs.add(matchSlug)
+
     const matchRef = doc(collection(db, 'matches'))
     batchWrite.set(matchRef, {
       competitionId,
+      matchSlug,
+      ...(compSlug && seasonStr ? {
+        competitionSlug:   compSlug,
+        competitionSeason: seasonStr,
+        path: competitionMatchPath(seasonStr, compSlug, matchSlug),
+      } : {}),
       ownerOrgId:        ownerOrgId ?? null,
       homeTeamId:        homeSlot.teamId ?? null,
       homeTeamName,
