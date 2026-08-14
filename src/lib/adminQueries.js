@@ -6,7 +6,7 @@ import {
 import { httpsCallable } from 'firebase/functions'
 import { db, auth, functions } from '../firebase'
 import { slugify, matchSlug as buildMatchSlug } from './slugify'
-import { matchPath, competitionMatchPath, dedupeSlug } from './matchPaths'
+import { matchPath, competitionMatchPath, dedupeSlug, matchSideName } from './matchPaths'
 import { redirectKey } from './queries'
 import { periodLabels, DEFAULT_PERIODS, DEFAULT_PERIOD_MINUTES, DEFAULT_BREAK_MINUTES } from './matchClock'
 import { generatedTeamName, teamStructuralKey, levelLabel } from './teamNaming'
@@ -729,7 +729,9 @@ export async function swapFixtureSides(matchId) {
   const newHomeName = m.awayTeamName ?? ''
   const newAwayName = m.homeTeamName ?? ''
   const seasonStr = m.competitionSeason ? String(m.competitionSeason) : (m.season ? String(m.season) : null)
-  const baseSlug  = buildMatchSlug(newHomeName, newAwayName)
+  const baseSlug  = buildMatchSlug(
+    matchSideName({ orgName: m.awayOrgName, displayName: newHomeName }),
+    matchSideName({ orgName: m.homeOrgName, displayName: newAwayName }))
   const matchSlug = seasonStr
     ? await generateUniqueMatchSlug(seasonStr, baseSlug)
     : await generateUniqueMatchSlugGlobal(baseSlug)
@@ -879,7 +881,7 @@ export async function createMatch(competitionId, homeTeam, awayTeam, {
   indoor = false,
 }) {
   const seasonStr = season ? String(season) : null
-  const baseSlug  = buildMatchSlug(homeTeam.displayName, awayTeam.displayName)
+  const baseSlug  = buildMatchSlug(matchSideName(homeTeam), matchSideName(awayTeam))
 
   // The canonical URL depends on whether this match belongs to a competition.
   // Competition matches are competition-scoped and dateless
@@ -1177,7 +1179,9 @@ export async function deleteMatchGroup(groupId, mode = 'cascade') {
     for (const cSnap of kids) {
       const c = cSnap.data()
       const taken = takenByDate.get(c.matchDate) ?? new Set()
-      const slug = dedupeSlug(buildMatchSlug(c.homeTeamName ?? 'home', c.awayTeamName ?? 'away'), taken)
+      const slug = dedupeSlug(buildMatchSlug(
+        matchSideName({ orgName: c.homeOrgName, displayName: c.homeTeamName ?? 'home' }),
+        matchSideName({ orgName: c.awayOrgName, displayName: c.awayTeamName ?? 'away' })), taken)
       taken.add(slug)
       const newPath = matchPath(c.matchDate, slug)
       batch.update(cSnap.ref, {
@@ -2489,7 +2493,7 @@ export async function generateRoundRobinFixtures(competitionId, teams, options =
   const createdIds = []
 
   for (const [home, away] of pairs) {
-    const baseSlug  = buildMatchSlug(home.displayName, away.displayName)
+    const baseSlug  = buildMatchSlug(matchSideName(home), matchSideName(away))
     const matchSlug = seasonStr
       ? await generateUniqueMatchSlug(seasonStr, baseSlug)
       : await generateUniqueMatchSlugGlobal(baseSlug)
@@ -3160,7 +3164,9 @@ export async function generatePoolFixtures(competitionId, poolId, options = {}) 
     const scheduledAt = assignment ? new Date(assignment.startMs) : null
     const pitch       = assignment?.fieldName ?? ''
 
-    const matchSlug = dedupeSlug(buildMatchSlug(homeTeamName, awayTeamName), takenSlugs)
+    const matchSlug = dedupeSlug(buildMatchSlug(
+      matchSideName({ orgName: homeSnap.orgName, displayName: homeTeamName }),
+      matchSideName({ orgName: awaySnap.orgName, displayName: awayTeamName })), takenSlugs)
     takenSlugs.add(matchSlug)
 
     const matchRef = doc(collection(db, 'matches'))
