@@ -33,6 +33,7 @@ import OpponentSelector from '../../components/OpponentSelector'
 import FormatSelector from '../../components/FormatSelector'
 import { MatchTeamIdentity, MatchVersus } from '../../components/TeamIdentity'
 import { prefetchMatchTeams } from '../../lib/teamIdentity'
+import TeamListCrest from '../../components/TeamListCrest'
 import { monogram } from '../../lib/names'
 import { orgEntitlementStatus, userEntitlementStatus, bestEntitlement } from '../../lib/entitlement'
 import SquadManager from '../../components/SquadManager'
@@ -775,12 +776,7 @@ function TeamsSection({ orgId, org, competitions, teams, setTeams, defaultOpen, 
           return (
           <div key={team.id}>
             <div className={`flex items-center gap-3 px-4 py-3 ${team.active === false ? 'opacity-60' : ''}`}>
-              <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0"
-                style={{ backgroundColor: (team.primaryColor || '#333') + '25', border: `2px solid ${team.primaryColor || '#333'}` }}>
-                <span className="text-[9px] font-bold font-mono" style={{ color: team.primaryColor || '#aaa' }}>
-                  {monogram(teamName)}
-                </span>
-              </div>
+              <TeamListCrest team={team} org={org} name={teamName} size={32} />
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2">
                   <span className="text-slate-900 text-sm font-semibold truncate">{teamName}</span>
