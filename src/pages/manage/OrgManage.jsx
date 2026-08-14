@@ -776,7 +776,7 @@ function TeamsSection({ orgId, org, competitions, teams, setTeams, defaultOpen, 
           return (
           <div key={team.id}>
             <div className={`flex items-center gap-3 px-4 py-3 ${team.active === false ? 'opacity-60' : ''}`}>
-              <TeamListCrest team={team} org={org} name={teamName} size={32} />
+              <TeamListCrest team={team} org={org} name={teamName} size={36} />
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2">
                   <span className="text-slate-900 text-sm font-semibold truncate">{teamName}</span>
