@@ -671,23 +671,32 @@ service cloud.firestore {
       allow read: if true;
 
       // Create a NEW redirect (no doc there yet — squatting a currently-404 path
-      // is accepted): an owner/org-wide staffer, /match/-scoped both ways, stamped
-      // with their own org.
+      // is accepted). Two authorities:
+      //   • an owner/org-wide staffer for standalone /match/ paths, or
+      //   • a competition administrator for /competitions/ paths (stamped with the
+      //     competitionId the redirect belongs to).
       allow create: if isPlatformAdmin()
         || (isOrgOwnerOrStaff(request.resource.data.get('ownerOrgId', ''))
             && request.resource.data.get('fromPath', '').matches('^/match/.*')
-            && request.resource.data.get('toPath', '').matches('^/match/.*'));
+            && request.resource.data.get('toPath', '').matches('^/match/.*'))
+        || (canAdministerCompetition(request.resource.data.get('competitionId', ''))
+            && request.resource.data.get('fromPath', '').matches('^/competitions/.*')
+            && request.resource.data.get('toPath', '').matches('^/competitions/.*'));
 
-      // OVERWRITE an existing redirect: authority comes from the EXISTING doc's
-      // ownerOrgId (resource.data), NOT the incoming stamp — otherwise any org's
-      // staffer could repoint another school's live redirect by stamping their own
-      // org. The owner may not hand it to a different org either (ownerOrgId is
-      // immutable here), and it stays /match/-scoped.
+      // OVERWRITE an existing redirect: authority comes from the EXISTING doc
+      // (resource.data), NOT the incoming stamp — otherwise any org's staffer could
+      // repoint another school's live redirect by stamping their own org. Identity
+      // fields (ownerOrgId / competitionId) are immutable here, and paths stay
+      // within their scope (/match/ for org, /competitions/ for competition admins).
       allow update: if isPlatformAdmin()
         || (isOrgOwnerOrStaff(resource.data.get('ownerOrgId', ''))
             && request.resource.data.get('ownerOrgId', '') == resource.data.get('ownerOrgId', '')
             && request.resource.data.get('fromPath', '').matches('^/match/.*')
-            && request.resource.data.get('toPath', '').matches('^/match/.*'));
+            && request.resource.data.get('toPath', '').matches('^/match/.*'))
+        || (canAdministerCompetition(resource.data.get('competitionId', ''))
+            && request.resource.data.get('competitionId', '') == resource.data.get('competitionId', '')
+            && request.resource.data.get('fromPath', '').matches('^/competitions/.*')
+            && request.resource.data.get('toPath', '').matches('^/competitions/.*'));
 
       allow delete: if isPlatformAdmin();
     }

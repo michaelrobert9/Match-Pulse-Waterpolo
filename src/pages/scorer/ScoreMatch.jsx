@@ -959,9 +959,14 @@ export default function ScoreMatch() {
       // — so rebuild the group-child path, not a standalone one. A standalone /
       // competition match rebuilds via matchUrl as before. Either way, redirect the
       // old path → new so links shared before the rename keep resolving.
+      // The slug is normally re-derived automatically from the teams / date
+      // (updateMatch does that + the old→new redirect). Only force it here when
+      // the admin MANUALLY typed a different slug — then updateMatch defers to
+      // our explicit path.
       let redirectFrom = null
       const cleanSlug = slugify(editForm.matchSlug || '')
-      if (cleanSlug) {
+      const currentSlug = match.matchGroupId ? (match.ageSlug || '') : (match.matchSlug || '')
+      if (cleanSlug && cleanSlug !== currentSlug) {
         if (match.matchGroupId) {
           const newPath = matchPath(match.matchDate, match.matchSlug, cleanSlug)
           if (match.path && match.path !== newPath) redirectFrom = match.path
@@ -978,7 +983,7 @@ export default function ScoreMatch() {
       }
       await updateMatch(id, patch)
       if (redirectFrom && patch.path) {
-        await writeMatchRedirect(redirectFrom, patch.path, match.homeOrgId ?? null).catch(() => {})
+        await writeMatchRedirect(redirectFrom, patch.path, match.homeOrgId ?? null, match.competitionId ?? null).catch(() => {})
       }
       // If teams changed: reset lineup cache and keep the competition's
       // fixture-membership doc in sync so standings/stats use correct IDs.
