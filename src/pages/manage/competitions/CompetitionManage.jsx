@@ -793,6 +793,13 @@ function BasicCard({ competition, onSaved }) {
               {competition.published ? 'Published' : 'Private'}
             </dd>
           </div>
+          <div>
+            <dt className="micro-label">Colour</dt>
+            <dd className="mt-0.5 flex items-center gap-2">
+              <span className="w-4 h-4 rounded shrink-0 border border-slate-200" style={{ backgroundColor: competition.primaryColor || '#059669' }} />
+              <span className="text-slate-900 font-medium">{competition.primaryColor || '#059669'}</span>
+            </dd>
+          </div>
         </dl>
       ) : (
         <div className="space-y-3">

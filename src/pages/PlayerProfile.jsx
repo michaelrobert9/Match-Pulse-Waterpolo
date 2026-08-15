@@ -124,6 +124,7 @@ function TeamBlock({ team }) {
 
   return (
     <div className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm">
+      <div className="h-1" style={{ backgroundColor: team.teamPrimaryColor || '#94a3b8' }} />
       <div className="p-4">
         <div className="flex items-center gap-2 mb-3">
           <div className="w-3 h-3 rounded-sm shrink-0"
@@ -224,6 +225,7 @@ function FixtureCard({ match, personId, canSelfRemove, onRemoved }) {
   return (
     <Link to={matchUrl(match)}
       className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm hover:border-slate-300 transition-colors block">
+      <div className="h-1" style={{ backgroundColor: teamColor || '#94a3b8' }} />
       <div className="px-4 py-3">
         <div className="flex items-center justify-between gap-2 mb-2">
           {dateStr && <span className="font-mono text-[10px] text-slate-500">{dateStr}</span>}
@@ -372,8 +374,7 @@ export default function PlayerProfile() {
       <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm">
         {!isUnclaimedTeamSheet && (
           <ProfileBanner person={person} canEdit={canEditBanner}
-            onSaved={url => setPerson(p => ({ ...p, bannerUrl: url }))}
-            onColorSaved={c => setPerson(p => ({ ...p, primaryColor: c }))} />
+            onSaved={url => setPerson(p => ({ ...p, bannerUrl: url }))} />
         )}
         <div className="h-2" style={{ backgroundColor: accent }} />
         <div className="p-5 flex items-start gap-4">
@@ -608,17 +609,9 @@ function ProfilePhoto({ person, canEdit, initials, onSaved }) {
 // Profile banner: a wide hero image at the top of the player card. The player
 // (owner/guardian/manager) or a platform admin can upload one — stored at
 // player-banners/{personId}, attached to the person doc as bannerUrl.
-function ProfileBanner({ person, canEdit, onSaved, onColorSaved }) {
+function ProfileBanner({ person, canEdit, onSaved }) {
   const [busy, setBusy] = useState(false)
   const [err, setErr]   = useState('')
-
-  async function handleColor(e) {
-    const value = e.target.value
-    try {
-      await updatePerson(person.id, { primaryColor: value })
-      onColorSaved?.(value)
-    } catch { /* leave the previous colour on failure */ }
-  }
 
   async function handleUpload(e) {
     const file = e.target.files?.[0]
@@ -653,14 +646,6 @@ function ProfileBanner({ person, canEdit, onSaved, onColorSaved }) {
         <label className="absolute bottom-2 right-2 bg-white/90 hover:bg-white border border-slate-200 rounded-lg px-2.5 py-1 text-[10px] font-bold uppercase tracking-widest text-slate-600 cursor-pointer shadow-sm">
           {busy ? 'Uploading…' : 'Change banner'}
           <input type="file" accept="image/*" className="hidden" disabled={busy} onChange={handleUpload} />
-        </label>
-      )}
-      {canEdit && (
-        <label className="absolute top-2 right-2 flex items-center gap-1.5 bg-white/90 hover:bg-white border border-slate-200 rounded-lg px-2 py-1 cursor-pointer shadow-sm"
-          title="Profile colour — themes the accent bar and highlights">
-          <span className="w-3.5 h-3.5 rounded-sm border border-slate-300 shrink-0" style={{ backgroundColor: person.primaryColor || '#059669' }} />
-          <span className="text-[10px] font-bold uppercase tracking-widest text-slate-600">Colour</span>
-          <input type="color" value={person.primaryColor || '#059669'} onChange={handleColor} className="sr-only" />
         </label>
       )}
       {err && <p className="absolute bottom-2 left-2 text-[11px] text-red-600 bg-white/90 rounded px-2 py-0.5">{err}</p>}

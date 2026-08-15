@@ -4,6 +4,7 @@ import { collection, getDocs, updateDoc, doc } from 'firebase/firestore'
 import { db } from '../../firebase'
 import { fetchSeoSettings, saveSeoSettings, DEFAULT_SEO } from '../../lib/seoSettings'
 import { slugify, matchSlug as buildMatchSlug } from '../../lib/slugify'
+import { composeTeamDisplay } from '../../lib/teamNaming'
 import { matchPath, competitionMatchPath } from '../../lib/matchPaths'
 import { useAuth } from '../../contexts/AuthContext'
 
@@ -229,13 +230,9 @@ function BackfillMatchSlugs() {
       let updated = 0
 
       for (const m of needSlug) {
-        const homeDisplay = m.homeOrgName
-          ? `${m.homeOrgName} ${m.homeTeamName || ''}`.trim()
-          : (m.homeTeamName || 'home')
-        const awayDisplay = m.awayOrgName
-          ? `${m.awayOrgName} ${m.awayTeamName || ''}`.trim()
-          : (m.awayTeamName || 'away')
-        const base      = buildMatchSlug(homeDisplay, awayDisplay)
+        const homeDisplay = composeTeamDisplay(m.homeOrgName, m.homeTeamName || 'home')
+        const awayDisplay = composeTeamDisplay(m.awayOrgName, m.awayTeamName || 'away')
+        const base = buildMatchSlug(homeDisplay, awayDisplay)
         const seasonKey = m.season ? String(m.season) : '__unseasoned__'
         if (!taken.has(seasonKey)) taken.set(seasonKey, new Set())
         const seasonTaken = taken.get(seasonKey)
@@ -245,7 +242,7 @@ function BackfillMatchSlugs() {
         while (seasonTaken.has(slug)) slug = `${base}-${n++}`
         seasonTaken.add(slug)
 
-        const update = { matchSlug: slug }
+        const update = { matchSlug: slug, homeDisplay, awayDisplay }
         if (m.season) update.season = String(m.season)
         if (m.competitionId && compById[m.competitionId]?.slug) {
           update.competitionSlug = compById[m.competitionId].slug

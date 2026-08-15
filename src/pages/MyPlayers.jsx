@@ -268,6 +268,7 @@ function QuickEdit({ person, onUpdated }) {
     position:   person.position   ?? 'Mid',
     sahaNumber: person.sahaNumber ?? '',
     photoUrl:   person.photoUrl   ?? '',
+    primaryColor: person.primaryColor ?? '#059669',
   })
   const [saving, setSaving] = useState(false)
   const [saved,  setSaved]  = useState(false)
@@ -295,6 +296,14 @@ function QuickEdit({ person, onUpdated }) {
       </div>
       <Input type="url" value={form.photoUrl} placeholder="Photo URL (optional)"
         onChange={e => setForm(f => ({ ...f, photoUrl: e.target.value }))} />
+      <div className="flex items-center gap-2 mb-2">
+        <label className="text-[11px] font-bold uppercase tracking-widest text-slate-500 shrink-0">Colour</label>
+        <input type="color" value={form.primaryColor || '#059669'}
+          onChange={e => setForm(f => ({ ...f, primaryColor: e.target.value }))}
+          className="w-9 h-9 rounded cursor-pointer bg-transparent border-0 p-0 shrink-0" />
+        <Input value={form.primaryColor} placeholder="#059669"
+          onChange={e => setForm(f => ({ ...f, primaryColor: e.target.value }))} />
+      </div>
       <button onClick={handleSave} disabled={saving}
         className="mt-2 w-full bg-white border border-slate-300 hover:border-slate-400 disabled:opacity-50 text-slate-700 font-bold text-xs uppercase tracking-wider rounded-lg py-2 transition-colors">
         {saved ? '✓ Saved' : saving ? 'Saving…' : 'Save details'}

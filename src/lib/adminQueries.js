@@ -9,7 +9,7 @@ import { slugify, matchSlug as buildMatchSlug } from './slugify'
 import { matchPath, competitionMatchPath, dedupeSlug } from './matchPaths'
 import { redirectKey } from './queries'
 import { periodLabels, DEFAULT_PERIODS, DEFAULT_PERIOD_MINUTES, DEFAULT_BREAK_MINUTES } from './matchClock'
-import { generatedTeamName, teamStructuralKey, levelLabel } from './teamNaming'
+import { generatedTeamName, teamStructuralKey, levelLabel, composeTeamDisplay } from './teamNaming'
 import { defaultRulesForType, rulesHash } from './competitionRules'
 import { assertCanAdministerCompetition } from './competitionAuth'
 import { schedulePoolFixtures } from './scheduler'
@@ -532,9 +532,6 @@ export async function createTeam(orgData, displayName, options = {}) {
     teamName = null,
   } = options
   const orgSlug = orgData.slug || slugify(orgData.name)
-  // Always generate a slug. Season-based teams use "{org}-{season}";
-  // non-season teams use "{org}-{displayName}" so every team has a profile URL.
-  const slug = await generateUniqueTeamSlug(orgSlug, season ?? displayName ?? orgSlug)
   const name = displayName || orgData.name
   // Structured naming fields are the source of truth: gender (school) OR
   // division (club/association), plus ageGroup + teamLevel (a letter for age
@@ -544,6 +541,14 @@ export async function createTeam(orgData, displayName, options = {}) {
   const fields = { ageGroup, gender, division, teamLevel }
   const teamLabel     = levelLabel(fields) || null
   const structuralKey = teamStructuralKey(fields) || null
+  // The slug follows the SAME structured rules as the display name. The URL
+  // already carries the org (/{orgSlug}/…), so the team segment is the team's
+  // own identity: the optional per-team name (associations/leagues) plus the
+  // level + gender/division label — i.e. the display name minus the org. Falls
+  // back to the display name / season so every team still gets a unique URL.
+  const slugSegment = [teamName, generatedTeamName({ ...fields, orgGenderProfile: orgData.genderProfile })]
+    .map(s => (s ?? '').trim()).filter(Boolean).join(' ') || name || season || orgSlug
+  const slug = await generateUniqueTeamSlug(orgSlug, slugSegment)
   return addDoc(collection(db, 'teams'), {
     organizationId: orgData.id,
     orgName:        orgData.name,
@@ -724,10 +729,11 @@ export async function swapFixtureSides(matchId) {
   const newHomeName = m.awayTeamName ?? ''
   const newAwayName = m.homeTeamName ?? ''
   const seasonStr = m.competitionSeason ? String(m.competitionSeason) : (m.season ? String(m.season) : null)
-  const baseSlug  = buildMatchSlug(newHomeName, newAwayName)
-  const matchSlug = seasonStr
-    ? await generateUniqueMatchSlug(seasonStr, baseSlug)
-    : await generateUniqueMatchSlugGlobal(baseSlug)
+  const newHomeDisplay = m.awayDisplay ?? composeTeamDisplay(m.awayOrgName, m.awayTeamName)
+  const newAwayDisplay = m.homeDisplay ?? composeTeamDisplay(m.homeOrgName, m.homeTeamName)
+  // Re-derive slug + path from the swapped H1 and redirect the old URL.
+  const restamp   = await computeMatchRestamp(m, { homeDisplay: newHomeDisplay, awayDisplay: newAwayDisplay })
+  const matchSlug = restamp?.patch.matchSlug ?? m.matchSlug
 
   const patch = {
     homeTeamId: m.awayTeamId ?? null, homeTeamName: m.awayTeamName ?? null, homeTeamColor: m.awayTeamColor ?? null,
@@ -736,9 +742,11 @@ export async function swapFixtureSides(matchId) {
     awayTeamId: m.homeTeamId ?? null, awayTeamName: m.homeTeamName ?? null, awayTeamColor: m.homeTeamColor ?? null,
     awayTeamSlug: m.homeTeamSlug ?? null,
     awayOrgId: m.homeOrgId ?? null, awayOrgName: m.homeOrgName ?? null, awayRegistered: !!m.homeRegistered,
+    homeDisplay: newHomeDisplay, awayDisplay: newAwayDisplay,
     homeScore: m.awayScore ?? 0, awayScore: m.homeScore ?? 0,
     goals: flipSide(m.goals ?? []), cards: flipSide(m.cards ?? []),
     matchSlug,
+    ...(restamp?.patch.path ? { path: restamp.patch.path } : {}),
     updatedBy: uid(), updatedAt: serverTimestamp(),
   }
   if (m.shootoutHome != null || m.shootoutAway != null) {
@@ -755,6 +763,9 @@ export async function swapFixtureSides(matchId) {
     patch.playoffAwaySlotId = m.playoffHomeSlotId ?? null
   }
   await updateDoc(ref, patch)
+  if (restamp?.redirect) {
+    await writeMatchRedirect(restamp.redirect.from, restamp.redirect.to, m.homeOrgId ?? null, m.competitionId ?? null).catch(() => {})
+  }
   if (m.competitionId) {
     await syncFixtureMembership(matchId, m.competitionId, { homeTeamId: patch.homeTeamId, awayTeamId: patch.awayTeamId }).catch(() => {})
     await addCompetitionAuditEvent(m.competitionId, { eventType: 'fixture_sides_swapped', after: { matchId, matchSlug } }).catch(() => {})
@@ -867,6 +878,32 @@ async function generateUniqueCompetitionMatchSlug(competitionId, base) {
   return dedupeSlug(base, taken)
 }
 
+// Re-derive a match's URL identity (matchSlug + path) from its current team
+// displays (the H1) and date, returning the fields to patch plus an old→new
+// redirect pair when the path actually moved. Standalone matches keep the date
+// in the path; competition matches are dateless. Knockout/playoff fixtures use a
+// stable round-name slug and must NOT be re-stamped through here. Returns null
+// when nothing meaningful changed or a standalone path can't be built (no date).
+async function computeMatchRestamp(m, { homeDisplay, awayDisplay, matchDate } = {}) {
+  const hd = (homeDisplay ?? m.homeDisplay ?? composeTeamDisplay(m.homeOrgName, m.homeTeamName)) || 'home'
+  const ad = (awayDisplay ?? m.awayDisplay ?? composeTeamDisplay(m.awayOrgName, m.awayTeamName)) || 'away'
+  const base = buildMatchSlug(hd, ad)
+  const seasonStr = m.competitionSeason ? String(m.competitionSeason) : (m.season ? String(m.season) : null)
+  let matchSlug, path
+  if (m.competitionId && m.competitionSlug && seasonStr) {
+    matchSlug = await generateUniqueCompetitionMatchSlug(m.competitionId, base)
+    path      = competitionMatchPath(seasonStr, m.competitionSlug, matchSlug)
+  } else {
+    const date = matchDate ?? m.matchDate
+    if (!date) return null
+    matchSlug = await generateUniqueStandaloneMatchSlug(date, base)
+    path      = matchPath(date, matchSlug)
+  }
+  const patch = { homeDisplay: hd, awayDisplay: ad, matchSlug, path }
+  const redirect = (m.path && m.path !== path) ? { from: m.path, to: path } : null
+  return { patch, redirect }
+}
+
 export async function createMatch(competitionId, homeTeam, awayTeam, {
   matchDate, scheduledAt = null, pitch = '', season, competitionSlug = null,
   periods = DEFAULT_PERIODS, periodMinutes = DEFAULT_PERIOD_MINUTES,
@@ -874,7 +911,9 @@ export async function createMatch(competitionId, homeTeam, awayTeam, {
   indoor = false,
 }) {
   const seasonStr = season ? String(season) : null
-  const baseSlug  = buildMatchSlug(homeTeam.displayName, awayTeam.displayName)
+  const homeDisplay = composeTeamDisplay(homeTeam.teamName || homeTeam.orgName, homeTeam.displayName)
+  const awayDisplay = composeTeamDisplay(awayTeam.teamName || awayTeam.orgName, awayTeam.displayName)
+  const baseSlug  = buildMatchSlug(homeDisplay, awayDisplay)
 
   // The canonical URL depends on whether this match belongs to a competition.
   // Competition matches are competition-scoped and dateless
@@ -906,6 +945,7 @@ export async function createMatch(competitionId, homeTeam, awayTeam, {
     competitionId,
     homeTeamId:        homeRegistered ? homeTeam.id : null,
     homeTeamName:      homeTeam.displayName,
+    homeDisplay,
     homeOrgName:       homeTeam.orgName       || null,
     homeTeamSlug:      homeTeam.slug          || null,
     homeTeamColor:     homeTeam.primaryColor  || null,
@@ -914,6 +954,7 @@ export async function createMatch(competitionId, homeTeam, awayTeam, {
     ...(homeTeam.manualOpponentId ? { manualHomeOpponentId: homeTeam.manualOpponentId } : {}),
     awayTeamId:        awayRegistered ? awayTeam.id : null,
     awayTeamName:      awayTeam.displayName,
+    awayDisplay,
     awayOrgName:       awayTeam.orgName       || null,
     awayTeamSlug:      awayTeam.slug          || null,
     awayTeamColor:     awayTeam.primaryColor  || null,
@@ -938,7 +979,56 @@ export async function createMatch(competitionId, homeTeam, awayTeam, {
 }
 
 export async function updateMatch(id, data) {
-  return updateDoc(doc(db, 'matches', id), { ...data, updatedBy: uid(), updatedAt: serverTimestamp() })
+  const patch = { ...data }
+  // Keep the URL truthful: if the teams or the match day change, re-derive the
+  // slug/path from the new H1 and redirect the old URL — UNLESS the caller
+  // supplied its own slug/path (an explicit manual rename). Match-day children
+  // (group slug + ageSlug) and knockout fixtures (stable round-name slug) keep
+  // their URL and are never auto re-stamped.
+  const touchesTeams = ['homeTeamName', 'awayTeamName', 'homeOrgName', 'awayOrgName',
+    'homeTeamId', 'awayTeamId', 'homeDisplay', 'awayDisplay'].some(k => k in data)
+  const touchesTime  = ('scheduledAt' in data) || ('matchDate' in data)
+  const explicitPath = ('matchSlug' in data) || ('path' in data) || ('ageSlug' in data)
+  if ((touchesTeams || touchesTime) && !explicitPath) {
+    const snap = await getDoc(doc(db, 'matches', id))
+    if (snap.exists()) {
+      const cur = snap.data()
+      const stableUrl = cur.matchGroupId || cur.isPlayoffHolding || cur.playoffGameSlug
+      if (!stableUrl) {
+        const m = { ...cur, ...patch }
+        let slug = cur.matchSlug
+        if (touchesTeams) {
+          const hd = composeTeamDisplay(m.homeOrgName, m.homeTeamName) || m.homeDisplay || 'home'
+          const ad = composeTeamDisplay(m.awayOrgName, m.awayTeamName) || m.awayDisplay || 'away'
+          patch.homeDisplay = hd; patch.awayDisplay = ad
+          const base = buildMatchSlug(hd, ad)
+          if (base !== cur.matchSlug) {   // teams actually renamed the fixture
+            const seasonStr = m.competitionSeason ? String(m.competitionSeason) : (m.season ? String(m.season) : null)
+            slug = (m.competitionId && m.competitionSlug && seasonStr)
+              ? await generateUniqueCompetitionMatchSlug(m.competitionId, base)
+              : await generateUniqueStandaloneMatchSlug(m.matchDate, base)
+          }
+        }
+        // Standalone reschedule to a new DAY moves the date segment.
+        let newDate = cur.matchDate
+        if (!m.competitionId) {
+          if ('matchDate' in data) newDate = data.matchDate
+          else if ('scheduledAt' in data) { const d = toMatchDate(patch.scheduledAt); if (d) newDate = d }
+        }
+        let newPath = cur.path
+        const seasonStr = m.competitionSeason ? String(m.competitionSeason) : (m.season ? String(m.season) : null)
+        if (m.competitionId && m.competitionSlug && seasonStr) newPath = competitionMatchPath(seasonStr, m.competitionSlug, slug)
+        else if (newDate) newPath = matchPath(newDate, slug)
+        if (slug !== cur.matchSlug) patch.matchSlug = slug
+        if (!m.competitionId && newDate && newDate !== cur.matchDate) patch.matchDate = newDate
+        if (newPath && newPath !== cur.path) {
+          patch.path = newPath
+          await writeMatchRedirect(cur.path, newPath, cur.homeOrgId ?? null, cur.competitionId ?? null).catch(() => {})
+        }
+      }
+    }
+  }
+  return updateDoc(doc(db, 'matches', id), { ...patch, updatedBy: uid(), updatedAt: serverTimestamp() })
 }
 export async function deleteMatch(id) {
   return deleteDoc(doc(db, 'matches', id))
@@ -1080,13 +1170,14 @@ function shiftScheduledToDate(scheduledAt, newDate) {
 // Write a batch of path redirects so links shared before a move keep resolving
 // (NotFound.jsx resolves them). Scoped to /match/ paths and stamped with the
 // owning org so the (broadened) rule can authorise a non-admin owner's write.
-async function writePathRedirects(pairs, ownerOrgId) {
+async function writePathRedirects(pairs, ownerOrgId, competitionId = null) {
   const clean = pairs.filter(p => p.from && p.to && p.from !== p.to)
   if (!clean.length) return
   const batch = writeBatch(db)
   for (const { from, to } of clean) {
     batch.set(doc(db, 'redirects', redirectKey(from)), {
       fromPath: from, toPath: to, ownerOrgId: ownerOrgId ?? null,
+      competitionId: competitionId ?? null,
       createdBy: uid(), createdAt: serverTimestamp(),
     })
   }
@@ -1172,7 +1263,9 @@ export async function deleteMatchGroup(groupId, mode = 'cascade') {
     for (const cSnap of kids) {
       const c = cSnap.data()
       const taken = takenByDate.get(c.matchDate) ?? new Set()
-      const slug = dedupeSlug(buildMatchSlug(c.homeTeamName ?? 'home', c.awayTeamName ?? 'away'), taken)
+      const slug = dedupeSlug(buildMatchSlug(
+        c.homeDisplay ?? composeTeamDisplay(c.homeOrgName, c.homeTeamName ?? 'home'),
+        c.awayDisplay ?? composeTeamDisplay(c.awayOrgName, c.awayTeamName ?? 'away')), taken)
       taken.add(slug)
       const newPath = matchPath(c.matchDate, slug)
       batch.update(cSnap.ref, {
@@ -1204,8 +1297,8 @@ function gSnapOwner(kids) {
 
 // Write a single path redirect (old → new). Used by the scorer slug edit so a
 // renamed match's old link keeps resolving. /match/-scoped + org-stamped.
-export async function writeMatchRedirect(fromPath, toPath, ownerOrgId = null) {
-  return writePathRedirects([{ from: fromPath, to: toPath }], ownerOrgId)
+export async function writeMatchRedirect(fromPath, toPath, ownerOrgId = null, competitionId = null) {
+  return writePathRedirects([{ from: fromPath, to: toPath }], ownerOrgId, competitionId)
 }
 
 
@@ -2484,7 +2577,9 @@ export async function generateRoundRobinFixtures(competitionId, teams, options =
   const createdIds = []
 
   for (const [home, away] of pairs) {
-    const baseSlug  = buildMatchSlug(home.displayName, away.displayName)
+    const baseSlug  = buildMatchSlug(
+      composeTeamDisplay(home.teamName || home.orgName, home.displayName),
+      composeTeamDisplay(away.teamName || away.orgName, away.displayName))
     const matchSlug = seasonStr
       ? await generateUniqueMatchSlug(seasonStr, baseSlug)
       : await generateUniqueMatchSlugGlobal(baseSlug)
@@ -2697,30 +2792,48 @@ export async function assignTeamToPoolSlot(competitionId, poolId, slotId, teamId
     const matchFetches = fxSnap.docs.map(d => getDoc(doc(db, 'matches', d.id)).catch(() => null))
     const matchSnaps = await Promise.all(matchFetches)
 
+    const sideDisplay = teamId
+      ? composeTeamDisplay(memberSnapshot.orgName, memberSnapshot.teamName ?? teamId)
+      : placeholderName
     const updateBatch = writeBatch(db)
+    const redirects = []
     let updates = 0
     for (let i = 0; i < fxSnap.docs.length; i++) {
       const matchSnap = matchSnaps[i]
       if (!matchSnap?.exists()) continue
       const m = matchSnap.data()
       const patch = {}, fxPatch = {}
+      let newHomeDisplay, newAwayDisplay
 
       if (m.homeSlotId === slotId) {
         patch.homeTeamId    = teamId ?? null
         patch.homeTeamName  = teamId ? (memberSnapshot.teamName ?? teamId) : placeholderName
+        patch.homeOrgName   = teamId ? (memberSnapshot.orgName ?? null) : null
         patch.homeTeamColor = teamId ? (memberSnapshot.colors?.primary ?? null) : null
         patch.homeRegistered = !!teamId
+        patch.homeDisplay   = sideDisplay
+        newHomeDisplay      = sideDisplay
         fxPatch.homeTeamId  = teamId ?? null
       }
       if (m.awaySlotId === slotId) {
         patch.awayTeamId    = teamId ?? null
         patch.awayTeamName  = teamId ? (memberSnapshot.teamName ?? teamId) : placeholderName
+        patch.awayOrgName   = teamId ? (memberSnapshot.orgName ?? null) : null
         patch.awayTeamColor = teamId ? (memberSnapshot.colors?.primary ?? null) : null
         patch.awayRegistered = !!teamId
+        patch.awayDisplay   = sideDisplay
+        newAwayDisplay      = sideDisplay
         fxPatch.awayTeamId  = teamId ?? null
       }
 
       if (Object.keys(patch).length > 0) {
+        // Re-stamp the fixture URL from the new H1 and redirect the old path.
+        const rs = await computeMatchRestamp(m, { homeDisplay: newHomeDisplay, awayDisplay: newAwayDisplay })
+        if (rs) {
+          patch.matchSlug = rs.patch.matchSlug
+          patch.path = rs.patch.path
+          if (rs.redirect) redirects.push(rs.redirect)
+        }
         updateBatch.update(doc(db, 'matches', fxSnap.docs[i].id), { ...patch, updatedAt: serverTimestamp() })
         if (Object.keys(fxPatch).length > 0) {
           updateBatch.update(doc(db, 'competitions', competitionId, 'fixtures', fxSnap.docs[i].id),
@@ -2730,6 +2843,7 @@ export async function assignTeamToPoolSlot(competitionId, poolId, slotId, teamId
       }
     }
     if (updates > 0) await updateBatch.commit()
+    await writePathRedirects(redirects, null, competitionId).catch(() => {})
   }
 
   await addCompetitionAuditEvent(competitionId, {
@@ -3155,7 +3269,9 @@ export async function generatePoolFixtures(competitionId, poolId, options = {}) 
     const scheduledAt = assignment ? new Date(assignment.startMs) : null
     const pitch       = assignment?.fieldName ?? ''
 
-    const matchSlug = dedupeSlug(buildMatchSlug(homeTeamName, awayTeamName), takenSlugs)
+    const matchSlug = dedupeSlug(buildMatchSlug(
+      composeTeamDisplay(homeSnap.orgName, homeTeamName),
+      composeTeamDisplay(awaySnap.orgName, awayTeamName)), takenSlugs)
     takenSlugs.add(matchSlug)
 
     const matchRef = doc(collection(db, 'matches'))
