@@ -6,6 +6,7 @@ import { fetchSeoSettings, saveSeoSettings, DEFAULT_SEO } from '../../lib/seoSet
 import { slugify, matchSlug as buildMatchSlug } from '../../lib/slugify'
 import { composeTeamDisplay } from '../../lib/teamNaming'
 import { matchPath, competitionMatchPath } from '../../lib/matchPaths'
+import { writeMatchRedirect } from '../../lib/adminQueries'
 import { useAuth } from '../../contexts/AuthContext'
 
 function Field({ label, hint, children }) {
@@ -213,12 +214,6 @@ function BackfillMatchSlugs() {
       const needPath    = allMatches.filter(m => m.matchSlug && !m.path
         && !needCompRef.includes(m) && pathFor(m))
 
-      if (needSlug.length === 0 && needCompRef.length === 0 && needPath.length === 0) {
-        addLog('All matches already have slugs and competition references — nothing to do.')
-        setState('done')
-        return
-      }
-
       addLog(`Found ${needSlug.length} match(es) without a slug.`)
       if (needCompRef.length > 0) {
         addLog(`Found ${needCompRef.length} match(es) missing competitionSlug (will be linked).`)
@@ -278,7 +273,80 @@ function BackfillMatchSlugs() {
         updated++
       }
 
-      addLog(`\nDone — ${updated} match(es) updated.`)
+      // ── Repair drifted URLs ────────────────────────────────────────────────
+      // Matches that ALREADY have a slug + path but whose slug no longer matches
+      // the current H1 (teams renamed, or created before the org/naming rules
+      // changed — e.g. a stale "u13a-vs-u13a"). The passes above skip these
+      // because they have a slug, so the wrong URL sticks. Re-derive slug + path
+      // from the H1 and redirect the old path → new so shared links still
+      // resolve. Group children (ageSlug) and knockout/holding fixtures keep
+      // their stable round-name slugs and are never repaired.
+      const isStable = (m) => m.matchGroupId || m.isPlayoffHolding || m.playoffGameSlug
+      const hasTeams = (m) => (m.homeOrgName || m.homeTeamName) && (m.awayOrgName || m.awayTeamName)
+      const repairable = allMatches.filter(m =>
+        m.matchSlug && !isStable(m) && hasTeams(m)
+        && !needCompRef.includes(m) && !needPath.includes(m))
+
+      // Scope buckets that mirror real slug uniqueness: standalone by DATE,
+      // competition by COMPETITION. Seed from every match's slug so a repair
+      // never mints a colliding slug.
+      const compSlugOf   = (m) => m.competitionSlug ?? compById[m.competitionId]?.slug ?? null
+      const compSeasonOf = (m) => m.competitionSeason ?? compById[m.competitionId]?.season ?? m.season ?? null
+      const isCompMatch  = (m) => !!(m.competitionId && compSlugOf(m) && compSeasonOf(m))
+      const dateBucket = new Map()  // matchDate → Set<slug>
+      const compBucket = new Map()  // competitionId → Set<slug>
+      for (const m of allMatches) {
+        const s = m.matchSlug; if (!s) continue
+        if (isCompMatch(m)) {
+          if (!compBucket.has(m.competitionId)) compBucket.set(m.competitionId, new Set())
+          compBucket.get(m.competitionId).add(s)
+        } else if (m.matchDate) {
+          if (!dateBucket.has(m.matchDate)) dateBucket.set(m.matchDate, new Set())
+          dateBucket.get(m.matchDate).add(s)
+        }
+      }
+
+      let repaired = 0
+      for (const m of repairable) {
+        const homeDisplay = composeTeamDisplay(m.homeOrgName, m.homeTeamName || 'home')
+        const awayDisplay = composeTeamDisplay(m.awayOrgName, m.awayTeamName || 'away')
+        const base = buildMatchSlug(homeDisplay, awayDisplay)
+        if (!base) continue
+        const bucket = isCompMatch(m)
+          ? compBucket.get(m.competitionId)
+          : (m.matchDate ? dateBucket.get(m.matchDate) : null)
+        // Already correct if the slug is `base` or a dedup variant `base-<n>`.
+        const esc = base.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+        const okSlug = m.matchSlug === base || new RegExp(`^${esc}-\\d+$`).test(m.matchSlug)
+        let slug = m.matchSlug
+        if (!okSlug) {
+          if (bucket) bucket.delete(m.matchSlug)
+          slug = base
+          let n = 2
+          while (bucket && bucket.has(slug)) slug = `${base}-${n++}`
+          if (bucket) bucket.add(slug)
+        }
+        const cSlug = compSlugOf(m), cSeason = compSeasonOf(m)
+        const newPath = pathFor({ ...m, matchSlug: slug, competitionSlug: cSlug, competitionSeason: cSeason })
+        const update = {}
+        if (m.homeDisplay !== homeDisplay) update.homeDisplay = homeDisplay
+        if (m.awayDisplay !== awayDisplay) update.awayDisplay = awayDisplay
+        if (slug !== m.matchSlug) update.matchSlug = slug
+        if (newPath && newPath !== m.path) update.path = newPath
+        if (Object.keys(update).length === 0) continue
+        addLog(`  repair "${homeDisplay} vs ${awayDisplay}" → ${slug}`)
+        await updateDoc(doc(db, 'matches', m.id), update)
+        if (update.path && m.path) {
+          await writeMatchRedirect(m.path, update.path, m.homeOrgId ?? null, m.competitionId ?? null).catch(() => {})
+        }
+        repaired++
+      }
+      if (repaired > 0) addLog(`Repaired ${repaired} match(es) with drifted URLs.`)
+      updated += repaired
+
+      addLog(updated === 0
+        ? '\nAll match URLs already match the current team names — nothing to do.'
+        : `\nDone — ${updated} match(es) updated.`)
       setState('done')
     } catch (err) {
       addLog(`Error: ${err.message}`)
@@ -293,7 +361,10 @@ function BackfillMatchSlugs() {
         Firebase ID in their URL. This also links any existing matches to their competition's
         slug (run after backfilling competition slugs above), and repairs matches that have a
         slug but no stored path — pool-generated fixtures whose cards linked to the home page.
-        Safe to run more than once — existing slugs and paths are never changed.
+        It also <strong>repairs drifted URLs</strong>: matches whose slug no longer matches the
+        current team names (renamed teams, or matches created before the naming rules changed)
+        are re-slugged from the H1, with the old URL redirected to the new one. Knockout and
+        match-day fixtures keep their fixed slugs. Safe to run more than once.
       </p>
       {log.length > 0 && (
         <div className="bg-slate-900 text-slate-100 rounded-xl px-4 py-3 font-mono text-xs leading-relaxed whitespace-pre-wrap max-h-64 overflow-y-auto">
