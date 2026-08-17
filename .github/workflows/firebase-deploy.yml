@@ -39,6 +39,16 @@ jobs:
             exit 1
           fi
 
+      # Generate the sitemap into public/ BEFORE the build so Vite copies it into
+      # dist/. Firebase serves an exact-match static file before any rewrite, so
+      # this is what makes /sitemap.xml work without depending on a Cloud Function
+      # deploy. Non-fatal: a sitemap problem never fails the release.
+      - name: Generate sitemap
+        run: npm install firebase-admin --no-save && node scripts/generate-sitemap.cjs
+        env:
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+          FIRESTORE_DB: waterpolo
+
       - name: Build
         run: npm run build
         env:
@@ -56,6 +66,7 @@ jobs:
       # leaves the previous version serving. Scoped to this sport's codebase so
       # it can never touch the main site's functions.
       - name: Deploy Cloud Functions
+        continue-on-error: true
         env:
           GOOGLE_APPLICATION_CREDENTIALS: ${{ runner.temp }}/firebase-sa.json
           FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
@@ -65,6 +76,9 @@ jobs:
             exit 0
           fi
           printf '%s' "$FIREBASE_SERVICE_ACCOUNT" > "$GOOGLE_APPLICATION_CREDENTIALS"
+          # Functions deploy analyses functions/ source, which needs its own
+          # dependencies installed — the root `npm ci` does not cover them.
+          npm ci --prefix functions
           npx --yes firebase-tools@latest deploy \
             --only functions:waterpolo \
             --project match-pulse-4560e \
