@@ -3,7 +3,7 @@ import { ChevronRight, ChevronLeft, X, Plus } from 'lucide-react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { collection, getDocs, doc, getDoc, orderBy, query } from 'firebase/firestore'
 import { db } from '../../firebase'
-import { createPerson, updatePerson, adminLinkProfileToUser, isProfileClaimed } from '../../lib/adminQueries'
+import { createPerson, updatePerson, adminLinkProfileToUser, isProfileClaimed, fetchProfileReports } from '../../lib/adminQueries'
 import { deleteDoc } from 'firebase/firestore'
 
 const POSITIONS = ['GK', 'Def', 'Mid', 'Fwd']
@@ -339,6 +339,41 @@ export function EditPerson() {
       </div>
       <PersonForm initial={person} onSave={handleSave} onDelete={handleDelete} saving={saving} />
       <LinkUserSection person={person} onLinked={patch => setPerson(p => ({ ...p, ...patch }))} />
+      <ProfileReportsSection personId={person.id} />
+    </div>
+  )
+}
+
+// "This isn't me" reports filed against this profile (no account needed to
+// file one) — surfaced here so a wrong claim gets acted on.
+function ProfileReportsSection({ personId }) {
+  const [reports, setReports] = useState(null)
+
+  useEffect(() => {
+    fetchProfileReports(personId).then(setReports).catch(() => setReports([]))
+  }, [personId])
+
+  if (!reports?.length) return null
+
+  return (
+    <div className="px-4 pb-8">
+      <div className="bg-white rounded-xl border border-red-200 p-4">
+        <div className="text-sm font-bold text-slate-900 mb-2">
+          Profile reports <span className="text-red-600">({reports.length})</span>
+        </div>
+        <div className="space-y-2">
+          {reports.map(r => (
+            <div key={r.id} className="border-t border-slate-100 pt-2 first:border-t-0 first:pt-0">
+              <p className="text-[12px] text-slate-700 leading-relaxed">{r.message || '(no message)'}</p>
+              <p className="text-[10px] text-slate-400 mt-0.5">
+                {r.contact && <>Contact: {r.contact} · </>}
+                {r.reporterUid ? `uid ${r.reporterUid}` : 'anonymous'}
+                {r.createdAt?.toDate && <> · {r.createdAt.toDate().toLocaleDateString('en-ZA')}</>}
+              </p>
+            </div>
+          ))}
+        </div>
+      </div>
     </div>
   )
 }

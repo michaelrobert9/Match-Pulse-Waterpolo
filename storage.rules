@@ -73,5 +73,14 @@ service firebase.storage {
         && request.resource.size < 5 * 1024 * 1024
         && request.resource.contentType.matches('image/.*');
     }
+
+    // Team logos / crests. Public-readable; signed-in upload; attaching requires
+    // the team-identity Firestore write.
+    match /team-logos/{teamId} {
+      allow read:  if true;
+      allow write: if request.auth != null
+        && request.resource.size < 2 * 1024 * 1024
+        && request.resource.contentType.matches('image/.*');
+    }
   }
 }

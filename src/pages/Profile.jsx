@@ -1,15 +1,15 @@
-import { useEffect, useRef, useState } from 'react'
-import { ChevronRight, ChevronLeft, Camera } from 'lucide-react'
+import { useEffect, useState } from 'react'
+import { ChevronRight, ChevronLeft } from 'lucide-react'
 import { Link, useNavigate } from 'react-router-dom'
 import { updateProfile } from 'firebase/auth'
 import { doc, getDoc, setDoc, updateDoc, serverTimestamp } from 'firebase/firestore'
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage'
 import { useAuth } from '../contexts/AuthContext'
-import { auth, db, storage } from '../firebase'
+import { auth, db } from '../firebase'
 import { fetchSportProfile, saveSportProfile, WATERPOLO_POSITIONS } from '../lib/sportProfile'
 import { fetchOrganization } from '../lib/queries'
 import { monogram } from '../lib/names'
 import { grantOf, grantLabel } from '../lib/capabilities'
+import ImageUpload from '../components/ImageUpload'
 
 const PROVINCES = [
   'Eastern Cape', 'Free State', 'Gauteng', 'KwaZulu-Natal',
@@ -73,7 +73,6 @@ function OrgChip({ orgId, grant }) {
 export default function Profile() {
   const { user, isPlatformAdmin, orgRoles, canScore, logout } = useAuth()
   const navigate = useNavigate()
-  const fileRef  = useRef(null)
 
   const [displayName, setDisplayName] = useState(user?.displayName ?? '')
   const [bio,         setBio]         = useState('')
@@ -86,7 +85,6 @@ export default function Profile() {
   const [position,    setPosition]    = useState('')
   const [sahaNumber,  setSahaNumber]  = useState('')
   const [saving,      setSaving]      = useState(false)
-  const [uploading,   setUploading]   = useState(false)
   const [saved,       setSaved]       = useState(false)
   const [error,       setError]       = useState('')
 
@@ -116,24 +114,18 @@ export default function Profile() {
     })
   }, [user])
 
-  async function handlePhotoUpload(e) {
-    const file = e.target.files?.[0]
-    if (!file || !storage) return
-    setUploading(true)
+  // The ImageUpload component validates and uploads to avatars/{uid}; this
+  // attaches the resulting URL to the Auth user, the users doc and the public
+  // userProfiles mirror — the same writes the old inline uploader made.
+  async function handleAvatarUploaded(url) {
+    setPhotoURL(url || '')
     setError('')
     try {
-      const storageRef = ref(storage, `avatars/${user.uid}`)
-      await uploadBytes(storageRef, file)
-      const url = await getDownloadURL(storageRef)
-      await updateProfile(auth.currentUser, { photoURL: url })
-      await updateDoc(doc(db, 'users', user.uid), { photoURL: url, updatedAt: serverTimestamp() })
-      setDoc(doc(db, 'userProfiles', user.uid), { photoURL: url }, { merge: true }).catch(() => {})
-      setPhotoURL(url)
+      await updateProfile(auth.currentUser, { photoURL: url || null })
+      await updateDoc(doc(db, 'users', user.uid), { photoURL: url || null, updatedAt: serverTimestamp() })
+      setDoc(doc(db, 'userProfiles', user.uid), { photoURL: url || null }, { merge: true }).catch(() => {})
     } catch (err) {
-      setError('Photo upload failed: ' + (err.message ?? 'unknown error'))
-    } finally {
-      setUploading(false)
-      e.target.value = ''
+      setError('Photo update failed: ' + (err.message ?? 'unknown error'))
     }
   }
 
@@ -222,25 +214,13 @@ export default function Profile() {
 
       {/* Avatar */}
       <div className="flex flex-col items-center gap-2">
-        <button type="button" onClick={() => storage && fileRef.current?.click()}
-          className={`relative ${storage ? 'group' : ''}`}>
-          {photoURL ? (
-            <img src={photoURL} alt="Avatar"
-              className="w-20 h-20 rounded-full object-cover border-2 border-slate-200 group-hover:border-emerald-500 transition-colors" />
-          ) : (
-            <div className="w-20 h-20 rounded-full bg-emerald-100 border-2 border-emerald-300 flex items-center justify-center group-hover:border-emerald-500 transition-colors">
-              <span className="text-2xl font-black text-emerald-600">{initials}</span>
-            </div>
-          )}
-          {storage && (
-            <div className="absolute bottom-0 right-0 w-6 h-6 rounded-full bg-emerald-600 flex items-center justify-center shadow-lg">
-              <Camera className="w-3.5 h-3.5 text-white" />
-            </div>
-          )}
-        </button>
-        <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={handlePhotoUpload} />
-        {uploading && <span className="text-xs text-slate-500">Uploading…</span>}
-        {storage && !uploading && <span className="text-[10px] text-slate-400">Tap to change photo · square, ≈400px</span>}
+        <ImageUpload
+          specKey="userAvatar"
+          entityId={user.uid}
+          value={photoURL}
+          monogram={initials}
+          onChange={handleAvatarUploaded}
+        />
       </div>
 
       {/* Edit form */}

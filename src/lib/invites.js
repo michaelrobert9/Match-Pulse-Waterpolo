@@ -76,9 +76,17 @@ export async function claimPendingInvites(email, uid) {
           grantedBy: invite.invitedBy,
           grantedAt: serverTimestamp(),
         })
-        batch.update(doc(db, 'users', uid), {
-          [`orgRoles.${invite.orgId}`]: { role: invite.role, teamId: invite.teamId || null },
-        })
+        // Single self set(merge) rather than update(): claimPendingInvites() can
+        // run before the sign-in bootstrap has created this user's
+        // waterpolo-local doc, and update() throws on a missing doc. A merge-set
+        // creates it if absent and deep-merges the orgRoles map (other
+        // memberships preserved) if present — and the create/self-update rules
+        // both permit it. A set+update pair in one batch would fail: rules
+        // evaluate the update against the pre-batch (absent) doc.
+        batch.set(doc(db, 'users', uid), {
+          email:    normalizedEmail,
+          orgRoles: { [invite.orgId]: { role: invite.role, teamId: invite.teamId || null } },
+        }, { merge: true })
         await batch.commit()
       }
       await updateDoc(doc(db, 'invites', inviteDoc.id), {

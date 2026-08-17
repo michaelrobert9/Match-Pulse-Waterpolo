@@ -38,6 +38,10 @@ const firebaseConfig = {
 // Named Firestore database for this sport within the shared project.
 const FIRESTORE_DB = import.meta.env.VITE_FIRESTORE_DATABASE || 'waterpolo'
 
+// Resolved once here so a staging/preview override stays consistent app-wide.
+export const MAIN_SITE = import.meta.env.VITE_MAIN_SITE || 'https://matchpulse.co.za'
+export const SPORT_KEY = 'waterpolo'
+
 // Region where the Cloud Functions this app CALLS are deployed (e.g. the
 // callable contact form). A wrong region fails only at CALL time with an opaque
 // error — never at build or deploy — so it is kept in ONE constant. NOTE: the

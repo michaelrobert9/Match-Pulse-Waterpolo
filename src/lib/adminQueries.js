@@ -2016,6 +2016,30 @@ export async function adminLinkProfileToUser(personId, email, relationship) {
   return { userId: target.id, email: target.email ?? email }
 }
 
+// "This isn't me" (A4): anyone — signed in or not — can flag a profile. A
+// parent or coach who spots a wrong claim should not have to register to say
+// so. Reports land in profileReports for the master-admin queue.
+export async function reportProfileMismatch(personId, { personName = '', message = '', contact = '' } = {}) {
+  await addDoc(collection(db, 'profileReports'), {
+    personId,
+    personName: (personName ?? '').slice(0, 200),
+    message:    (message ?? '').slice(0, 1000),
+    contact:    (contact ?? '').slice(0, 200),
+    reporterUid: uid(),                      // null when signed out — that's fine
+    status: 'open',
+    createdAt: serverTimestamp(),
+  })
+}
+
+export async function fetchProfileReports(personId = null) {
+  const base = collection(db, 'profileReports')
+  const q = personId ? query(base, where('personId', '==', personId)) : base
+  const snap = await getDocs(q)
+  return snap.docs
+    .map(d => ({ id: d.id, ...d.data() }))
+    .sort((a, b) => (b.createdAt?.seconds ?? 0) - (a.createdAt?.seconds ?? 0))
+}
+
 // People profiles controlled or managed by the current user (the parent's
 // children, the player's own profile, a manager's assigned players).
 export async function fetchMyPlayerProfiles() {

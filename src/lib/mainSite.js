@@ -6,8 +6,10 @@
 // live centrally: changing your name/email/password, and buying/managing a plan.
 // The sport apps only ever READ entitlement; they never take payment or grant it.
 
-export const MAIN_SITE = import.meta.env.VITE_MAIN_SITE || 'https://matchpulse.co.za'
-export const SPORT_KEY = 'waterpolo'
+// MAIN_SITE is resolved once (from the deploy env) in firebase.js; it is imported
+// here rather than re-read so a staging/preview override stays consistent app-wide.
+import { MAIN_SITE, SPORT_KEY } from '../firebase'
+export { MAIN_SITE, SPORT_KEY }
 
 // The plans/products page on the main site. Every plan/purchase CTA points here.
 export const PLANS_URL = `${MAIN_SITE}/products`

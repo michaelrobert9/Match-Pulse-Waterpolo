@@ -119,16 +119,22 @@ function computeH2HStats(group, fixtures, matches, pts, bonus = null) {
     const hId = fx.homeTeamId ?? match.homeTeamId
     const aId = fx.awayTeamId ?? match.awayTeamId
     if (!groupIds.has(hId) || !groupIds.has(aId)) continue
-    const hg = match.homeScore ?? 0
-    const ag = match.awayScore ?? 0
+    // The banner flag decides whether (and with what score) a fixture counts in
+    // the mini-table, exactly as it does in the full table: Awarded/Final count;
+    // Not-played/Frozen do not.
+    const c = fixtureContribution(match)
+    if (!c.standings) continue
+    const hg = c.home
+    const ag = c.away
     h2h[hId].GF += hg; h2h[hId].GA += ag; h2h[hId].GD = h2h[hId].GF - h2h[hId].GA
     h2h[aId].GF += ag; h2h[aId].GA += hg; h2h[aId].GD = h2h[aId].GF - h2h[aId].GA
     if (hg > ag)      { h2h[hId].Pts += pts.win ?? 3;  h2h[aId].Pts += pts.loss ?? 0 }
     else if (ag > hg) { h2h[hId].Pts += pts.loss ?? 0; h2h[aId].Pts += pts.win ?? 3 }
     else              { h2h[hId].Pts += pts.draw ?? 1;  h2h[aId].Pts += pts.draw ?? 1 }
     // Bonus points count in the head-to-head mini-table too, so a team's points
-    // mean the same here as in the full table.
-    if (bonus) {
+    // mean the same here as in the full table — genuinely-played results only,
+    // never awarded (walkover / no-show) allocations.
+    if (bonus && c.stats) {
       h2h[hId].Pts += bonusPointsFor(hg, ag, bonus)
       h2h[aId].Pts += bonusPointsFor(ag, hg, bonus)
     }
@@ -338,7 +344,11 @@ export function computeFestivalStats(competition, members, fixtures, matchesInpu
     const hId = fx.homeTeamId ?? match.homeTeamId
     const aId = fx.awayTeamId ?? match.awayTeamId
     if (!confirmedIds.has(hId) || !confirmedIds.has(aId)) continue
-    applyResult(stats, hId, aId, match.homeScore ?? 0, match.awayScore ?? 0, pts)
+    // Same gating as the league table: awarded results count via their awarded
+    // scoreline; voided results (abandoned/awarded-void) never contribute.
+    const c = fixtureContribution(match)
+    if (!c.standings) continue
+    applyResult(stats, hId, aId, c.home, c.away, pts)
   }
 
   // No sort — preserve membership order. No position field. Informational only.

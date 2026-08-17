@@ -70,7 +70,7 @@ export default function ManageHub() {
 
         {/* Header */}
         <div className="mb-8">
-          <button onClick={() => navigate(-1)}
+          <button onClick={() => navigate('/')}
             className="flex items-center gap-2 text-slate-500 hover:text-slate-900 transition-colors text-sm mb-6">
             <ChevronLeft className="w-4 h-4" />
             Back
