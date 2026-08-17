@@ -28,6 +28,14 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      # Cloud Functions have their OWN package.json; the Firebase CLI needs
+      # functions/node_modules present to analyse the source at deploy time.
+      # Runs npm ci INSIDE functions/ (working-directory) — `npm ci --prefix`
+      # is unreliable (it can install against the root lockfile instead).
+      - name: Install functions dependencies
+        run: npm ci
+        working-directory: functions
+
       # Guard: a missing Firebase web key produces a valid-but-dead bundle
       # (src/firebase.js sets `configured = !!apiKey`), which would otherwise
       # deploy silently and show "Firebase is not configured yet" on the live
@@ -76,9 +84,6 @@ jobs:
             exit 0
           fi
           printf '%s' "$FIREBASE_SERVICE_ACCOUNT" > "$GOOGLE_APPLICATION_CREDENTIALS"
-          # Functions deploy analyses functions/ source, which needs its own
-          # dependencies installed — the root `npm ci` does not cover them.
-          npm ci --prefix functions
           npx --yes firebase-tools@latest deploy \
             --only functions:waterpolo \
             --project match-pulse-4560e \
