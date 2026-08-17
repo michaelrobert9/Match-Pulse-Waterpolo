@@ -14,18 +14,8 @@
     ],
     "rewrites": [
       {
-        "source": "/sitemap.xml",
-        "function": {
-          "functionId": "waterpoloSitemap",
-          "region": "europe-west1"
-        }
-      },
-      {
         "source": "**",
-        "function": {
-          "functionId": "waterpoloRenderer",
-          "region": "europe-west1"
-        }
+        "destination": "/index.html"
       }
     ]
   },

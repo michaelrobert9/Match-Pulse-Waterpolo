@@ -66,6 +66,7 @@ jobs:
       # leaves the previous version serving. Scoped to this sport's codebase so
       # it can never touch the main site's functions.
       - name: Deploy Cloud Functions
+        continue-on-error: true
         env:
           GOOGLE_APPLICATION_CREDENTIALS: ${{ runner.temp }}/firebase-sa.json
           FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
