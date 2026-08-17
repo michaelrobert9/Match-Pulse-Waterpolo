@@ -76,6 +76,9 @@ jobs:
             exit 0
           fi
           printf '%s' "$FIREBASE_SERVICE_ACCOUNT" > "$GOOGLE_APPLICATION_CREDENTIALS"
+          # Functions deploy analyses functions/ source, which needs its own
+          # dependencies installed — the root `npm ci` does not cover them.
+          npm ci --prefix functions
           npx --yes firebase-tools@latest deploy \
             --only functions:waterpolo \
             --project match-pulse-4560e \
