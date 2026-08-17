@@ -152,7 +152,7 @@ function parseRoute(pathname) {
 
 // ── Metadata builder (mirrors src/lib/seo.js — keep in sync) ─────────────────
 
-const ORIGIN     = 'https://matchpulse.co.za'
+const ORIGIN     = (process.env.PUBLIC_ORIGIN || 'https://waterpolo.matchpulse.co.za').replace(/\/$/, '')
 const SITE_NAME  = 'MatchPulse'
 const OG_DEFAULT = `${ORIGIN}/og-default.png`
 const TITLE_MAX  = 60

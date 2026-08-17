@@ -39,11 +39,6 @@ jobs:
             exit 1
           fi
 
-      - name: Generate sitemap
-        run: npm install firebase-admin --no-save && node scripts/generate-sitemap.js
-        env:
-          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
-
       - name: Build
         run: npm run build
         env:

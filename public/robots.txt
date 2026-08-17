@@ -42,4 +42,4 @@ Disallow: /login
 Disallow: /signup
 Disallow: /portal
 
-Sitemap: https://matchpulse.co.za/sitemap.xml
+Sitemap: https://waterpolo.matchpulse.co.za/sitemap.xml
