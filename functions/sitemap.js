@@ -1,48 +1,62 @@
 // Dynamic sitemap.xml — generated live from Firestore on each request.
 //
-// Replaces the hand-maintained public/sitemap.xml. Served at /sitemap.xml via a
-// Firebase Hosting rewrite to the `sitemap` function (see firebase.json). Covers
-// the static marketing routes plus every public competition, team, player, org
-// and final match, so crawlers can discover deep routes that the SPA's client
-// rendering would otherwise hide.
+// Served at /sitemap.xml via a Firebase Hosting rewrite to the sitemap function
+// (see firebase.json). Covers the static marketing routes plus every public
+// competition, team, player, org and final match, so crawlers can discover deep
+// routes that the SPA's client rendering would otherwise hide.
 //
-// URL builders below MIRROR src/lib/slugify.js. Keep them in sync — this file is
-// CommonJS (functions runtime) and cannot import the ESM client helpers.
+// URL builders below MIRROR src/lib/matchPaths.js + src/lib/slugify.js. Keep
+// them in sync — this file is CommonJS (functions runtime) and cannot import
+// the ESM client helpers. Matches prefer the stored `path` field, which is the
+// canonical URL identity MatchDetail resolves by (re-stamped on team/date
+// changes), so the sitemap can never drift from what the app serves.
 
-const ORIGIN = 'https://matchpulse.co.za'
+const ORIGIN = (process.env.PUBLIC_ORIGIN || 'https://waterpolo.matchpulse.co.za').replace(/\/$/, '')
 
-// Mirror of src/lib/slugify.js `slugify`.
+// Mirror of src/lib/matchPaths.js `slugify` (NFKD, & → "and").
 function slugify(str) {
-  return String(str)
-    .toLowerCase()
-    .normalize('NFD')
-    .replace(/[̀-ͯ]/g, '')
+  return String(str ?? '')
+    .normalize('NFKD').replace(/[̀-ͯ]/g, '')
+    .toLowerCase().trim()
+    .replace(/&/g, ' and ')
     .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-|-$/g, '')
+    .replace(/^-+|-+$/g, '')
 }
 
-// Mirror of competitionUrl(): /competitions/:season/:slug, with legacy fallbacks.
+// Mirror of competitionUrl(): /competitions/:season/:slug, legacy fallback.
+// No slug+season → null (the raw-id route exists but is not canonical).
 function competitionPath(comp) {
   if (comp.slug && comp.season) return `/competitions/${comp.season}/${comp.slug}`
   if (comp.competitionPath)     return `/competition/${comp.competitionPath}`
-  return `/competitions/${comp.id}`
+  return null
 }
 
-// Mirror of orgUrl(): /schools|clubs/:slug.
+// Mirror of orgUrl(): /schools|clubs|associations/:slug.
 function orgPath(org) {
-  const base = org.type === 'club' ? 'clubs' : 'schools'
+  const base = org.type === 'school' ? 'schools'
+    : org.type === 'association' ? 'associations' : 'clubs'
   const slug = org.slug || slugify(org.name || '')
   return slug ? `/${base}/${slug}` : null
 }
 
-// Mirror of matchUrl(): competition-scoped slug → standalone slug → legacy.
-function matchPath(m) {
-  if (m.competitionSlug && m.competitionSeason && m.matchSlug)
-    return `/competitions/${m.competitionSeason}/${m.competitionSlug}/matches/${m.matchSlug}`
-  if (m.season && m.matchSlug) return `/matches/${m.season}/${m.matchSlug}`
-  if (m.matchSlug) return `/matches/${m.matchSlug}`
-  if (m.slug)      return `/match/${m.slug}`
-  return `/matches/${m.id}`
+// A match's public URL. The stored `path` is authoritative (kept current by
+// the re-stamp + redirect machinery); the builders below are the same shapes
+// matchPaths.js produces, used only for docs that predate stored paths.
+//   competition  /competitions/{season}/{competition-slug}/match/{matchSlug}
+//   standalone   /match/{YYYY-MM-DD}/{matchSlug}
+function matchLoc(m) {
+  if (m.path) return m.path
+  if (m.competitionSeason && m.competitionSlug && m.matchSlug)
+    return `/competitions/${m.competitionSeason}/${m.competitionSlug}/match/${m.matchSlug}`
+  if (m.matchDate && m.matchSlug) return `/match/${m.matchDate}/${m.matchSlug}`
+  return null
+}
+
+// Mirror of the firestore rules' competition publicity predicate: public once
+// published, or once its lifecycle has advanced past draft (legacy docs with
+// status upcoming/active/final and no published flag are public).
+function isCompetitionPublic(c) {
+  return c.published === true || (c.status && c.status !== 'draft')
 }
 
 // XML-escape a URL/text node (loc values can contain & in query strings).
@@ -80,9 +94,8 @@ const STATIC_ROUTES = [
   { path: '/browse',         changefreq: 'daily',   priority: 0.9 },
   { path: '/schools',        changefreq: 'weekly',  priority: 0.8 },
   { path: '/clubs',          changefreq: 'weekly',  priority: 0.8 },
+  { path: '/associations',   changefreq: 'weekly',  priority: 0.8 },
   { path: '/players',        changefreq: 'weekly',  priority: 0.8 },
-  { path: '/plans',          changefreq: 'monthly', priority: 0.7 },
-  { path: '/why-matchpulse', changefreq: 'monthly', priority: 0.6 },
   { path: '/support',        changefreq: 'monthly', priority: 0.6 },
   { path: '/contact',        changefreq: 'yearly',  priority: 0.4 },
 ]
@@ -101,7 +114,9 @@ try {
   LEGAL_PATHS = (legal.order || []).map(slug => `/legal/${slug}`)
 } catch (e) { /* generated at build time */ }
 
-// Build the full sitemap XML string from Firestore. `db` is an admin Firestore.
+// Build the full sitemap XML string from Firestore. `db` is the sport's named
+// admin Firestore database — people live in the same database as the rest of
+// the sport data (client: peopleDb = db).
 async function buildSitemap(db, logger) {
   const entries = STATIC_ROUTES.map(urlEntry)
   const seen = new Set(STATIC_ROUTES.map(r => r.path))
@@ -113,12 +128,28 @@ async function buildSitemap(db, logger) {
   // Legal documents (static).
   for (const p of LEGAL_PATHS) push({ path: p, changefreq: 'yearly', priority: 0.3 })
 
-  // Public competitions (status: active) → overview pages.
+  // Public competitions → overview + sub-pages (mirrors the publish gate, so
+  // drafts and unpublished competitions never leak into the sitemap).
   try {
-    const comps = await db.collection('competitions').where('status', '==', 'active').get()
+    const comps = await db.collection('competitions').get()
     comps.forEach(d => {
       const c = { id: d.id, ...d.data() }
-      push({ path: competitionPath(c), lastmod: lastmod(c.updatedAt), changefreq: 'daily', priority: 0.9 })
+      if (!isCompetitionPublic(c)) return
+      const base = competitionPath(c)
+      if (!base) return
+      const lm = lastmod(c.updatedAt)
+      push({ path: base, lastmod: lm, changefreq: 'daily', priority: 0.9 })
+      push({ path: `${base}/matches`, lastmod: lm, changefreq: 'daily', priority: 0.7 })
+      if (c.type === 'tournament') {
+        push({ path: `${base}/pools`,    lastmod: lm, changefreq: 'daily', priority: 0.7 })
+        push({ path: `${base}/knockout`, lastmod: lm, changefreq: 'daily', priority: 0.7 })
+      } else if (c.type === 'festival') {
+        if (c.rules?.statsTable?.enabled || c.festivalStats) {
+          push({ path: `${base}/stats`, lastmod: lm, changefreq: 'daily', priority: 0.6 })
+        }
+      } else {
+        push({ path: `${base}/standings`, lastmod: lm, changefreq: 'daily', priority: 0.7 })
+      }
     })
   } catch (e) { logger?.warn?.('sitemap: competitions failed', e) }
 
@@ -131,19 +162,19 @@ async function buildSitemap(db, logger) {
     })
   } catch (e) { logger?.warn?.('sitemap: teams failed', e) }
 
-  // Players (people) with a frozen slug → career-record pages.
+  // Players (people) with a frozen slug → career-record pages. Unclaimed
+  // team-sheet profiles are noindex and never listed (ownerless profiles
+  // addendum A3) — keep them out of the sitemap too.
   try {
     const people = await db.collection('people').get()
     people.forEach(d => {
       const p = d.data()
-      // Unclaimed team-sheet profiles are noindex and never listed (ownerless
-      // profiles addendum A3) — keep them out of the sitemap too.
       if (p.claimStatus === 'unclaimed') return
       if (p.slug) push({ path: `/player/${p.slug}`, lastmod: lastmod(p.updatedAt), changefreq: 'weekly', priority: 0.6 })
     })
   } catch (e) { logger?.warn?.('sitemap: people failed', e) }
 
-  // Organisations (schools / clubs).
+  // Organisations (schools / clubs / associations).
   try {
     const orgs = await db.collection('organizations').get()
     orgs.forEach(d => {
@@ -152,12 +183,13 @@ async function buildSitemap(db, logger) {
     })
   } catch (e) { logger?.warn?.('sitemap: organizations failed', e) }
 
-  // Final matches → result pages (high long-tail SEO value).
+  // Final matches → result pages (high long-tail SEO value). Matches without a
+  // resolvable public URL are skipped rather than emitted at a dead shape.
   try {
     const finals = await db.collection('matches').where('status', '==', 'final').get()
     finals.forEach(d => {
       const m = { id: d.id, ...d.data() }
-      push({ path: matchPath(m), lastmod: lastmod(m.endedAt || m.updatedAt), changefreq: 'monthly', priority: 0.6 })
+      push({ path: matchLoc(m), lastmod: lastmod(m.endedAt || m.updatedAt), changefreq: 'monthly', priority: 0.6 })
     })
   } catch (e) { logger?.warn?.('sitemap: matches failed', e) }
 
@@ -171,4 +203,4 @@ async function buildSitemap(db, logger) {
     `\n</urlset>\n`
 }
 
-module.exports = { buildSitemap, slugify, competitionPath, orgPath, matchPath }
+module.exports = { buildSitemap, slugify, competitionPath, orgPath, matchLoc }
