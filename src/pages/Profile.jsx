@@ -4,7 +4,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import { updateProfile } from 'firebase/auth'
 import { doc, getDoc, setDoc, updateDoc, serverTimestamp } from 'firebase/firestore'
 import { useAuth } from '../contexts/AuthContext'
-import { auth, db } from '../firebase'
+import { auth, db, identityDb } from '../firebase'
 import { fetchSportProfile, saveSportProfile, WATERPOLO_POSITIONS } from '../lib/sportProfile'
 import { fetchOrganization } from '../lib/queries'
 import { monogram } from '../lib/names'
@@ -93,7 +93,7 @@ export default function Profile() {
 
   useEffect(() => {
     if (!user) return
-    getDoc(doc(db, 'users', user.uid)).then(snap => {
+    getDoc(doc(identityDb, 'users', user.uid)).then(snap => {
       if (!snap.exists()) return
       const data = snap.data()
       setBio(data.bio ?? '')
@@ -122,8 +122,8 @@ export default function Profile() {
     setError('')
     try {
       await updateProfile(auth.currentUser, { photoURL: url || null })
-      await updateDoc(doc(db, 'users', user.uid), { photoURL: url || null, updatedAt: serverTimestamp() })
-      setDoc(doc(db, 'userProfiles', user.uid), { photoURL: url || null }, { merge: true }).catch(() => {})
+      await updateDoc(doc(identityDb, 'users', user.uid), { photoURL: url || null, updatedAt: serverTimestamp() })
+      setDoc(doc(identityDb, 'userProfiles', user.uid), { photoURL: url || null }, { merge: true }).catch(() => {})
     } catch (err) {
       setError('Photo update failed: ' + (err.message ?? 'unknown error'))
     }
@@ -136,7 +136,7 @@ export default function Profile() {
       if (displayName !== (user.displayName ?? '')) {
         await updateProfile(auth.currentUser, { displayName })
       }
-      await updateDoc(doc(db, 'users', user.uid), {
+      await updateDoc(doc(identityDb, 'users', user.uid), {
         displayName,
         bio,
         dateOfBirth: dob,
@@ -151,7 +151,7 @@ export default function Profile() {
         position: role === 'player' ? position : '',
         wpsaNumber: sahaNumber,
       })
-      setDoc(doc(db, 'userProfiles', user.uid), {
+      setDoc(doc(identityDb, 'userProfiles', user.uid), {
         displayName,
         email: (user.email ?? '').toLowerCase(),
         photoURL: photoURL || null,

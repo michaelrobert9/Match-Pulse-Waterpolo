@@ -4,7 +4,7 @@ import {
   collection, doc, getDoc, getDocs, query, where, addDoc, deleteDoc,
   serverTimestamp, orderBy,
 } from 'firebase/firestore'
-import { db, storage } from '../../../firebase'
+import { db, identityDb, storage } from '../../../firebase'
 import { ref as storageRef, uploadBytes, getDownloadURL } from 'firebase/storage'
 import {
   ChevronLeft, Plus, X, Trash2, Check, AlertTriangle, ExternalLink,
@@ -196,7 +196,7 @@ function CompetitionStaffCard({ competition }) {
   async function ensureUsersLoaded() {
     if (usersLoaded) return
     try {
-      const snap = await getDocs(query(collection(db, 'userProfiles'), orderBy('email')))
+      const snap = await getDocs(query(collection(identityDb, 'userProfiles'), orderBy('email')))
       setAllUsers(snap.docs.map(d => ({ id: d.id, ...d.data() })))
       setUsersLoaded(true)
     } catch { /* ignore */ }

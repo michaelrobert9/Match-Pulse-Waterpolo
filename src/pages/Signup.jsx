@@ -5,7 +5,7 @@ import { claimPendingInvites } from '../lib/invites'
 import { updateProfile } from 'firebase/auth'
 import { Camera, ChevronRight } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
-import { auth, db, storage, configured } from '../firebase'
+import { auth, db, identityDb, storage, configured } from '../firebase'
 import { uploadImageForEntity } from '../lib/imageUpload'
 import { saveSportProfile, WATERPOLO_POSITIONS } from '../lib/sportProfile'
 
@@ -130,7 +130,7 @@ export default function Signup() {
   async function saveProfile() {
     if (!createdUid) return
     const displayName = [firstName.trim(), lastName.trim()].filter(Boolean).join(' ')
-    await setDoc(doc(db, 'users', createdUid), {
+    await setDoc(doc(identityDb, 'users', createdUid), {
       email:          email.toLowerCase(),
       displayName,
       firstName:      firstName.trim(),
@@ -148,7 +148,7 @@ export default function Signup() {
       createdAt:      serverTimestamp(),
       updatedAt:      serverTimestamp(),
     }, { merge: true })
-    setDoc(doc(db, 'userProfiles', createdUid), {
+    setDoc(doc(identityDb, 'userProfiles', createdUid), {
       email:       email.toLowerCase(),
       displayName,
       photoURL:    photoURL || null,

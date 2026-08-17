@@ -9,7 +9,7 @@ import {
   signOut as fbSignOut,
 } from 'firebase/auth'
 import { doc, getDoc, setDoc, updateDoc, serverTimestamp } from 'firebase/firestore'
-import { auth, db, configured, googleProvider } from '../firebase'
+import { auth, db, identityDb, configured, googleProvider } from '../firebase'
 import { canAdministerCompetition as canAdminComp } from '../lib/competitionAuth'
 import { resolveScopedCapability, grantOf } from '../lib/capabilities'
 import { userEntitlementStatus } from '../lib/entitlement'
@@ -56,7 +56,7 @@ export function AuthProvider({ children }) {
           setUserEntitlement(null)
         }
         try {
-          const userRef = doc(db, 'users', u.uid)
+          const userRef = doc(identityDb, 'users', u.uid)
           const snap    = await getDoc(userRef)
 
           if (!snap.exists()) {
@@ -69,7 +69,7 @@ export function AuthProvider({ children }) {
               updatedAt:      serverTimestamp(),
             }
             await setDoc(userRef, profile)
-            setDoc(doc(db, 'userProfiles', u.uid), {
+            setDoc(doc(identityDb, 'userProfiles', u.uid), {
               email:       (u.email ?? '').toLowerCase(),
               displayName: u.displayName ?? '',
               photoURL:    u.photoURL ?? null,
@@ -86,7 +86,7 @@ export function AuthProvider({ children }) {
             // backfill it so the back-end panels show the name, not the email.
             if (!data.displayName && u.displayName) {
               updateDoc(userRef, { displayName: u.displayName, updatedAt: serverTimestamp() }).catch(() => {})
-              setDoc(doc(db, 'userProfiles', u.uid), { displayName: u.displayName }, { merge: true }).catch(() => {})
+              setDoc(doc(identityDb, 'userProfiles', u.uid), { displayName: u.displayName }, { merge: true }).catch(() => {})
             }
             setOrgRoles(data.orgRoles ?? {})
             setCompetitionRoles(data.competitionRoles ?? {})
@@ -124,7 +124,7 @@ export function AuthProvider({ children }) {
       setUserEntitlement(entitlementFieldsOfClaims(tok.claims))
     } catch { /* keep the current claim state */ }
     try {
-      const snap = await getDoc(doc(db, 'users', auth.currentUser.uid))
+      const snap = await getDoc(doc(identityDb, 'users', auth.currentUser.uid))
       if (snap.exists()) {
         const data = snap.data()
         setOrgRoles(data.orgRoles ?? {})
@@ -151,12 +151,12 @@ export function AuthProvider({ children }) {
     // the user never completes the optional profile step. Merge so it coexists
     // with the onAuthStateChanged bootstrap. NOTE: never write plan/billing
     // fields here — those are central and rules reject them.
-    await setDoc(doc(db, 'users', cred.user.uid), {
+    await setDoc(doc(identityDb, 'users', cred.user.uid), {
       email:         (email ?? '').toLowerCase(),
       displayName:   displayName ?? '',
       updatedAt:     serverTimestamp(),
     }, { merge: true }).catch(() => {})
-    setDoc(doc(db, 'userProfiles', cred.user.uid), {
+    setDoc(doc(identityDb, 'userProfiles', cred.user.uid), {
       email:       (email ?? '').toLowerCase(),
       displayName: displayName ?? '',
     }, { merge: true }).catch(() => {})

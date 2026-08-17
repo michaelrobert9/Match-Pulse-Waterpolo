@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Search, BarChart2, Eye, Globe, CheckCircle, Wrench } from 'lucide-react'
 import { collection, getDocs, updateDoc, doc } from 'firebase/firestore'
-import { db } from '../../firebase'
+import { db, identityDb } from '../../firebase'
 import { fetchSeoSettings, saveSeoSettings, DEFAULT_SEO } from '../../lib/seoSettings'
 import { slugify, matchSlug as buildMatchSlug } from '../../lib/slugify'
 import { composeTeamDisplay } from '../../lib/teamNaming'
@@ -658,7 +658,7 @@ function ReconcileOrgRoles() {
           update[`orgRoles.${orgId}`] = grant
         }
         try {
-          await updateDoc(doc(db, 'users', userId), update)
+          await updateDoc(doc(identityDb, 'users', userId), update)
           repaired++
         } catch (e) {
           addLog(`  ! could not update user ${userId}: ${e.message}`)

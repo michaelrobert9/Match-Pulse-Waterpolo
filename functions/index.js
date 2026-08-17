@@ -21,6 +21,9 @@ admin.initializeApp()
 // this against the real database.
 const DB_ID = 'waterpolo'
 const db = getFirestore(DB_ID)
+// Shared identity (users/userProfiles) lives in the project's (default)
+// database, not this sport's named DB — read it through the default handle.
+const dbDefault = admin.firestore()
 
 // Human-readable role labels, mirroring src/lib/capabilities.js ROLE_DISPLAY.
 // Falls back to the raw role string for anything not listed.
@@ -485,7 +488,7 @@ exports.waterpoloDailyCareerStatsRecompute = onSchedule(
 async function assertCanAdministerCompetition(db, competitionId, auth) {
   const [compSnap, userSnap] = await Promise.all([
     db.doc(`competitions/${competitionId}`).get(),
-    db.doc(`users/${auth.uid}`).get(),
+    dbDefault.doc(`users/${auth.uid}`).get(),
   ])
   if (!compSnap.exists) throw new HttpsError('not-found', 'Competition not found.')
   const comp = compSnap.data()
@@ -538,7 +541,7 @@ exports.waterpoloRebuildAllCareerStats = onCall(
   { region: 'europe-west1', timeoutSeconds: 540, memory: '1GiB' },
   async (request) => {
     if (!request.auth) throw new HttpsError('unauthenticated', 'Must be signed in.')
-    const userSnap = await db.doc(`users/${request.auth.uid}`).get()
+    const userSnap = await dbDefault.doc(`users/${request.auth.uid}`).get()
     if (!(userSnap.exists && userSnap.data().platformAdmin === true)) {
       throw new HttpsError('permission-denied', 'Platform admin only.')
     }

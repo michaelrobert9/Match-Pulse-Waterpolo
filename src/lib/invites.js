@@ -2,7 +2,7 @@ import {
   collection, addDoc, getDocs, query, where,
   updateDoc, doc, serverTimestamp, writeBatch,
 } from 'firebase/firestore'
-import { db } from '../firebase'
+import { db, identityDb } from '../firebase'
 import { findUserByEmail, setOrgStaff, setMasterAdmin } from './adminQueries'
 
 // Create an invite. For an email that already has a MatchPulse account the
@@ -83,7 +83,7 @@ export async function claimPendingInvites(email, uid) {
         // memberships preserved) if present — and the create/self-update rules
         // both permit it. A set+update pair in one batch would fail: rules
         // evaluate the update against the pre-batch (absent) doc.
-        batch.set(doc(db, 'users', uid), {
+        batch.set(doc(identityDb, 'users', uid), {
           email:    normalizedEmail,
           orgRoles: { [invite.orgId]: { role: invite.role, teamId: invite.teamId || null } },
         }, { merge: true })
