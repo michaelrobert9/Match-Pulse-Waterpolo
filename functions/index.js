@@ -64,7 +64,7 @@ exports.waterpoloSendInviteEmail = onDocumentCreated(
     }
 
     const roleLabel = ROLE_DISPLAY[invite.role] || invite.role || 'member'
-    const signupLink = `https://matchpulse.co.za/signup?invite=${inviteId}`
+    const signupLink = `https://waterpolo.matchpulse.co.za/signup?invite=${inviteId}`
 
     const resend = new Resend(process.env.RESEND_API_KEY)
 

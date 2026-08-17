@@ -149,6 +149,9 @@ export function buildMeta({ type, entity = null, path = null } = {}) {
       h1          = name
       canonical   = playerUrl(entity)
       ogImage     = entity?.photoUrl || ogImage
+      // Addendum A3: unclaimed team-sheet profiles exist and are reachable,
+      // but never enter search results.
+      if (entity?.claimStatus === 'unclaimed') robots = 'noindex,follow'
       ogType      = 'profile'
       break
     }
