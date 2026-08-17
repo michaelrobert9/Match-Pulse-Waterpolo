@@ -14,6 +14,13 @@
     ],
     "rewrites": [
       {
+        "source": "/sitemap.xml",
+        "function": {
+          "functionId": "waterpoloSitemap",
+          "region": "europe-west1"
+        }
+      },
+      {
         "source": "**",
         "destination": "/index.html"
       }
@@ -35,6 +42,9 @@
         ".git",
         "firebase-debug.log",
         "firebase-debug.*.log"
+      ],
+      "predeploy": [
+        "npm --prefix \"$RESOURCE_DIR\" ci || npm --prefix \"$RESOURCE_DIR\" install"
       ]
     }
   ]

@@ -133,7 +133,12 @@ exports.waterpoloSendInviteEmail = onDocumentCreated(
 //
 // Secrets (Google Cloud Secret Manager):
 //   • RESEND_API_KEY       — required to send the email.
-//   • TURNSTILE_SECRET_KEY — Cloudflare Turnstile secret. OPTIONAL: while unset
+//   • TURNSTILE_SECRET_KEY — Cloudflare Turnstile secret. OPTIONAL and NOT
+//     declared as a deploy-time secret above, so a project without it still
+//     deploys (Firebase rejects a function that references a missing secret).
+//     To ENFORCE the captcha: create the secret
+//     (firebase functions:secrets:set TURNSTILE_SECRET_KEY) AND add it back to
+//     the submitContactForm secrets array. While unset
 //     the captcha step is skipped (and logged) so the form works before the keys
 //     are provisioned. Set it — together with VITE_TURNSTILE_SITE_KEY on the
 //     frontend — to enforce the captcha. Keys: dash.cloudflare.com → Turnstile.
@@ -157,7 +162,7 @@ async function verifyTurnstile(token, remoteip) {
 }
 
 exports.waterpoloSubmitContactForm = onCall(
-  { region: 'europe-west1', secrets: ['RESEND_API_KEY', 'TURNSTILE_SECRET_KEY'] },
+  { region: 'europe-west1', secrets: ['RESEND_API_KEY'] },
   async (request) => {
     const d = request.data ?? {}
     const name    = String(d.name    ?? '').trim()
