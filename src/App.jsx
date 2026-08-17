@@ -30,6 +30,7 @@ import CompetitionFestivalStats from './pages/CompetitionFestivalStats'
 import TeamDetail from './pages/TeamDetail'
 import Login from './pages/Login'
 import Signup from './pages/Signup'
+import Portal from './pages/Portal'
 import Profile from './pages/Profile'
 import LegalPage from './pages/legal/LegalPage'
 import Contact from './pages/Contact'
@@ -175,6 +176,7 @@ export default function App() {
             Firebase project (platform brief v2 §2). Outside the guard. */}
         <Route path="/login"   element={<Login />} />
         <Route path="/signup"  element={<Signup />} />
+        <Route path="/portal"  element={<Portal />} />
 
         {/* Management shell — ONE role-aware shell over both /manage and /admin.
             Everything here used to render bare in the public Layout (or the old

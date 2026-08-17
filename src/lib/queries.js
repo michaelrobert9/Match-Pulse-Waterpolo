@@ -452,6 +452,9 @@ export async function fetchTopPeople(limit = 10) {
   const snap = await getDocs(collection(db, 'people'))
   return snap.docs
     .map(d => ({ id: d.id, ...d.data() }))
+    // Addendum A3: unclaimed team-sheet profiles never enter a browsable
+    // list — reachable from a team sheet or a claim search only.
+    .filter(p => p.claimStatus !== 'unclaimed')
     .sort((a, b) => (b.careerCaps ?? 0) - (a.careerCaps ?? 0))
     .slice(0, limit)
 }
