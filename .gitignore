@@ -7,3 +7,6 @@ dist
 .DS_Store
 .firebase
 .claude/
+
+# Generated at build time by scripts/generate-sitemap.cjs (CI); never commit a stale snapshot
+public/sitemap.xml

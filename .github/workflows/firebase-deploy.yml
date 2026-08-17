@@ -39,6 +39,16 @@ jobs:
             exit 1
           fi
 
+      # Generate the sitemap into public/ BEFORE the build so Vite copies it into
+      # dist/. Firebase serves an exact-match static file before any rewrite, so
+      # this is what makes /sitemap.xml work without depending on a Cloud Function
+      # deploy. Non-fatal: a sitemap problem never fails the release.
+      - name: Generate sitemap
+        run: npm install firebase-admin --no-save && node scripts/generate-sitemap.cjs
+        env:
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+          FIRESTORE_DB: waterpolo
+
       - name: Build
         run: npm run build
         env:
