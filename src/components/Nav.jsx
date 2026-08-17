@@ -269,7 +269,7 @@ export default function Nav() {
             </NavLink>
           ) : (
             <Link to="/login"
-              className="block text-center bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-sm rounded-lg px-4 py-2.5 transition-colors">
+              className="block w-full text-center bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-sm rounded-lg px-4 py-2.5 transition-colors">
               Sign in
             </Link>
           )}

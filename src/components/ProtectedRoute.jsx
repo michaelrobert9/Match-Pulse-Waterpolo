@@ -16,7 +16,10 @@ export default function ProtectedRoute({ children, require: requiredRole = 'admi
   // Signed out → the LOCAL sign-in page (platform brief v2: sign-in is per
   // subdomain, no redirect off-origin). Remember where they were headed so we
   // can return them there after they sign in.
-  if (!user) return <Navigate to="/login" replace state={{ from: location.pathname + location.search }} />
+  if (!user) {
+    const next = encodeURIComponent(location.pathname + location.search)
+    return <Navigate to={`/login?next=${next}`} replace />
+  }
 
   if (requiredRole === 'any') return children
 

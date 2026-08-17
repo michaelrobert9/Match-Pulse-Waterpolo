@@ -2,9 +2,11 @@ import { useState } from 'react'
 import { ChevronLeft, Palette} from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../../contexts/AuthContext'
-import { selfCreateOrganization } from '../../lib/adminQueries'
+import { selfCreateOrganization, updateOrganization } from '../../lib/adminQueries'
+import { uploadImageForEntity } from '../../lib/imageUpload'
 import { SCHOOL_GENDER_PROFILES } from '../../lib/teamNaming'
 import { monogram } from '../../lib/names'
+import ImageUpload from '../../components/ImageUpload'
 
 const TYPE_OPTIONS = [
   {
@@ -52,7 +54,7 @@ export default function CreateOrg() {
   const [genderProfile, setGenderProfile] = useState('')  // schools must pick — no default
   const [description,  setDescription]  = useState('')
   const [website,      setWebsite]      = useState('')
-  const [logoUrl,      setLogoUrl]      = useState('')
+  const [logoFile,     setLogoFile]     = useState(null)
   const [saving,       setSaving]       = useState(false)
   const [error,        setError]        = useState('')
 
@@ -79,10 +81,19 @@ export default function CreateOrg() {
         primaryColor,
         description:   description.trim() || null,
         website:       website.trim() || null,
-        logoUrl:       logoUrl.trim() || null,
+        logoUrl:       null,
         secondaryColor: '#FFFFFF',
         ...(type === 'school' ? { genderProfile } : {}),
       })
+      // Logo can only be uploaded once the org (and its id) exists, so it is
+      // deferred to here. A failure leaves the org created and logo-less — the
+      // owner can add it from settings — so it must not fail the whole flow.
+      if (logoFile) {
+        try {
+          const url = await uploadImageForEntity('orgLogo', ref.id, logoFile)
+          await updateOrganization(ref.id, { logoUrl: url })
+        } catch { /* non-fatal: org created, logo can be added in settings */ }
+      }
       await refreshUserData()
       navigate(`/manage/orgs/${ref.id}`, { replace: true, state: { freshOwner: true } })
     } catch (err) {
@@ -97,7 +108,7 @@ export default function CreateOrg() {
 
         {/* Header */}
         <div className="mb-8">
-          <button onClick={() => navigate(-1)}
+          <button onClick={() => navigate('/manage')}
             className="flex items-center gap-2 text-slate-500 hover:text-slate-900 transition-colors text-sm mb-6">
             <ChevronLeft className="w-4 h-4" />
             Back
@@ -232,27 +243,15 @@ export default function CreateOrg() {
             type="url"
           />
 
-          {/* Profile photo URL */}
-          <div>
-            <label className="text-[10px] font-bold uppercase tracking-widest text-slate-500 block mb-1.5">
-              Profile photo URL <span className="text-slate-400 normal-case tracking-normal font-normal">optional</span>
-            </label>
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-lg flex items-center justify-center shrink-0 overflow-hidden"
-                style={{ backgroundColor: primaryColor + '30', border: `2px solid ${primaryColor}` }}>
-                {logoUrl.trim()
-                  ? <img src={logoUrl.trim()} alt="" className="w-full h-full object-cover"
-                      onError={e => { e.currentTarget.style.display = 'none' }}
-                      onLoad={e => { e.currentTarget.style.display = '' }} />
-                  : <span className="text-[10px] font-bold font-mono" style={{ color: primaryColor }}>{name ? monogram(name) : 'ORG'}</span>
-                }
-              </div>
-              <input value={logoUrl} onChange={e => setLogoUrl(e.target.value)}
-                type="url" placeholder="https://…"
-                className="flex-1 bg-white border border-slate-200 rounded-lg px-3 py-2.5 text-slate-900 text-sm placeholder-slate-400 focus:outline-none focus:border-emerald-500 transition-colors" />
-            </div>
-            <p className="text-[11px] text-slate-400 mt-1">Link to a logo or crest image. You can change this later in settings.</p>
-          </div>
+          {/* Logo — uploaded to the storage bucket once the org is created */}
+          <ImageUpload
+            specKey="orgLogo"
+            deferred
+            label="Logo (optional)"
+            monogram={name ? monogram(name) : 'ORG'}
+            accentColor={primaryColor}
+            onPick={f => setLogoFile(f)}
+          />
 
           {error && (
             <div className="bg-red-50 border border-red-200 rounded-lg px-4 py-3 text-sm text-red-600">{error}</div>

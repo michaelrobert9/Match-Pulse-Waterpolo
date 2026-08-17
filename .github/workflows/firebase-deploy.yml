@@ -49,6 +49,28 @@ jobs:
           VITE_FIREBASE_MESSAGING_SENDER_ID: ${{ secrets.VITE_FIREBASE_MESSAGING_SENDER_ID }}
           VITE_FIREBASE_APP_ID:              ${{ secrets.VITE_FIREBASE_APP_ID }}
 
+      # Cloud Functions must deploy BEFORE hosting: the hosting config rewrites
+      # every route to the renderer function (and /sitemap.xml to the sitemap
+      # function), so shipping hosting without the functions would 404 the site.
+      # Blocking on purpose — a failed functions deploy stops the release and
+      # leaves the previous version serving. Scoped to this sport's codebase so
+      # it can never touch the main site's functions.
+      - name: Deploy Cloud Functions
+        env:
+          GOOGLE_APPLICATION_CREDENTIALS: ${{ runner.temp }}/firebase-sa.json
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+        run: |
+          if [ -z "$FIREBASE_SERVICE_ACCOUNT" ]; then
+            echo "FIREBASE_SERVICE_ACCOUNT not set — skipping functions deploy."
+            exit 0
+          fi
+          printf '%s' "$FIREBASE_SERVICE_ACCOUNT" > "$GOOGLE_APPLICATION_CREDENTIALS"
+          npx --yes firebase-tools@latest deploy \
+            --only functions:waterpolo \
+            --project match-pulse-4560e \
+            --non-interactive --force
+          rm -f "$GOOGLE_APPLICATION_CREDENTIALS"
+
       - name: Deploy to Firebase Hosting
         uses: FirebaseExtended/action-hosting-deploy@v0
         with:

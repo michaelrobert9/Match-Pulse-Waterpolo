@@ -4,6 +4,8 @@ import { ChevronRight } from 'lucide-react'
 import { fetchPerson, fetchCareerForPerson, fetchOrganization, toDate } from '../lib/queries'
 import { orgUrl } from '../lib/slugify'
 import { monogram } from '../lib/names'
+import { useSeoMeta } from '../lib/useSeoMeta'
+import ReportProfileLink from '../components/ReportProfileLink'
 
 const ROLE_LABELS = {
   player: 'Player',
@@ -115,6 +117,8 @@ export default function PlayerPage() {
   const [orgs,    setOrgs]    = useState([])
   const [loading, setLoading] = useState(true)
   const [notFound, setNotFound] = useState(false)
+  // Applies noindex for unclaimed team-sheet profiles (addendum A3).
+  useSeoMeta({ type: 'player', entity: person })
 
   useEffect(() => {
     let alive = true
@@ -153,6 +157,10 @@ export default function PlayerPage() {
   const initials = person.fullName
     .split(' ').filter(Boolean).slice(0, 2).map(w => w[0]).join('').toUpperCase()
 
+  // Addendum A3: an unclaimed team-sheet profile is limited to name, teams
+  // and stats — no photo/avatar, no DOB, nothing self-filled.
+  const unclaimed = person.claimStatus === 'unclaimed'
+
   const totalCards =
     (person.careerCards?.green  ?? 0) +
     (person.careerCards?.yellow ?? 0) +
@@ -165,12 +173,14 @@ export default function PlayerPage() {
       <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm">
         <div className="h-2 bg-gradient-to-r from-emerald-500 to-emerald-400" />
         <div className="p-5 flex items-start gap-4">
-          {/* Avatar */}
-          <div className="w-16 h-16 rounded-xl bg-slate-100 border border-slate-200 flex items-center justify-center shrink-0 overflow-hidden">
-            {person.photoUrl
-              ? <img src={person.photoUrl} alt={person.fullName} className="w-full h-full object-cover object-top" />
-              : <span className="text-lg font-bold font-mono text-slate-500">{initials}</span>}
-          </div>
+          {/* Avatar — not shown on unclaimed team-sheet profiles (A3) */}
+          {!unclaimed && (
+            <div className="w-16 h-16 rounded-xl bg-slate-100 border border-slate-200 flex items-center justify-center shrink-0 overflow-hidden">
+              {person.photoUrl
+                ? <img src={person.photoUrl} alt={person.fullName} className="w-full h-full object-cover object-top" />
+                : <span className="text-lg font-bold font-mono text-slate-500">{initials}</span>}
+            </div>
+          )}
 
           {/* Name + meta */}
           <div className="flex-1 min-w-0 pt-0.5">
@@ -184,18 +194,18 @@ export default function PlayerPage() {
               </div>
             )}
             <h1 className="font-display font-bold text-slate-900 text-2xl leading-tight">{person.fullName}</h1>
-            {(person.position || person.nationality) && (
+            {!unclaimed && (person.position || person.nationality) && (
               <div className="text-slate-500 text-sm mt-0.5">
                 {[person.position, person.nationality].filter(Boolean).join(' · ')}
               </div>
             )}
-            {person.dateOfBirth && (
+            {!unclaimed && person.dateOfBirth && (
               <div className="text-slate-400 text-xs mt-1">
                 {fmtDate(person.dateOfBirth)}
                 {age(person.dateOfBirth) != null && ` · ${age(person.dateOfBirth)} yrs`}
               </div>
             )}
-            {person.sahaNumber && (
+            {!unclaimed && person.sahaNumber && (
               <div className="mt-1.5">
                 <span className="inline-flex font-mono text-[9px] font-bold uppercase tracking-widest px-1.5 py-0.5 rounded bg-slate-100 border border-slate-200 text-slate-500">
                   SAHA {person.sahaNumber}
@@ -260,6 +270,9 @@ export default function PlayerPage() {
           </div>
         )}
       </section>
+
+      {/* "This isn't me" — on every profile page, works without an account (A4) */}
+      <ReportProfileLink person={person} />
 
     </div>
   )

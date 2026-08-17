@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from 'react'
-import { ChevronRight, ExternalLink } from 'lucide-react'
+import { ChevronRight, ExternalLink, Trash2 } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { fetchAllMatches, toDate } from '../../lib/queries'
+import { deleteMatch, removeFixtureFromCompetition } from '../../lib/adminQueries'
 import { isScheduled } from '../../lib/fixtureStatus'
 import { matchUrl } from '../../lib/slugify'
 import StatusBadge from '../../components/StatusBadge'
@@ -88,6 +89,20 @@ export function FixturesList() {
     return d
       ? d.toLocaleString('en-ZA', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })
       : 'Date TBD'
+  }
+
+  // Delete straight from the list — resolution is by document id, so it works
+  // even for matches with no stored `path` (whose public page would 404). Also
+  // clears the competition fixture-membership doc when the match belongs to one.
+  async function handleDelete(m) {
+    if (!confirm(`Delete ${m.homeTeamName || 'Home'} vs ${m.awayTeamName || 'Away'}? This cannot be undone.`)) return
+    try {
+      await deleteMatch(m.id)
+      if (m.competitionId) await removeFixtureFromCompetition(m.competitionId, m.id).catch(() => {})
+      setMatches(prev => prev.filter(x => x.id !== m.id))
+    } catch (e) {
+      alert(e.message || 'Delete failed.')
+    }
   }
 
   if (loading) return (
@@ -190,6 +205,14 @@ export function FixturesList() {
                   {isFinal ? 'Edit' : isLive ? 'Score' : 'Edit'}
                   <ChevronRight className="w-4 h-4" />
                 </Link>
+
+                {/* Delete straight from the list — id-based, so it works even for
+                    matches with no public page. */}
+                <button onClick={() => handleDelete(m)}
+                  className="shrink-0 text-slate-300 hover:text-red-600 transition-colors p-1"
+                  title="Delete match">
+                  <Trash2 className="w-4 h-4" />
+                </button>
               </div>
             )
           })}

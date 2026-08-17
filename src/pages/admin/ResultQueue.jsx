@@ -103,7 +103,9 @@ function QueueRow({ match, onResolved }) {
   function confirm() {
     if (home === '' || away === '') { setError('Enter a score for both teams.'); return }
 
-    // Build goals array from scorer inputs (only for untracked — tracked already has timeline).
+    // Build goals array from scorer inputs (only for untracked — tracked already
+    // has timeline). Rows without a name are dropped: the COUNT is carried
+    // separately by homeScore/awayScore.
     const goals = !tracked
       ? [
           ...Array.from({ length: homeCount }, (_, i) => ({
@@ -112,7 +114,7 @@ function QueueRow({ match, onResolved }) {
           ...Array.from({ length: awayCount }, (_, i) => ({
             side: 'away', scorerName: awayScorers[i]?.trim() || null,
           })),
-        ]
+        ].filter(r => r.scorerName)
       : null
 
     const cardPayload = !tracked && cards.length > 0

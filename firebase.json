@@ -22,7 +22,10 @@
       },
       {
         "source": "**",
-        "destination": "/index.html"
+        "function": {
+          "functionId": "waterpoloRenderer",
+          "region": "europe-west1"
+        }
       }
     ]
   },

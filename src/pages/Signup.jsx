@@ -3,10 +3,10 @@ import { Link, useNavigate } from 'react-router-dom'
 import { doc, setDoc, serverTimestamp } from 'firebase/firestore'
 import { claimPendingInvites } from '../lib/invites'
 import { updateProfile } from 'firebase/auth'
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage'
 import { Camera, ChevronRight } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
-import { auth, db, storage, configured } from '../firebase'
+import { auth, db, identityDb, storage, configured } from '../firebase'
+import { uploadImageForEntity } from '../lib/imageUpload'
 import { saveSportProfile, WATERPOLO_POSITIONS } from '../lib/sportProfile'
 
 const PROVINCES = [
@@ -112,9 +112,9 @@ export default function Signup() {
     if (!file || !storage || !createdUid) return
     setUploading(true)
     try {
-      const storageRef = ref(storage, `avatars/${createdUid}`)
-      await uploadBytes(storageRef, file)
-      const url = await getDownloadURL(storageRef)
+      // Validates (image type, ≤2 MB) and uploads to avatars/{uid} — the path
+      // storage.rules authorises for the signed-in user.
+      const url = await uploadImageForEntity('userAvatar', createdUid, file)
       await updateProfile(auth.currentUser, { photoURL: url })
       setPhotoURL(url)
     } catch {
@@ -130,7 +130,7 @@ export default function Signup() {
   async function saveProfile() {
     if (!createdUid) return
     const displayName = [firstName.trim(), lastName.trim()].filter(Boolean).join(' ')
-    await setDoc(doc(db, 'users', createdUid), {
+    await setDoc(doc(identityDb, 'users', createdUid), {
       email:          email.toLowerCase(),
       displayName,
       firstName:      firstName.trim(),
@@ -148,7 +148,7 @@ export default function Signup() {
       createdAt:      serverTimestamp(),
       updatedAt:      serverTimestamp(),
     }, { merge: true })
-    setDoc(doc(db, 'userProfiles', createdUid), {
+    setDoc(doc(identityDb, 'userProfiles', createdUid), {
       email:       email.toLowerCase(),
       displayName,
       photoURL:    photoURL || null,

@@ -1,5 +1,5 @@
-import { useState } from 'react'
-import { useNavigate, useLocation, Link } from 'react-router-dom'
+import { useEffect, useState } from 'react'
+import { useNavigate, useLocation, useSearchParams, Link } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import { configured } from '../firebase'
 
@@ -8,11 +8,23 @@ import { configured } from '../firebase'
 // site. The same underlying account resolves to one UID whichever subdomain or
 // method (email+password or Google) a person uses; the provider is only how they
 // prove who they are on a given visit.
+
+// Where to send the user after a successful sign-in: the ?next= path a guard
+// recorded, if it is a safe in-app path, otherwise home.
+function safeNext(raw) {
+  if (raw && raw.startsWith('/') && !raw.startsWith('//')) return raw
+  return '/'
+}
+
 export default function Login() {
-  const { login, signUp, signInWithGoogle, resetPassword } = useAuth()
+  const { user, login, signUp, signInWithGoogle, resetPassword } = useAuth()
   const navigate = useNavigate()
   const location = useLocation()
-  const from = location.state?.from || '/'
+  const [params] = useSearchParams()
+  const next = safeNext(params.get('next'))
+
+  // Already signed in (e.g. navigated here manually) — leave immediately.
+  useEffect(() => { if (user) navigate(next, { replace: true }) }, [user, next, navigate])
 
   const [tab,         setTab]         = useState('signin')
   const [displayName, setDisplayName] = useState('')
@@ -24,7 +36,7 @@ export default function Login() {
 
   function configCheck() {
     if (!configured) {
-      setError('Firebase is not configured yet. Add VITE_FIREBASE_* secrets to GitHub Actions.')
+      setError('Sign-in is not available right now. Please try again later.')
       return false
     }
     return true
@@ -41,7 +53,7 @@ export default function Login() {
       } else {
         await signUp(email, password, displayName)
       }
-      navigate(from, { replace: true })
+      navigate(next, { replace: true })
     } catch (err) {
       // §2b: an existing account is NOT an error — it means they already have a
       // MatchPulse account (from this sport or another). Move them to sign-in
@@ -54,11 +66,13 @@ export default function Login() {
         return
       }
       const messages = {
-        'auth/invalid-credential':   'Invalid email or password.',
-        'auth/wrong-password':       'Invalid email or password.',
-        'auth/user-not-found':       'No account found for this email. Create one instead.',
-        'auth/weak-password':        'Password must be at least 6 characters.',
-        'auth/invalid-email':        'Please enter a valid email address.',
+        'auth/invalid-credential':    'Invalid email or password.',
+        'auth/wrong-password':        'Invalid email or password.',
+        'auth/user-not-found':        'No account found for this email. Create one instead.',
+        'auth/weak-password':         'Password must be at least 6 characters.',
+        'auth/invalid-email':         'Please enter a valid email address.',
+        'auth/too-many-requests':     'Too many attempts. Please wait a moment and try again.',
+        'auth/operation-not-allowed': 'Email sign-in is not enabled for this project yet.',
       }
       setError(messages[err.code] ?? 'Something went wrong. Please try again.')
     } finally {
@@ -72,14 +86,17 @@ export default function Login() {
     setError(null); setNotice(null)
     try {
       await signInWithGoogle()
-      navigate(from, { replace: true })
+      navigate(next, { replace: true })
     } catch (err) {
       if (err.code === 'auth/popup-closed-by-user' || err.code === 'auth/cancelled-popup-request') {
         // user dismissed — no error
       } else if (err.code === 'auth/account-exists-with-different-credential') {
         // Same identity already registered with email+password. One person, one
         // account: don't create a second — direct them to their existing method.
+        const existing = err.customData?.email
+        if (existing) setEmail(existing)
         setTab('signin')
+        setPassword('')
         setNotice('This email is already registered — sign in with your email and password.')
       } else {
         setError('Google sign-in failed. Please try again.')
@@ -115,7 +132,7 @@ export default function Login() {
 
         <div className="flex gap-1 bg-slate-100 rounded-lg p-1 mb-6">
           {[['signin', 'Sign in'], ['signup', 'Create account']].map(([t, label]) => (
-            <button key={t} onClick={() => { setTab(t); setError(null); setNotice(null) }}
+            <button key={t} type="button" onClick={() => { setTab(t); setError(null); setNotice(null) }}
               className={`flex-1 py-1.5 text-xs font-bold uppercase tracking-wider rounded-md transition-colors ${
                 tab === t ? 'bg-emerald-600 text-white' : 'text-slate-500 hover:text-slate-900'
               }`}>
@@ -173,7 +190,7 @@ export default function Login() {
           </div>
         </div>
 
-        <button onClick={handleGoogle} disabled={loading}
+        <button type="button" onClick={handleGoogle} disabled={loading}
           className="w-full flex items-center justify-center gap-3 border border-slate-200 hover:border-slate-300 bg-white rounded-lg px-4 py-3 text-sm font-medium text-slate-600 hover:text-slate-900 disabled:opacity-50 transition-colors shadow-sm">
           <GoogleIcon />
           Continue with Google

@@ -12,7 +12,7 @@
 
 import { getMessaging, getToken, isSupported } from 'firebase/messaging'
 import { doc, setDoc, arrayUnion } from 'firebase/firestore'
-import app, { db, auth, configured } from '../firebase'
+import app, { db, identityDb, auth, configured } from '../firebase'
 
 const VAPID_KEY = import.meta.env.VITE_FIREBASE_VAPID_KEY || ''
 
@@ -42,7 +42,7 @@ export async function registerFcmToken() {
   const uid = auth.currentUser?.uid
   if (token && uid) {
     // Multiple devices per user — accumulate tokens; the sender prunes stale ones.
-    await setDoc(doc(db, 'users', uid), { fcmTokens: arrayUnion(token) }, { merge: true })
+    await setDoc(doc(identityDb, 'users', uid), { fcmTokens: arrayUnion(token) }, { merge: true })
   }
   return token
 }

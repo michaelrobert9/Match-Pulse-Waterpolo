@@ -19,6 +19,7 @@ import { auth } from '../firebase'
 import { storage } from '../firebase'
 import { ref as storageRef, uploadBytes, getDownloadURL } from 'firebase/storage'
 import { useSeoMeta } from '../lib/useSeoMeta'
+import ReportProfileLink from '../components/ReportProfileLink'
 
 const ROLE_LABELS = {
   player: 'Player',
@@ -480,15 +481,8 @@ export default function PlayerProfile() {
         )}
       </section>
 
-      {/* "This isn't me" (addendum A4): a plain report link on every profile
-          page, working without an account — the public contact form takes
-          signed-out submissions. */}
-      <p className="text-center">
-        <Link to={`/contact?about=${encodeURIComponent(`Player profile report: ${person.fullName} (${person.id}) — this isn't me / wrong claim`)}`}
-          className="text-[11px] text-slate-400 hover:text-slate-600 underline underline-offset-2 transition-colors">
-          This isn't me — report this profile
-        </Link>
-      </p>
+      {/* "This isn't me" — on every profile page, works without an account (A4) */}
+      <ReportProfileLink person={person} />
 
     </div>
   )
