@@ -287,13 +287,21 @@ export function isOrgPubliclyVisible(org) {
 
 // Public schools / clubs listings. Single-field where() + client-side sort to
 // avoid requiring a (type, name) composite index. Pending/rejected organisations
-// are excluded so they never appear as fully official public profiles (R3).
+// are excluded so they never appear as fully official public profiles (R3), and
+// so are organisations with no team in this sport — an empty/unactivated profile
+// is not listed publicly (it renders nothing useful).
 export async function fetchOrganizationsByType(type) {
   if (!configured) return []
-  const snap = await getDocs(query(collection(db, 'organizations'), where('type', '==', type)))
+  const [snap, teamSnap] = await Promise.all([
+    getDocs(query(collection(db, 'organizations'), where('type', '==', type))),
+    getDocs(collection(db, 'teams')),
+  ])
+  const orgIdsWithTeams = new Set()
+  teamSnap.forEach(d => { const oid = d.data().organizationId; if (oid) orgIdsWithTeams.add(oid) })
   return snap.docs
     .map(d => ({ id: d.id, ...d.data() }))
     .filter(isOrgPubliclyVisible)
+    .filter(o => orgIdsWithTeams.has(o.id))
     .sort((a, b) => (a.name || '').localeCompare(b.name || ''))
 }
 

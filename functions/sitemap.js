@@ -153,11 +153,14 @@ async function buildSitemap(db, logger) {
     })
   } catch (e) { logger?.warn?.('sitemap: competitions failed', e) }
 
-  // Teams with a frozen slug.
+  // Teams with a frozen slug. Also record which orgs have at least one team in
+  // this sport, so empty/unactivated org profiles stay out of the index below.
+  const orgIdsWithTeams = new Set()
   try {
     const teams = await db.collection('teams').get()
     teams.forEach(d => {
       const t = d.data()
+      if (t.organizationId) orgIdsWithTeams.add(t.organizationId)
       if (t.slug) push({ path: `/team/${t.slug}`, lastmod: lastmod(t.updatedAt), changefreq: 'weekly', priority: 0.7 })
     })
   } catch (e) { logger?.warn?.('sitemap: teams failed', e) }
@@ -174,11 +177,15 @@ async function buildSitemap(db, logger) {
     })
   } catch (e) { logger?.warn?.('sitemap: people failed', e) }
 
-  // Organisations (schools / clubs / associations).
+  // Organisations (schools / clubs / associations). Only those publicly visible
+  // (not awaiting review or rejected) AND with at least one team in this sport —
+  // an empty/unactivated profile renders nothing useful, so it is not indexed.
   try {
     const orgs = await db.collection('organizations').get()
     orgs.forEach(d => {
       const o = { id: d.id, ...d.data() }
+      if (o.approvalState && o.approvalState !== 'active') return
+      if (!orgIdsWithTeams.has(o.id)) return
       push({ path: orgPath(o), lastmod: lastmod(o.updatedAt), changefreq: 'weekly', priority: 0.7 })
     })
   } catch (e) { logger?.warn?.('sitemap: organizations failed', e) }
