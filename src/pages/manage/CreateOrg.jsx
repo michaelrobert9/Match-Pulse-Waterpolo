@@ -1,271 +1,43 @@
-import { useState } from 'react'
-import { ChevronLeft, Palette} from 'lucide-react'
+import { ChevronLeft, ExternalLink, Building2 } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
-import { useAuth } from '../../contexts/AuthContext'
-import { selfCreateOrganization, updateOrganization } from '../../lib/adminQueries'
-import { uploadImageForEntity } from '../../lib/imageUpload'
-import { SCHOOL_GENDER_PROFILES } from '../../lib/teamNaming'
-import { monogram } from '../../lib/names'
-import ImageUpload from '../../components/ImageUpload'
 
-const TYPE_OPTIONS = [
-  {
-    value: 'school',
-    label: 'School',
-    description: 'A school water polo programme, representing one institution.',
-  },
-  {
-    value: 'club',
-    label: 'Club',
-    description: 'A club that fields multiple teams across divisions.',
-  },
-  {
-    value: 'association',
-    label: 'Association',
-    description: 'A regional or provincial body that organises competitions.',
-  },
-]
-
-const COLOR_PRESETS = [
-  '#006B3C', '#003087', '#CC0000', '#FF6B00',
-  '#6B0099', '#007A7A', '#8B1A1A', '#1A3A6B',
-]
-
-function Input({ label, ...props }) {
-  return (
-    <div>
-      <label className="text-[10px] font-bold uppercase tracking-widest text-slate-500 block mb-1.5">{label}</label>
-      <input
-        className="w-full bg-white border border-slate-200 rounded-lg px-3 py-2.5 text-slate-900 text-sm placeholder-slate-400 focus:outline-none focus:border-emerald-500 transition-colors"
-        {...props}
-      />
-    </div>
-  )
-}
-
+// Organisations are now created and managed centrally on the main MatchPulse
+// site; this sport app only reads a synced copy of an org's identity. The
+// /manage/new-org route is kept so existing "create an organisation" links
+// still resolve — they land here and point the user at the central create flow.
 export default function CreateOrg() {
-  const { refreshUserData } = useAuth()
   const navigate = useNavigate()
-
-  const [type,         setType]         = useState('')
-  const [name,         setName]         = useState('')
-  const [matchName,    setMatchName]    = useState('')   // short name for match cards (schools/clubs)
-  const [primaryColor, setPrimaryColor] = useState('#006B3C')
-  const [genderProfile, setGenderProfile] = useState('')  // schools must pick — no default
-  const [description,  setDescription]  = useState('')
-  const [website,      setWebsite]      = useState('')
-  const [logoFile,     setLogoFile]     = useState(null)
-  const [saving,       setSaving]       = useState(false)
-  const [error,        setError]        = useState('')
-
-  // Schools take their gender from the school itself, so the profile is required
-  // up front — no default, no guessing a co-ed fallback.
-  const canSubmit = type && name.trim() && !saving && (type !== 'school' || !!genderProfile)
-
-  const typeLabel = type === 'school' ? 'School' : type === 'club' ? 'Club' : type === 'association' ? 'Association' : 'Organisation'
-  const namePlaceholder = type === 'school' ? 'e.g. Pretoria Girls High School' : type === 'club' ? 'e.g. Crusaders Water Polo Club' : type === 'association' ? 'e.g. KZN Water Polo Association' : 'e.g. Pretoria Girls High School'
-
-  async function handleSubmit(e) {
-    e.preventDefault()
-    if (!canSubmit) return
-    setSaving(true)
-    setError('')
-    try {
-      const ref = await selfCreateOrganization({
-        type,
-        name:          name.trim(),
-        // Match name: the short form used on match cards ("Kearsney"). Only
-        // schools and clubs are asked; associations/leagues name each team
-        // instead. Blank falls back to the full name everywhere.
-        ...(type !== 'association' ? { matchName: matchName.trim() || null } : {}),
-        primaryColor,
-        description:   description.trim() || null,
-        website:       website.trim() || null,
-        logoUrl:       null,
-        secondaryColor: '#FFFFFF',
-        ...(type === 'school' ? { genderProfile } : {}),
-      })
-      // Logo can only be uploaded once the org (and its id) exists, so it is
-      // deferred to here. A failure leaves the org created and logo-less — the
-      // owner can add it from settings — so it must not fail the whole flow.
-      if (logoFile) {
-        try {
-          const url = await uploadImageForEntity('orgLogo', ref.id, logoFile)
-          await updateOrganization(ref.id, { logoUrl: url })
-        } catch { /* non-fatal: org created, logo can be added in settings */ }
-      }
-      await refreshUserData()
-      navigate(`/manage/orgs/${ref.id}`, { replace: true, state: { freshOwner: true } })
-    } catch (err) {
-      setError(err.message ?? 'Something went wrong. Please try again.')
-      setSaving(false)
-    }
-  }
 
   return (
     <div className="min-h-screen bg-canvas">
       <div className="max-w-lg mx-auto px-4 py-8">
+        <button onClick={() => navigate('/manage')}
+          className="flex items-center gap-2 text-slate-500 hover:text-slate-900 transition-colors text-sm mb-6">
+          <ChevronLeft className="w-4 h-4" />
+          Back
+        </button>
 
-        {/* Header */}
-        <div className="mb-8">
-          <button onClick={() => navigate('/manage')}
-            className="flex items-center gap-2 text-slate-500 hover:text-slate-900 transition-colors text-sm mb-6">
-            <ChevronLeft className="w-4 h-4" />
-            Back
-          </button>
+        <div className="rounded-2xl border border-slate-200 bg-white px-6 py-8 text-center">
+          <div className="w-12 h-12 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center mx-auto mb-4">
+            <Building2 className="w-6 h-6" />
+          </div>
           <h1 className="font-display font-black text-slate-900 text-2xl leading-tight">
-            Create your {typeLabel.toLowerCase()}
+            Organisations live on MatchPulse
           </h1>
-          <p className="text-slate-500 text-sm mt-2 leading-relaxed">
-            You will become the owner and can immediately create teams and matches, and score them.
+          <p className="text-slate-500 text-sm mt-3 leading-relaxed">
+            Schools, clubs and associations are now created and managed in one place on the
+            main MatchPulse site, then appear across every sport automatically. Create yours
+            there, then activate it for water polo.
+          </p>
+          <a href="https://matchpulse.co.za/organisations" target="_blank" rel="noopener noreferrer"
+            className="mt-6 inline-flex items-center justify-center gap-2 w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-sm uppercase tracking-wider rounded-xl py-4 transition-colors">
+            Create an organisation
+            <ExternalLink className="w-4 h-4" />
+          </a>
+          <p className="text-[11px] text-slate-400 mt-3">
+            You'll be the owner and can manage its profile, teams and staff centrally.
           </p>
         </div>
-
-        <form onSubmit={handleSubmit} className="space-y-6">
-
-          {/* Type selector */}
-          <div>
-            <p className="text-[10px] font-bold uppercase tracking-widest text-slate-500 mb-3">Type</p>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-              {TYPE_OPTIONS.map(opt => (
-                <button type="button" key={opt.value} onClick={() => setType(opt.value)}
-                  className={`p-4 rounded-xl border text-left transition-colors ${
-                    type === opt.value
-                      ? 'border-emerald-500 bg-emerald-50'
-                      : 'border-slate-200 hover:border-slate-300 bg-white'
-                  }`}>
-                  <div className={`text-sm font-bold mb-1 ${type === opt.value ? 'text-emerald-700' : 'text-slate-700'}`}>
-                    {opt.label}
-                  </div>
-                  <div className="text-[11px] text-slate-500 leading-snug">{opt.description}</div>
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* Name */}
-          <Input
-            label={`${typeLabel} name`}
-            value={name}
-            onChange={e => setName(e.target.value)}
-            placeholder={namePlaceholder}
-            required
-          />
-
-          {/* Match name — schools and clubs only. Associations/leagues name
-              each team instead, so they never see this field. */}
-          {type && type !== 'association' && (
-            <div>
-              <Input
-                label="Match name"
-                value={matchName}
-                onChange={e => setMatchName(e.target.value)}
-                placeholder={type === 'school' ? 'e.g. Pretoria Girls' : 'e.g. Crusaders'}
-              />
-              <p className="text-[11px] text-slate-500 mt-1.5">
-                The short name shown on match cards and results — full school names
-                clutter a match card. Leave blank to use the full name.
-              </p>
-            </div>
-          )}
-
-          {/* School gender profile */}
-          {type === 'school' && (
-            <div>
-              <p className="text-[10px] font-bold uppercase tracking-widest text-slate-500 mb-2">School gender profile</p>
-              <div className="grid grid-cols-3 gap-2">
-                {SCHOOL_GENDER_PROFILES.map(opt => (
-                  <button type="button" key={opt.value} onClick={() => setGenderProfile(opt.value)}
-                    className={`text-[11px] font-bold px-2 py-2.5 rounded-lg border transition-colors ${
-                      genderProfile === opt.value
-                        ? 'border-emerald-500 bg-emerald-50 text-emerald-700'
-                        : 'border-slate-200 text-slate-600 hover:border-slate-300'
-                    }`}>
-                    {opt.label}
-                  </button>
-                ))}
-              </div>
-              <p className="text-[11px] text-slate-400 mt-1.5">
-                Co-ed schools pick Boys or Girls for each team. Single-gender schools apply it automatically.
-              </p>
-            </div>
-          )}
-
-          {/* Colour */}
-          <div>
-            <p className="text-[10px] font-bold uppercase tracking-widest text-slate-500 mb-2">Primary colour</p>
-            <div className="flex items-center gap-3 flex-wrap">
-              {COLOR_PRESETS.map(c => (
-                <button type="button" key={c} onClick={() => setPrimaryColor(c)}
-                  className="w-8 h-8 rounded-lg transition-transform hover:scale-110 shrink-0"
-                  style={{
-                    backgroundColor: c,
-                    outline: primaryColor === c ? `2px solid #1e293b` : 'none',
-                    outlineOffset: '2px',
-                  }}
-                />
-              ))}
-              <label className="w-8 h-8 rounded-lg overflow-hidden cursor-pointer border border-slate-300 shrink-0"
-                style={{ backgroundColor: COLOR_PRESETS.includes(primaryColor) ? 'transparent' : primaryColor }}>
-                <input type="color" value={primaryColor} onChange={e => setPrimaryColor(e.target.value)}
-                  className="opacity-0 w-0 h-0" />
-                <div className="w-full h-full flex items-center justify-center text-slate-500">
-                  {COLOR_PRESETS.includes(primaryColor) ? (
-                    <Palette className="w-4 h-4" />
-                  ) : null}
-                </div>
-              </label>
-            </div>
-            <div className="flex items-center gap-2 mt-3">
-              <div className="w-8 h-8 rounded-lg flex items-center justify-center text-[10px] font-bold font-mono"
-                style={{ backgroundColor: primaryColor + '30', border: `2px solid ${primaryColor}`, color: primaryColor }}>
-                {name ? monogram(name) : 'ORG'}
-              </div>
-              <span className="text-sm text-slate-700">{name || `${typeLabel} name`}</span>
-            </div>
-          </div>
-
-          {/* Optional fields */}
-          <div>
-            <p className="text-[10px] font-bold uppercase tracking-widest text-slate-500 mb-2">
-              Description <span className="text-slate-400 normal-case tracking-normal">optional</span>
-            </p>
-            <textarea value={description} onChange={e => setDescription(e.target.value)} rows={2}
-              placeholder={`Brief description of your ${typeLabel.toLowerCase()}…`}
-              className="w-full bg-white border border-slate-200 rounded-lg px-3 py-2.5 text-slate-900 text-sm placeholder-slate-400 focus:outline-none focus:border-emerald-500 transition-colors resize-none" />
-          </div>
-
-          <Input
-            label={<>Website <span className="text-slate-400 normal-case tracking-normal font-normal">optional</span></>}
-            value={website}
-            onChange={e => setWebsite(e.target.value)}
-            placeholder="https://…"
-            type="url"
-          />
-
-          {/* Logo — uploaded to the storage bucket once the org is created */}
-          <ImageUpload
-            specKey="orgLogo"
-            deferred
-            label="Logo (optional)"
-            monogram={name ? monogram(name) : 'ORG'}
-            accentColor={primaryColor}
-            onPick={f => setLogoFile(f)}
-          />
-
-          {error && (
-            <div className="bg-red-50 border border-red-200 rounded-lg px-4 py-3 text-sm text-red-600">{error}</div>
-          )}
-
-          <button type="submit" disabled={!canSubmit}
-            className="w-full bg-emerald-600 hover:bg-emerald-500 disabled:opacity-40 disabled:cursor-not-allowed text-white font-bold text-sm uppercase tracking-wider rounded-xl py-4 transition-colors">
-            {saving ? 'Creating…' : `Create ${typeLabel.toLowerCase()}`}
-          </button>
-
-          <p className="text-[11px] text-slate-400 text-center">
-            You will be the owner and can manage teams, matches and staff.
-          </p>
-        </form>
       </div>
     </div>
   )

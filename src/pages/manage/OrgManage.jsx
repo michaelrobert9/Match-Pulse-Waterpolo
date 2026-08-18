@@ -16,7 +16,7 @@ import {
   createMatch,
   ensureCreatorOwnership,
   fetchOrgStaff, removeOrgStaff,
-  propagateTeamNameToMatches, propagateOrgNameToMatches,
+  propagateTeamNameToMatches,
 } from '../../lib/adminQueries'
 import { DeleteOrgModal } from '../admin/Organizations'
 import { toDate } from '../../lib/queries'
@@ -1155,55 +1155,24 @@ function StaffSection({ orgId, org, isPlatformAdmin, uid, teams, canAppoint, inv
 // ── Settings section ──────────────────────────────────────────────────────────
 
 function SettingsSection({ org, onSaved }) {
-  const [form,   setForm]   = useState({
-    name:          org.name           ?? '',
-    type:          org.type           ?? 'school',
-    matchName:     org.matchName      ?? '',
-    region:        org.region         ?? '',
-    primaryColor:  org.primaryColor   ?? '#006B3C',
-    secondaryColor:org.secondaryColor ?? '#FFFFFF',
-    logoUrl:       org.logoUrl        ?? '',
-    bannerUrl:     org.bannerUrl      ?? '',
-    bio:           org.bio ?? org.description ?? '',
-    website:       org.website        ?? '',
-    genderProfile: org.genderProfile  ?? '',
-  })
-  const isSchool    = form.type === 'school'
-  const entityLabel = form.type === 'school' ? 'School' : form.type === 'association' ? 'Association' : 'Club'
-  const [teamMgmt, setTeamMgmt] = useState(org.teamLevelManagement === true)
+  const entityLabel = org.type === 'school' ? 'School' : org.type === 'association' ? 'Association' : 'Club'
+  const [bannerUrl, setBannerUrl] = useState(org.bannerUrl ?? '')
+  const [teamMgmt, setTeamMgmt]   = useState(org.teamLevelManagement === true)
   const [saving, setSaving] = useState(false)
   const [saved,  setSaved]  = useState(false)
   const [error,  setError]  = useState('')
 
+  // Organisation IDENTITY (name, match name, type, colours, logo, bio, website,
+  // gender) is authored centrally on the main site and synced down read-only.
+  // Only these sport-local fields are editable here: the card/banner image and
+  // the team-level management toggle.
   async function handleSave(e) {
     e.preventDefault()
-    const bio = form.bio.trim()
-    if (bio.length > 140) { setError('Bio must be 140 characters or fewer.'); return }
     setSaving(true)
     setError('')
     try {
-      const patch = {
-        name:                form.name.trim(),
-        // Short name for match cards; blank falls back to the full name.
-        // Associations/leagues name each team instead, so theirs stays null.
-        matchName:           form.type !== 'association' ? (form.matchName.trim() || null) : null,
-        type:                form.type,
-        region:              form.region || null,
-        primaryColor:        form.primaryColor,
-        secondaryColor:      form.secondaryColor,
-        logoUrl:             form.logoUrl.trim() || null,
-        bannerUrl:           form.bannerUrl.trim() || null,
-        bio:                 bio || null,
-        description:         null,
-        website:             form.website.trim() || null,
-        teamLevelManagement: teamMgmt,
-        ...(isSchool && form.genderProfile ? { genderProfile: form.genderProfile } : {}),
-      }
+      const patch = { bannerUrl: bannerUrl.trim() || null, teamLevelManagement: teamMgmt }
       await updateOrganization(org.id, patch)
-      // Propagate name change to all match documents that reference this org.
-      if (patch.name !== org.name) {
-        propagateOrgNameToMatches(org.id, patch.name).catch(() => {})
-      }
       setSaved(true)
       setTimeout(() => setSaved(false), 2500)
       onSaved?.({ ...org, ...patch })
@@ -1214,146 +1183,93 @@ function SettingsSection({ org, onSaved }) {
     }
   }
 
+  const genderLabel = SCHOOL_GENDER_PROFILES.find(o => o.value === org.genderProfile)?.label
+
   return (
     <Section id="settings" title={`${entityLabel} settings`}>
-      <form onSubmit={handleSave} className="px-4 py-4 space-y-3">
-        <Input label={`${entityLabel} name`} value={form.name} required
-          onChange={e => setForm(f => ({ ...f, name: e.target.value }))} />
-        {form.type !== 'association' && (
-          <div>
-            <Input label="Match name" value={form.matchName}
-              onChange={e => setForm(f => ({ ...f, matchName: e.target.value }))} />
-            <p className="text-[11px] text-slate-500 mt-1">
-              Short name shown on match cards and results (e.g. “Kearsney”).
-              Blank uses the full name.
-            </p>
-          </div>
-        )}
-        <div>
-          <label className="text-[10px] font-bold uppercase tracking-widest text-slate-500 block mb-1.5">Organisation type</label>
-          <select value={form.type} onChange={e => setForm(f => ({ ...f, type: e.target.value }))}
-            className="w-full bg-white border border-slate-200 rounded-lg px-3 py-2.5 text-slate-900 text-sm focus:outline-none focus:border-emerald-500 transition-colors">
-            <option value="school">School</option>
-            <option value="club">Club</option>
-            <option value="association">Association</option>
-          </select>
-        </div>
-        <div>
-          <label className="text-[10px] font-bold uppercase tracking-widest text-slate-500 block mb-1.5">Province</label>
-          <select value={form.region} onChange={e => setForm(f => ({ ...f, region: e.target.value }))}
-            className="w-full bg-white border border-slate-200 rounded-lg px-3 py-2.5 text-slate-900 text-sm focus:outline-none focus:border-emerald-500 transition-colors">
-            <option value="">Select province…</option>
-            <option>Western Cape</option>
-            <option>Eastern Cape</option>
-            <option>Northern Cape</option>
-            <option>Gauteng</option>
-            <option>KwaZulu-Natal</option>
-            <option>Free State</option>
-            <option>Mpumalanga</option>
-            <option>Limpopo</option>
-            <option>North West</option>
-          </select>
-        </div>
-        <div className="grid grid-cols-2 gap-3">
-          <div>
-            <label className="text-[10px] font-bold uppercase tracking-widest text-slate-500 block mb-1.5">Primary colour</label>
-            <div className="flex items-center gap-2">
-              <input type="color" value={form.primaryColor}
-                onChange={e => setForm(f => ({ ...f, primaryColor: e.target.value }))}
-                className="w-10 h-10 rounded-lg cursor-pointer border-0 bg-transparent" />
-              <span className="text-slate-600 text-sm font-mono">{form.primaryColor}</span>
+      <div className="px-4 py-4 space-y-4">
+        {/* Identity is authored centrally on the main site and read-only here. */}
+        <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-3">
+          <div className="flex items-center gap-3 mb-2">
+            {org.logoUrl
+              ? <img src={org.logoUrl} alt="" className="w-10 h-10 rounded-lg object-cover border border-slate-200 shrink-0" />
+              : <div className="w-10 h-10 rounded-lg flex items-center justify-center text-white font-bold text-sm shrink-0"
+                     style={{ backgroundColor: org.primaryColor || '#555' }}>{monogram(org.name)}</div>}
+            <div className="min-w-0">
+              <div className="text-sm font-bold text-slate-900 truncate">{org.name}</div>
+              <div className="text-[11px] text-slate-500">{entityLabel}{org.region ? ` · ${org.region}` : ''}</div>
             </div>
           </div>
-          <div>
-            <label className="text-[10px] font-bold uppercase tracking-widest text-slate-500 block mb-1.5">Secondary colour</label>
-            <div className="flex items-center gap-2">
-              <input type="color" value={form.secondaryColor}
-                onChange={e => setForm(f => ({ ...f, secondaryColor: e.target.value }))}
-                className="w-10 h-10 rounded-lg cursor-pointer border-0 bg-transparent" />
-              <span className="text-slate-600 text-sm font-mono">{form.secondaryColor}</span>
-            </div>
-          </div>
-        </div>
-        <ImageUpload
-          specKey="orgLogo"
-          entityId={org.id}
-          value={form.logoUrl}
-          label="Logo / crest"
-          monogram={monogram(form.name)}
-          accentColor={form.primaryColor}
-          onChange={url => setForm(f => ({ ...f, logoUrl: url }))}
-        />
-        <ImageUpload
-          specKey="orgBanner"
-          entityId={org.id}
-          value={form.bannerUrl}
-          label="Card / banner image"
-          onChange={url => setForm(f => ({ ...f, bannerUrl: url }))}
-        />
-        <div>
-          <div className="flex items-center justify-between mb-1.5">
-            <label className="text-[10px] font-bold uppercase tracking-widest text-slate-500">About</label>
-            <span className={`text-[10px] font-mono ${form.bio.length > 140 ? 'text-red-500' : 'text-slate-300'}`}>
-              {form.bio.length}/140
+          {org.matchName && <ReadRow label="Match name">{org.matchName}</ReadRow>}
+          {genderLabel && <ReadRow label="Gender">{genderLabel}</ReadRow>}
+          <ReadRow label="Colours">
+            <span className="inline-flex items-center gap-1.5 align-middle">
+              <span className="w-4 h-4 rounded-full border border-slate-300 inline-block" style={{ backgroundColor: org.primaryColor || '#555' }} />
+              <span className="w-4 h-4 rounded-full border border-slate-300 inline-block" style={{ backgroundColor: org.secondaryColor || '#fff' }} />
             </span>
-          </div>
-          <textarea value={form.bio} onChange={e => setForm(f => ({ ...f, bio: e.target.value }))} rows={2} maxLength={140}
-            className="w-full bg-white border border-slate-200 rounded-lg px-3 py-2.5 text-slate-900 text-sm placeholder-slate-400 focus:outline-none focus:border-emerald-500 transition-colors resize-none"
-            placeholder="Short description shown on the public profile (max 140 chars)…" />
-        </div>
-        <Input label="Website" value={form.website} type="url" placeholder="https://…"
-          onChange={e => setForm(f => ({ ...f, website: e.target.value }))} />
-
-        {/* Team-level management toggle — gates per-team identity editing and
-            team-scoped Owner/Scorer grants. Default off: all teams inherit this
-            org's identity and only org-wide roles apply. */}
-        <div className="flex items-start justify-between gap-4 rounded-lg border border-slate-200 px-3 py-3">
-          <div className="min-w-0">
-            <div className="text-sm font-semibold text-slate-900">Team-level management</div>
-            <p className="text-[11px] text-slate-500 mt-0.5 leading-relaxed">
-              When on, individual teams can have their own image, name and bio, and you can
-              appoint Team Owners and Team Scorers scoped to a single team. When off, every team
-              inherits this {entityLabel.toLowerCase()}'s identity and only org-wide roles apply.
-              Previously set team values are kept, just hidden.
-            </p>
-          </div>
-          <button type="button" onClick={() => setTeamMgmt(v => !v)}
-            role="switch" aria-checked={teamMgmt}
-            className={`relative shrink-0 w-11 h-6 rounded-full transition-colors ${teamMgmt ? 'bg-emerald-500' : 'bg-slate-300'}`}>
-            <span className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white transition-transform ${teamMgmt ? 'translate-x-5' : ''}`} />
-          </button>
+          </ReadRow>
+          {org.bio && <ReadRow label="About">{org.bio}</ReadRow>}
+          {org.website && <ReadRow label="Website">{org.website}</ReadRow>}
+          <a href="https://matchpulse.co.za/organisations" target="_blank" rel="noopener noreferrer"
+            className="mt-3 block text-center text-[11px] font-bold uppercase tracking-widest text-emerald-600 hover:text-emerald-500 border border-emerald-200 rounded-lg py-2 transition-colors">
+            Manage profile on MatchPulse →
+          </a>
+          <p className="text-[11px] text-slate-500 mt-2 leading-relaxed">
+            Name, logo, colours and the rest of this {entityLabel.toLowerCase()}'s profile are managed
+            centrally on the main MatchPulse site and appear here automatically.
+          </p>
         </div>
 
-        {isSchool && (
-          <div>
-            <label className="text-[10px] font-bold uppercase tracking-widest text-slate-500 block mb-1.5">School gender profile</label>
-            <div className="grid grid-cols-3 gap-1.5">
-              {SCHOOL_GENDER_PROFILES.map(opt => (
-                <button type="button" key={opt.value}
-                  onClick={() => setForm(f => ({ ...f, genderProfile: opt.value }))}
-                  className={`text-[10px] font-bold uppercase tracking-widest px-2 py-2 rounded-lg border transition-colors ${
-                    form.genderProfile === opt.value
-                      ? 'bg-emerald-500 border-emerald-500 text-white'
-                      : 'border-slate-200 text-slate-600 hover:border-slate-400'
-                  }`}>
-                  {opt.label}
-                </button>
-              ))}
+        <form onSubmit={handleSave} className="space-y-3">
+          {/* Card/banner image is sport-specific and stays editable here. */}
+          <ImageUpload
+            specKey="orgBanner"
+            entityId={org.id}
+            value={bannerUrl}
+            label="Card / banner image"
+            onChange={url => setBannerUrl(url)}
+          />
+
+          {/* Team-level management toggle — sport-local; gates per-team identity
+              editing and team-scoped Owner/Scorer grants. Default off: all teams
+              inherit this org's identity and only org-wide roles apply. */}
+          <div className="flex items-start justify-between gap-4 rounded-lg border border-slate-200 px-3 py-3">
+            <div className="min-w-0">
+              <div className="text-sm font-semibold text-slate-900">Team-level management</div>
+              <p className="text-[11px] text-slate-500 mt-0.5 leading-relaxed">
+                When on, individual teams can have their own image, name and bio, and you can
+                appoint Team Owners and Team Scorers scoped to a single team. When off, every team
+                inherits this {entityLabel.toLowerCase()}'s identity and only org-wide roles apply.
+                Previously set team values are kept, just hidden.
+              </p>
             </div>
-            <p className="text-[11px] text-slate-500 mt-1.5">
-              Co-ed schools choose Boys or Girls per team. Single-gender schools apply it automatically.
-            </p>
+            <button type="button" onClick={() => setTeamMgmt(v => !v)}
+              role="switch" aria-checked={teamMgmt}
+              className={`relative shrink-0 w-11 h-6 rounded-full transition-colors ${teamMgmt ? 'bg-emerald-500' : 'bg-slate-300'}`}>
+              <span className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white transition-transform ${teamMgmt ? 'translate-x-5' : ''}`} />
+            </button>
           </div>
-        )}
-        {error && <p className="text-red-600 text-sm">{error}</p>}
-        <button type="submit" disabled={saving}
-          className="w-full bg-emerald-500 hover:bg-emerald-400 disabled:opacity-50 text-white font-bold text-sm uppercase tracking-wider rounded-lg py-2.5 transition-colors">
-          {saved ? '✓ Saved' : saving ? 'Saving…' : 'Save changes'}
-        </button>
-      </form>
+
+          {error && <p className="text-red-600 text-sm">{error}</p>}
+          <button type="submit" disabled={saving}
+            className="w-full bg-emerald-500 hover:bg-emerald-400 disabled:opacity-50 text-white font-bold text-sm uppercase tracking-wider rounded-lg py-2.5 transition-colors">
+            {saved ? '✓ Saved' : saving ? 'Saving…' : 'Save changes'}
+          </button>
+        </form>
+      </div>
 
       <PlanActivationPanel org={org} onActivated={onSaved} />
     </Section>
+  )
+}
+
+// Read-only label/value row for the centrally-managed identity summary.
+function ReadRow({ label, children }) {
+  return (
+    <div className="flex items-baseline justify-between gap-4 py-1">
+      <span className="text-[10px] font-bold uppercase tracking-widest text-slate-500 shrink-0">{label}</span>
+      <span className="text-sm text-slate-900 text-right min-w-0 break-words">{children ?? '—'}</span>
+    </div>
   )
 }
 
