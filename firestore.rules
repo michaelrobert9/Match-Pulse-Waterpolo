@@ -10,8 +10,7 @@ service cloud.firestore {
 
     function isPlatformAdmin() {
       return isSignedIn()
-        && exists(/databases/$(database)/documents/users/$(request.auth.uid))
-        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.get('platformAdmin', false) == true;
+        && request.auth.token.get('platformAdmin', false) == true;
     }
 
     // ── Org-membership helpers ────────────────────────────────────────────────
