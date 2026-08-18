@@ -55,6 +55,28 @@ service cloud.firestore {
         && request.resource.data.get('entitlementExpiresAt', null) == resource.data.get('entitlementExpiresAt', null);
     }
 
+    // Organisation IDENTITY is authored centrally (main-site (default) DB) and
+    // copied down one-way by the Admin SDK sync (which bypasses these rules). No
+    // sport client may change any of the 14 synced identity fields — the sport
+    // copy is read-only for identity. Sport-local fields (banner,
+    // teamLevelManagement, approvalState) and billing are handled separately.
+    function orgIdentityUnchanged() {
+      return request.resource.data.get('name', null) == resource.data.get('name', null)
+        && request.resource.data.get('matchName', null) == resource.data.get('matchName', null)
+        && request.resource.data.get('type', null) == resource.data.get('type', null)
+        && request.resource.data.get('slug', null) == resource.data.get('slug', null)
+        && request.resource.data.get('logoUrl', null) == resource.data.get('logoUrl', null)
+        && request.resource.data.get('genderProfile', null) == resource.data.get('genderProfile', null)
+        && request.resource.data.get('primaryColor', null) == resource.data.get('primaryColor', null)
+        && request.resource.data.get('secondaryColor', null) == resource.data.get('secondaryColor', null)
+        && request.resource.data.get('bio', null) == resource.data.get('bio', null)
+        && request.resource.data.get('region', null) == resource.data.get('region', null)
+        && request.resource.data.get('website', null) == resource.data.get('website', null)
+        && request.resource.data.get('contactEmail', null) == resource.data.get('contactEmail', null)
+        && request.resource.data.get('phone', null) == resource.data.get('phone', null)
+        && request.resource.data.get('socialLinks', null) == resource.data.get('socialLinks', null);
+    }
+
     // Owner OR staff member of the org with ORG-WIDE scope. This is the
     // authority used by canAdministerCompetition(): a team-scoped grant is
     // participation/scoring authority for one team and never confers
@@ -379,15 +401,17 @@ service cloud.firestore {
     match /organizations/{orgId} {
       allow read:   if true;
 
-      // Any signed-in user may create an org (Phase E self-service onboarding),
-      // but must start with NO paid entitlement — billing is granted centrally.
-      allow create: if isSignedIn()
-        && request.resource.data.get('entitlement', 'none') == 'none'
-        && request.resource.data.get('eventCredits', 0) == 0
-        && request.resource.data.get('entitlementExpiresAt', null) == null;
+      // Organisations are authored centrally on the main site and copied down by
+      // the Admin SDK sync (which bypasses these rules). No sport client creates
+      // an org any more — creation moved to matchpulse.co.za/organisations.
+      allow create: if false;
 
-      // Owners may update the org profile, but never its billing fields.
-      allow update: if isOrgOwner(orgId) && orgBillingUnchanged();
+      // Owners/admins may still edit the SPORT-LOCAL fields (banner,
+      // teamLevelManagement, approvalState), but never billing and never the
+      // synced identity fields — identity is read-only, owned by central.
+      allow update: if (isOrgOwner(orgId) || isPlatformAdmin())
+        && orgBillingUnchanged()
+        && orgIdentityUnchanged();
 
       // Only platform admins may delete an organisation.
       allow delete: if isPlatformAdmin();

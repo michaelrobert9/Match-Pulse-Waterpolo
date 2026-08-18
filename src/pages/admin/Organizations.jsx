@@ -12,6 +12,7 @@ import { userDisplayName, userInitial } from '../../lib/names'
 import OrgCrest from '../../components/OrgCrest'
 import { SCHOOL_GENDER_PROFILES } from '../../lib/teamNaming'
 import { useAuth } from '../../contexts/AuthContext'
+import { monogram } from '../../lib/names'
 
 const ORG_TYPES = ['school', 'club', 'association']
 
@@ -34,6 +35,16 @@ function Input({ ...props }) {
       className="w-full bg-white border border-slate-200 rounded-lg px-3 py-2.5 text-slate-900 text-sm placeholder-slate-400 focus:outline-none focus:border-emerald-500 transition-colors"
       {...props}
     />
+  )
+}
+
+// Read-only label/value row for the centrally-managed identity summary.
+function AdminReadRow({ label, children }) {
+  return (
+    <div className="flex items-baseline justify-between gap-4 py-1">
+      <span className="micro-label shrink-0">{label}</span>
+      <span className="text-sm text-slate-900 text-right min-w-0 break-words">{children ?? '—'}</span>
+    </div>
   )
 }
 
@@ -289,19 +300,9 @@ export function OrganizationsList() {
 
 export function NewOrganization() {
   const navigate = useNavigate()
-  const [saving, setSaving] = useState(false)
 
-  async function handleSave(form) {
-    setSaving(true)
-    try {
-      await createOrganization({
-        ...form,
-        matchName: form.type !== 'association' ? (form.matchName?.trim() || null) : null,
-      })
-      navigate('/admin/organizations')
-    } finally { setSaving(false) }
-  }
-
+  // Organisations are authored centrally on the main site and synced down; the
+  // sport app no longer creates them (the create rule is closed).
   return (
     <div>
       <div className="flex items-center gap-3 px-4 pt-4 pb-2 border-b border-slate-200">
@@ -310,7 +311,19 @@ export function NewOrganization() {
         </button>
         <h1 className="font-display font-bold text-slate-900 text-lg">New organization</h1>
       </div>
-      <OrgForm onSave={handleSave} saving={saving} />
+      <div className="p-4">
+        <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-6 text-center">
+          <p className="text-sm text-slate-700 font-semibold">Organisations are created on the main MatchPulse site</p>
+          <p className="text-[13px] text-slate-500 mt-2 leading-relaxed">
+            Schools, clubs and associations are authored centrally and appear across every sport
+            automatically. Create one there, then activate it for water polo.
+          </p>
+          <a href="https://matchpulse.co.za/organisations" target="_blank" rel="noopener noreferrer"
+            className="mt-4 inline-flex items-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-sm rounded-lg px-4 py-2.5 transition-colors">
+            Open MatchPulse organisations
+          </a>
+        </div>
+      </div>
     </div>
   )
 }
@@ -478,7 +491,6 @@ export function EditOrganization() {
   const navigate = useNavigate()
   const { isPlatformAdmin } = useAuth()
   const [org, setOrg] = useState(null)
-  const [saving, setSaving] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState(false)
 
   useEffect(() => {
@@ -487,19 +499,9 @@ export function EditOrganization() {
     })
   }, [id])
 
-  async function handleSave(form) {
-    setSaving(true)
-    try {
-      await updateOrganization(id, {
-        ...form,
-        matchName: form.type !== 'association' ? (form.matchName?.trim() || null) : null,
-      })
-      navigate('/admin/organizations')
-    }
-    finally { setSaving(false) }
-  }
-
   if (!org) return <div className="flex justify-center py-12"><div className="w-5 h-5 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin"/></div>
+
+  const typeLabel = org.type === 'school' ? 'School' : org.type === 'association' ? 'Association' : 'Club'
 
   return (
     <div>
@@ -509,12 +511,42 @@ export function EditOrganization() {
         </button>
         <h1 className="font-display font-bold text-slate-900 text-lg truncate">{org.name}</h1>
       </div>
-      <OrgForm
-        initial={org}
-        onSave={handleSave}
-        onDelete={isPlatformAdmin ? () => setConfirmDelete(true) : undefined}
-        saving={saving}
-      />
+
+      {/* Identity is authored centrally on the main site and read-only here. */}
+      <div className="p-4">
+        <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-4">
+          <div className="flex items-center gap-3 mb-3">
+            {org.logoUrl
+              ? <img src={org.logoUrl} alt="" className="w-11 h-11 rounded-lg object-cover border border-slate-200 shrink-0" />
+              : <div className="w-11 h-11 rounded-lg flex items-center justify-center text-white font-bold shrink-0"
+                     style={{ backgroundColor: org.primaryColor || '#555' }}>{monogram(org.name || '')}</div>}
+            <div className="min-w-0">
+              <div className="text-sm font-bold text-slate-900 truncate">{org.name}</div>
+              <div className="text-[11px] text-slate-500">{typeLabel}{org.slug ? ` · /${org.slug}` : ''}{org.region ? ` · ${org.region}` : ''}</div>
+            </div>
+          </div>
+          {org.matchName && <AdminReadRow label="Match name">{org.matchName}</AdminReadRow>}
+          {org.genderProfile && <AdminReadRow label="Gender">{org.genderProfile}</AdminReadRow>}
+          {org.website && <AdminReadRow label="Website">{org.website}</AdminReadRow>}
+          {org.bio && <AdminReadRow label="About">{org.bio}</AdminReadRow>}
+          <a href="https://matchpulse.co.za/organisations" target="_blank" rel="noopener noreferrer"
+            className="mt-3 block text-center text-[11px] font-bold uppercase tracking-widest text-emerald-600 hover:text-emerald-500 border border-emerald-200 rounded-lg py-2 transition-colors">
+            Edit profile on MatchPulse →
+          </a>
+          <p className="text-[11px] text-slate-500 mt-2 leading-relaxed">
+            Name, slug, logo, colours and the rest of this profile are managed centrally and synced
+            down read-only.
+          </p>
+        </div>
+
+        {isPlatformAdmin && (
+          <button onClick={() => setConfirmDelete(true)}
+            className="mt-3 w-full text-sm font-bold text-red-600 hover:text-red-500 border border-red-200 rounded-lg py-2.5 transition-colors">
+            Delete organisation
+          </button>
+        )}
+      </div>
+
       <StaffManager orgId={id} />
 
       {confirmDelete && (
