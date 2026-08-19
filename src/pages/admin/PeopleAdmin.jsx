@@ -3,7 +3,7 @@ import { ChevronRight, ChevronLeft, X, Plus } from 'lucide-react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { collection, getDocs, doc, getDoc, orderBy, query } from 'firebase/firestore'
 import { db } from '../../firebase'
-import { createPerson, updatePerson, adminLinkProfileToUser, isProfileClaimed, fetchProfileReports } from '../../lib/adminQueries'
+import { createPerson, updatePerson, adminLinkProfileToUser, isProfileClaimed, fetchProfileReports, mergePeople, previewMergePeople } from '../../lib/adminQueries'
 import { deleteDoc } from 'firebase/firestore'
 
 const POSITIONS = ['GK', 'Def', 'Mid', 'Fwd']
@@ -220,7 +220,7 @@ export function PeopleList() {
 
   useEffect(() => {
     getDocs(query(collection(db, 'people'), orderBy('fullName')))
-      .then(snap => setPeople(snap.docs.map(d => ({ id: d.id, ...d.data() }))))
+      .then(snap => setPeople(snap.docs.map(d => ({ id: d.id, ...d.data() })).filter(p => p.claimStatus !== 'merged')))
       .catch(() => {})
       .finally(() => setLoading(false))
   }, [])
@@ -339,6 +339,7 @@ export function EditPerson() {
       </div>
       <PersonForm initial={person} onSave={handleSave} onDelete={handleDelete} saving={saving} />
       <LinkUserSection person={person} onLinked={patch => setPerson(p => ({ ...p, ...patch }))} />
+      <MergeSection person={person} />
       <ProfileReportsSection personId={person.id} />
     </div>
   )
@@ -381,6 +382,83 @@ function ProfileReportsSection({ personId }) {
 // Master-admin recovery tool: link a user account to this profile as the player
 // (owner), a parent (guardian) or a manager. Works even if already claimed — the
 // fix for lost/changed emails and mis-claims.
+// Master-admin merge: fold a DUPLICATE record (source) into this one (target).
+// All of the duplicate's matches, goals and stat slices repoint to this profile,
+// its org links are unioned in, and the duplicate is retired. Shown with a
+// preview of what will move before it commits.
+function MergeSection({ person }) {
+  const navigate = useNavigate()
+  const [people, setPeople]   = useState(null)
+  const [q, setQ]             = useState('')
+  const [dup, setDup]         = useState(null)
+  const [preview, setPreview] = useState(null)
+  const [busy, setBusy]       = useState(false)
+  const [err, setErr]         = useState('')
+
+  async function loadPeople() {
+    if (people !== null) return
+    const snap = await getDocs(query(collection(db, 'people'), orderBy('fullName')))
+    setPeople(snap.docs.map(d => ({ id: d.id, ...d.data() }))
+      .filter(p => p.id !== person.id && p.claimStatus !== 'merged'))
+  }
+  async function choose(p) {
+    setDup(p); setErr(''); setPreview(null)
+    try { setPreview(await previewMergePeople(p.id, person.id)) }
+    catch (e) { setErr(e.message || 'Could not preview.') }
+  }
+  async function confirmMerge() {
+    if (!dup) return
+    if (!confirm(`Merge "${dup.fullName}" into "${person.fullName}"? The duplicate's matches, goals and stats move to ${person.fullName}, and "${dup.fullName}" is retired. This can't be auto-undone.`)) return
+    setBusy(true); setErr('')
+    try { await mergePeople(dup.id, person.id); navigate(0) }
+    catch (e) { setErr(e.message || 'Merge failed.'); setBusy(false) }
+  }
+
+  const matches = (people ?? []).filter(p => q.trim() && (p.fullName || '').toLowerCase().includes(q.trim().toLowerCase())).slice(0, 8)
+
+  return (
+    <div className="px-4 py-4 border-t border-slate-200">
+      <h2 className="text-[10px] font-bold uppercase tracking-widest text-slate-500 mb-2">Merge a duplicate into this player</h2>
+      <p className="text-[12px] text-slate-500 mb-3">If the system made a second record for {person.fullName}, fold it in here — its matches, goals and stats all move onto this profile.</p>
+      {dup ? (
+        <div className="rounded-lg border border-amber-200 bg-amber-50 p-3">
+          <div className="text-sm font-semibold text-slate-900">Merge <span className="text-amber-700">{dup.fullName}</span> → {person.fullName}</div>
+          {preview
+            ? <p className="text-[12px] text-slate-600 mt-1">{preview.matchCount} match{preview.matchCount === 1 ? '' : 'es'} · {preview.sliceCount} stat record{preview.sliceCount === 1 ? '' : 's'} will move.</p>
+            : !err && <p className="text-[12px] text-slate-400 mt-1">Checking…</p>}
+          {err && <p className="text-red-600 text-sm mt-1">{err}</p>}
+          <div className="flex gap-2 mt-3">
+            <button disabled={busy} onClick={confirmMerge}
+              className="bg-amber-600 hover:bg-amber-500 disabled:opacity-50 text-white text-[11px] font-bold uppercase tracking-widest rounded-lg px-3 py-2">
+              {busy ? 'Merging…' : 'Merge'}
+            </button>
+            <button onClick={() => { setDup(null); setPreview(null); setErr('') }}
+              className="text-slate-500 text-[11px] font-bold uppercase tracking-widest px-3 py-2">Cancel</button>
+          </div>
+        </div>
+      ) : (
+        <div>
+          <input value={q} onFocus={loadPeople} onChange={e => { setQ(e.target.value); loadPeople() }}
+            placeholder="Search the duplicate's name…"
+            className="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-sm" />
+          {q.trim() && (
+            <div className="mt-1 space-y-1">
+              {matches.length === 0
+                ? <p className="text-slate-400 text-xs py-1">No match.</p>
+                : matches.map(p => (
+                  <button key={p.id} onClick={() => choose(p)}
+                    className="w-full text-left text-sm text-slate-700 hover:bg-slate-50 rounded-lg px-2 py-1.5">
+                    {p.fullName}{p.claimStatus === 'unclaimed' ? ' · unclaimed' : ''}
+                  </button>
+                ))}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
+
 function LinkUserSection({ person, onLinked }) {
   const [email, setEmail] = useState('')
   const [rel,   setRel]   = useState('player')

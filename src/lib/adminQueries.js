@@ -213,6 +213,114 @@ export async function updatePerson(id, data) {
   return updateDoc(doc(db, 'people', id), { ...data, ...extra, updatedAt: serverTimestamp() })
 }
 
+// ── Merge duplicate player records (master admin) ───────────────────────────
+// The system can end up with two `people` records for one person. Merge folds
+// a SOURCE (the duplicate) into a TARGET (the record to keep): every match the
+// source appears in, its goals, and its stat slices repoint to the target,
+// org links are unioned onto the target, and the source is tombstoned
+// (mergedInto) so it drops out of lists/search but stays for audit. Career
+// totals self-heal on the next stats recompute from the repointed slices.
+// Master-admin only (enforced by the rules on the match/people/players writes).
+
+async function matchesWithPerson(personId) {
+  const snap = await getDocs(query(collection(db, 'matches'), where('lineupPersonIds', 'array-contains', personId)))
+  return snap.docs.map(d => ({ id: d.id, ...d.data() }))
+}
+
+// What a merge WOULD touch — shown to the admin before they commit.
+export async function previewMergePeople(sourceId, targetId) {
+  if (!sourceId || !targetId || sourceId === targetId) throw new Error('Pick two different players.')
+  const [source, target, matches, slices] = await Promise.all([
+    getDoc(doc(db, 'people', sourceId)),
+    getDoc(doc(db, 'people', targetId)),
+    matchesWithPerson(sourceId),
+    getDocs(query(collection(db, 'players'), where('personId', '==', sourceId))),
+  ])
+  return {
+    source: source.exists() ? { id: source.id, ...source.data() } : null,
+    target: target.exists() ? { id: target.id, ...target.data() } : null,
+    matchCount: matches.length,
+    sliceCount: slices.size,
+  }
+}
+
+export async function mergePeople(sourceId, targetId) {
+  if (!sourceId || !targetId || sourceId === targetId) throw new Error('Pick two different players.')
+  const [srcSnap, tgtSnap] = await Promise.all([
+    getDoc(doc(db, 'people', sourceId)),
+    getDoc(doc(db, 'people', targetId)),
+  ])
+  if (!tgtSnap.exists()) throw new Error('Target player not found.')
+  const source = { id: srcSnap.id, ...srcSnap.data() }
+  const target = { id: tgtSnap.id, ...tgtSnap.data() }
+  const tName = target.fullName ?? null
+  const tSlug = target.slug ?? null
+
+  // 1. Repoint every match the source appears in.
+  for (const m of await matchesWithPerson(sourceId)) {
+    const patch = {}
+    for (const field of ['homeLineup', 'awayLineup']) {
+      const arr = m[field]
+      if (!Array.isArray(arr) || !arr.some(e => e.personId === sourceId)) continue
+      const hasTarget = arr.some(e => e.personId === targetId)
+      patch[field] = arr
+        .filter(e => !(hasTarget && e.personId === sourceId))   // drop dup if target already listed
+        .map(e => e.personId === sourceId
+          ? { ...e, personId: targetId, personName: tName ?? e.personName, personSlug: tSlug ?? e.personSlug ?? null }
+          : e)
+    }
+    patch.lineupPersonIds = [...new Set((m.lineupPersonIds ?? []).map(x => x === sourceId ? targetId : x))]
+    if (Array.isArray(m.goals) && m.goals.some(g => g.scorerPersonId === sourceId || g.assistPersonId === sourceId)) {
+      patch.goals = m.goals.map(g => ({
+        ...g,
+        ...(g.scorerPersonId === sourceId ? { scorerPersonId: targetId, scorerName: tName ?? g.scorerName } : {}),
+        ...(g.assistPersonId === sourceId ? { assistPersonId: targetId, assistName: tName ?? g.assistName } : {}),
+      }))
+    }
+    await updateDoc(doc(db, 'matches', m.id), patch).catch(() => {})
+  }
+
+  // 2. Repoint stat slices; fold into the target's slice when one already exists
+  //    for the same team+competition+season (avoids a duplicate slice).
+  const [srcSlices, tgtSlices] = await Promise.all([
+    getDocs(query(collection(db, 'players'), where('personId', '==', sourceId))),
+    getDocs(query(collection(db, 'players'), where('personId', '==', targetId))),
+  ])
+  const sliceKey = s => `${s.teamId}|${s.competitionId ?? ''}|${s.season ?? ''}`
+  const tgtByKey = new Map(tgtSlices.docs.map(d => [sliceKey(d.data()), { id: d.id, ...d.data() }]))
+  for (const d of srcSlices.docs) {
+    const s = d.data()
+    const dup = tgtByKey.get(sliceKey(s))
+    if (dup) {
+      await updateDoc(doc(db, 'players', dup.id), {
+        caps: (dup.caps ?? 0) + (s.caps ?? 0),
+        goals: (dup.goals ?? 0) + (s.goals ?? 0),
+        assists: (dup.assists ?? 0) + (s.assists ?? 0),
+        cards: {
+          green: (dup.cards?.green ?? 0) + (s.cards?.green ?? 0),
+          yellow: (dup.cards?.yellow ?? 0) + (s.cards?.yellow ?? 0),
+          red: (dup.cards?.red ?? 0) + (s.cards?.red ?? 0),
+        },
+      }).catch(() => {})
+      await deleteDoc(doc(db, 'players', d.id)).catch(() => {})
+    } else {
+      await updateDoc(doc(db, 'players', d.id), { personId: targetId, personName: tName, personSlug: tSlug }).catch(() => {})
+    }
+  }
+
+  // 3. Union the source's representative orgs onto the target.
+  const orgs = [...(target.representativeOrgs ?? [])]
+  for (const o of (source.representativeOrgs ?? [])) if (o?.orgId && !orgs.some(x => x.orgId === o.orgId)) orgs.push(o)
+  await updateDoc(doc(db, 'people', targetId), {
+    representativeOrgs: orgs, representativeOrgIds: orgs.map(o => o.orgId), updatedAt: serverTimestamp(),
+  }).catch(() => {})
+
+  // 4. Tombstone the source: hidden from lists/search, kept for audit.
+  await updateDoc(doc(db, 'people', sourceId), {
+    mergedInto: targetId, claimStatus: 'merged', slug: null, updatedAt: serverTimestamp(),
+  })
+}
+
 // Per-match player lineup — stored as homeLineup / awayLineup arrays on the
 // match document so existing Firestore rules for match writes already apply.
 // Entries are independent of the permanent `players` roster.
