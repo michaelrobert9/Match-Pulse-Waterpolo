@@ -1561,6 +1561,12 @@ export async function resetMatch(id) {
     await addCompetitionAuditEvent(m.competitionId, {
       eventType: 'match_reset', before: { status: m.status }, after: { status: 'scheduled' },
     }).catch(() => {})
+    // Rebuild the competition's player slices now that this match is no longer
+    // final — the finalisation trigger only fires on the way INTO final, so a
+    // reset would otherwise leave this match's goals/cards/caps stuck on the
+    // players and in the top-scorer table. The engine rebuilds from the
+    // remaining Final fixtures, so the reset match simply drops out.
+    await recalculateCompetitionStats(m.competitionId).catch(() => {})
   }
 }
 
