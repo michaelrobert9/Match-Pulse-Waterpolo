@@ -3,10 +3,11 @@ import { Link, useParams } from 'react-router-dom'
 import { ChevronLeft, Plus, X, Search } from 'lucide-react'
 import {
   fetchCompetition, fetchCompetitionByPath, fetchCompetitionBySlugSeason,
-  fetchCompetitionMembers, fetchCompetitionFixtures, fetchAllPeople, toDate,
+  fetchCompetitionMembers, fetchCompetitionFixtures, fetchAllPeople, fetchPerson, toDate,
 } from '../lib/queries'
 import {
-  fetchCompetitionSquad, addToCompetitionSquad, removeFromCompetitionSquad,
+  fetchCompetitionSquad, fetchCompetitionTeamSheetSquad,
+  addToCompetitionSquad, removeFromCompetitionSquad,
 } from '../lib/adminQueries'
 import { competitionTeamLabel } from '../lib/teamNaming'
 import { buildIdentity } from '../lib/teamIdentity'
@@ -66,6 +67,46 @@ function deriveSquad(teamId, matches) {
     }
   }
   return sortSquad([...byPerson.values()])
+}
+
+// The team's full competition squad: the UNION of the registered squad, the
+// team-sheet squad (competitionTeams — where pasted line-ups live), and anyone
+// named in the team's competition match line-ups. Each person is resolved to
+// their live name + profile slug so the row links to /player/{slug}.
+async function loadTeamSquad(compId, teamId, fixtures) {
+  const [registered, sheetSquad] = await Promise.all([
+    fetchCompetitionSquad(compId, teamId).catch(() => []),
+    fetchCompetitionTeamSheetSquad(compId, teamId).catch(() => []),
+  ])
+  const teamMatches = fixtures.filter(m => m.homeTeamId === teamId || m.awayTeamId === teamId)
+  const order = []
+  const src = new Map()
+  const add = (pid, name, slug, shirt, registered) => {
+    if (!pid) return
+    if (!src.has(pid)) { order.push(pid); src.set(pid, { personName: name, personSlug: slug, shirtNumber: shirt || null, registered: !!registered }) }
+    else {
+      const e = src.get(pid)
+      if (registered) e.registered = true
+      if (!e.shirtNumber && shirt) e.shirtNumber = shirt
+      if (!e.personSlug && slug) e.personSlug = slug
+    }
+  }
+  registered.forEach(p => add(p.personId, p.personName, p.personSlug, p.shirtNumber, true))
+  sheetSquad.forEach(s => add(s.playerId, s.playerName ?? s.name, null, s.shirtNumber ?? s.number, false))
+  deriveSquad(teamId, teamMatches).forEach(d => add(d.personId, d.personName, d.personSlug, d.shirtNumber, false))
+  // Resolve each person's live name + slug (batched by id).
+  const people = await Promise.all(order.map(pid => fetchPerson(pid).catch(() => null)))
+  const list = order.map((pid, i) => {
+    const e = src.get(pid); const p = people[i]
+    return {
+      personId: pid,
+      personName: p?.fullName || e.personName || 'Player',
+      personSlug: p?.slug ?? e.personSlug ?? null,
+      shirtNumber: e.shirtNumber ?? null,
+      registered: e.registered,
+    }
+  })
+  return sortSquad(list)
 }
 
 function fmtDate(val) {
@@ -165,7 +206,7 @@ export default function CompetitionTeams() {
   const [members, setMembers] = useState([])
   const [identities, setIdentities] = useState({})
   const [fixtures, setFixtures] = useState([])
-  const [squad, setSquad] = useState([])
+  const [teamSquad, setTeamSquad] = useState([])
   const [busy, setBusy] = useState(false)
   const [loading, setLoading] = useState(true)
 
@@ -179,11 +220,12 @@ export default function CompetitionTeams() {
       if (!comp) return
       setCompetition(comp)
       document.title = `${comp.name} · Teams · MatchPulse`
-      const [ms, fx, sq] = await Promise.all([
+      const [ms, fx] = await Promise.all([
         fetchCompetitionMembers(comp.id),
         fetchCompetitionFixtures(comp.id),
-        teamId ? fetchCompetitionSquad(comp.id, teamId).catch(() => []) : Promise.resolve([]),
       ])
+      // The team's squad: registered ∪ team-sheet ∪ line-up members, slug-resolved.
+      const sq = teamId ? await loadTeamSquad(comp.id, teamId, fx).catch(() => []) : []
       // Resolve each team's LIVE identity — its crest and org-composed name
       // (org match name + team), pulling the org from the synced sport org doc.
       const tids = ms.map(m => m.id ?? m.teamId).filter(Boolean)
@@ -202,7 +244,7 @@ export default function CompetitionTeams() {
           },
         })
       }
-      setMembers(ms); setFixtures(fx); setSquad(sq); setIdentities(idMap)
+      setMembers(ms); setFixtures(fx); setTeamSquad(sq); setIdentities(idMap)
     }).finally(() => setLoading(false))
   }, [id, series, ageGroup, season, competitionSlug, teamId])
 
@@ -225,18 +267,14 @@ export default function CompetitionTeams() {
       .sort((a, b) => (toDate(b.scheduledAt)?.getTime() ?? 0) - (toDate(a.scheduledAt)?.getTime() ?? 0))
     const upcoming = teamMatches.filter(m => m.status !== 'final')
       .sort((a, b) => (toDate(a.scheduledAt)?.getTime() ?? 0) - (toDate(b.scheduledAt)?.getTime() ?? 0))
-    // Squad = registered players UNION anyone named in the team's competition
-    // match line-ups, so a player added straight to a fixture is still listed.
-    const registered = sortSquad(squad)
-    const byId = new Map(registered.map(p => [p.personId, p]))
-    for (const p of deriveSquad(teamId, teamMatches)) if (!byId.has(p.personId)) byId.set(p.personId, p)
-    const displaySquad = sortSquad([...byId.values()])
-    // The picker excludes only REGISTERED players, so a match-only player can
-    // still be formally added (which assigns them to every match).
-    const existingIds = new Set(registered.map(p => p.personId))
+    // teamSquad is the resolved union (registered ∪ team-sheet ∪ line-ups),
+    // already slug-resolved by loadTeamSquad. The picker excludes everyone
+    // already listed.
+    const displaySquad = teamSquad
+    const existingIds = new Set(teamSquad.map(p => p.personId))
 
     async function reloadSquad() {
-      setSquad(await fetchCompetitionSquad(competition.id, teamId).catch(() => squad))
+      setTeamSquad(await loadTeamSquad(competition.id, teamId, fixtures).catch(() => teamSquad))
     }
     async function handleAdd(person, shirt) {
       setBusy(true)
@@ -284,8 +322,8 @@ export default function CompetitionTeams() {
           <section>
             <div className="flex items-center justify-between mb-2">
               <div className="micro-label text-slate-500">Squad</div>
-              {canManage && squad.length > 0 && (
-                <span className="text-[10px] text-slate-400">Squad players are added to every match in this competition.</span>
+              {canManage && teamSquad.length > 0 && (
+                <span className="text-[10px] text-slate-400">Added players are put in every match in this competition.</span>
               )}
             </div>
             {displaySquad.length === 0 ? (
@@ -299,7 +337,7 @@ export default function CompetitionTeams() {
                       {p.personName || 'Player'}
                     </Link>
                     <Link to={playerUrl({ id: p.personId, slug: p.personSlug })} className="ml-auto text-[10px] font-bold uppercase tracking-widest text-emerald-600 shrink-0">Profile →</Link>
-                    {canManage && (
+                    {canManage && p.registered && (
                       <button disabled={busy} onClick={() => handleRemove(p.personId)}
                         className="text-slate-300 hover:text-red-500 disabled:opacity-40 shrink-0" title="Remove from squad">
                         <X className="w-4 h-4" />

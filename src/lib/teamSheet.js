@@ -73,6 +73,11 @@ export function parseLine(raw) {
   let line = (raw ?? '').replace(/\u00A0/g, ' ').trim()
   if (!line) return null // caller drops empty lines
 
+  // Strip a leading bullet / list marker so it never lands in the name and does
+  // not hide a following number.
+  line = line.replace(/^\s*(?:[•·▪▫◦‣⁃*]+|[-–—])\s+/, '').trim()
+  if (!line) return null
+
   // Trailing captain marker: "(C)", "(c)" or "©"
   const capMatch = line.match(/\s*(\(c\)|©)\s*$/i)
   if (capMatch) {

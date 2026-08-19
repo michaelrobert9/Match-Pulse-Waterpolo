@@ -2553,6 +2553,15 @@ export async function fetchCompetitionSquad(competitionId, teamId) {
   return snap.exists() ? (snap.data().squad ?? []) : []
 }
 
+// The team's TEAM-SHEET squad (stored on the competition membership doc) as its
+// raw squad array. Used by the competition Teams page to list every player in
+// the team's squad, however they were added.
+export async function fetchCompetitionTeamSheetSquad(competitionId, teamId) {
+  if (!competitionId || !teamId) return []
+  const snap = await getDoc(doc(db, 'competitions', competitionId, 'teams', teamId))
+  return snap.exists() ? (snap.data().squad ?? []) : []
+}
+
 // Add a player to a team's competition squad, then assign them to every match
 // the team plays in this competition. Idempotent per match.
 export async function addToCompetitionSquad(competitionId, teamId, { personId, personName, personSlug = null, shirtNumber = null }) {
