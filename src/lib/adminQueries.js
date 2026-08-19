@@ -2552,6 +2552,11 @@ export async function saveCompetitionTeamSheet(competitionId, teamId, { squad = 
       if (pid) await linkPersonToOrg(pid, _teamOrgId).catch(() => {})
     }
   }
+
+  // Link every pasted player into the team's actual fixtures (real lineups +
+  // lineupPersonIds), so their profile lists those matches and the merge tool
+  // can move them — the standard behaviour, not the derived-only sheet.
+  await seedFixturesFromTeamSheet(competitionId, teamId, squad ?? []).catch(() => {})
 }
 
 export async function fetchCompetitionTeamSheet(competitionId, teamId) {
@@ -2768,6 +2773,43 @@ export async function fetchCompetitionTeamSheetSquad(competitionId, teamId) {
 
 // Add a player to a team's competition squad, then assign them to every match
 // the team plays in this competition. Idempotent per match.
+// Register a whole pasted team-sheet squad into the competition and link every
+// player to all the team's fixtures the STANDARD way: merge them into the
+// registered competition squad AND write each into every fixture's real lineup
+// (homeLineup / awayLineup + lineupPersonIds, plus a stat slice and org link,
+// via addPersonToMatchLineup). This makes pasted players first-class — their
+// profile's match list finds them (lineupPersonIds), the merge tool can move
+// them, and their stats accrue — the same as a player added one at a time.
+// Idempotent.
+export async function seedFixturesFromTeamSheet(competitionId, teamId, squad = []) {
+  if (!competitionId || !teamId || !squad.length) return
+  const players = squad
+    .map(s => ({
+      personId:   s.playerId ?? s.personId ?? null,
+      personName: s.playerName ?? s.personName ?? null,
+      personSlug: s.personSlug ?? null,
+      shirtNumber: s.shirtNumber ?? null,
+    }))
+    .filter(p => p.personId)
+  if (!players.length) return
+
+  const ref = doc(db, 'competitions', competitionId, 'squads', teamId)
+  const snap = await getDoc(ref).catch(() => null)
+  const existing = snap && snap.exists() ? (snap.data().squad ?? []) : []
+  const byId = new Map(existing.map(s => [s.personId, s]))
+  for (const p of players) if (!byId.has(p.personId)) byId.set(p.personId, p)
+  await setDoc(ref, { teamId, squad: [...byId.values()], updatedAt: serverTimestamp(), updatedBy: uid() }, { merge: true }).catch(() => {})
+
+  const matches = await competitionTeamMatchesForSquad(competitionId, teamId)
+  for (const m of matches) {
+    for (const p of players) {
+      await addPersonToMatchLineup(m.id, {
+        personId: p.personId, personName: p.personName, side: m.side, shirtNumber: p.shirtNumber,
+      }).catch(() => {})
+    }
+  }
+}
+
 export async function addToCompetitionSquad(competitionId, teamId, { personId, personName, personSlug = null, shirtNumber = null }) {
   if (!personId) throw new Error('No player selected.')
   const ref = doc(db, 'competitions', competitionId, 'squads', teamId)

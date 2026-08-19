@@ -538,6 +538,7 @@ function MergeSection({ person }) {
   const [q, setQ]             = useState('')
   const [dup, setDup]         = useState(null)
   const [preview, setPreview] = useState(null)
+  const [armed, setArmed]     = useState(false)
   const [busy, setBusy]       = useState(false)
   const [err, setErr]         = useState('')
 
@@ -548,16 +549,16 @@ function MergeSection({ person }) {
       .filter(p => p.id !== person.id && p.claimStatus !== 'merged'))
   }
   async function choose(p) {
-    setDup(p); setErr(''); setPreview(null)
+    setDup(p); setErr(''); setPreview(null); setArmed(false)
     try { setPreview(await previewMergePeople(p.id, person.id)) }
     catch (e) { setErr(e.message || 'Could not preview.') }
   }
-  async function confirmMerge() {
+  function reset() { setDup(null); setPreview(null); setArmed(false); setErr('') }
+  async function runMerge() {
     if (!dup) return
-    if (!confirm(`Merge "${dup.fullName}" into "${person.fullName}"? The duplicate's matches, goals and stats move to ${person.fullName}, and "${dup.fullName}" is retired. This can't be auto-undone.`)) return
     setBusy(true); setErr('')
     try { await mergePeople(dup.id, person.id); navigate(0) }
-    catch (e) { setErr(e.message || 'Merge failed.'); setBusy(false) }
+    catch (e) { setErr(e.message || 'Merge failed.'); setBusy(false); setArmed(false) }
   }
 
   const matches = (people ?? []).filter(p => q.trim() && (p.fullName || '').toLowerCase().includes(q.trim().toLowerCase())).slice(0, 8)
@@ -573,12 +574,13 @@ function MergeSection({ person }) {
             ? <p className="text-[12px] text-slate-600 mt-1">{preview.matchCount} match{preview.matchCount === 1 ? '' : 'es'} · {preview.sliceCount} stat record{preview.sliceCount === 1 ? '' : 's'} will move.</p>
             : !err && <p className="text-[12px] text-slate-400 mt-1">Checking…</p>}
           {err && <p className="text-red-600 text-sm mt-1">{err}</p>}
+          {armed && <p className="text-[12px] text-amber-800 mt-2 font-medium">This retires "{dup.fullName}" and can't be auto-undone. Merge?</p>}
           <div className="flex gap-2 mt-3">
-            <button disabled={busy} onClick={confirmMerge}
+            <button disabled={busy} onClick={() => (armed ? runMerge() : setArmed(true))}
               className="bg-amber-600 hover:bg-amber-500 disabled:opacity-50 text-white text-[11px] font-bold uppercase tracking-widest rounded-lg px-3 py-2">
-              {busy ? 'Merging…' : 'Merge'}
+              {busy ? 'Merging…' : armed ? 'Yes, merge' : 'Merge'}
             </button>
-            <button onClick={() => { setDup(null); setPreview(null); setErr('') }}
+            <button onClick={reset}
               className="text-slate-500 text-[11px] font-bold uppercase tracking-widest px-3 py-2">Cancel</button>
           </div>
         </div>
