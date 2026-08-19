@@ -618,6 +618,17 @@ service cloud.firestore {
         allow create, update, delete: if canAdministerCompetition(competitionId);
       }
 
+      // ── Squads (per-team competition squad, auto-assigned to the team's
+      //    matches). Public read. Written by the competition admin OR the team's
+      //    own org staff, so a club can manage its own players. The actual
+      //    lineup writes it triggers are authorised separately by the match rule
+      //    (competition authority or team-side authority).
+      match /squads/{teamId} {
+        allow read: if true;
+        allow write: if canAdministerCompetition(competitionId)
+          || isTeamOrgMember(teamId);
+      }
+
       // ── Stages (admin-defined tournament structure) ───────────────────────
       match /stages/{stageId} {
         allow read: if isPublishedCompetition(competitionId)

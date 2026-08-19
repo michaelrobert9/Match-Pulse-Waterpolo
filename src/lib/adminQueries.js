@@ -941,7 +941,7 @@ export async function createMatch(competitionId, homeTeam, awayTeam, {
   const homeRegistered = homeTeam.id != null
   const awayRegistered = awayTeam.id != null
 
-  return addDoc(collection(db, 'matches'), {
+  const ref = await addDoc(collection(db, 'matches'), {
     competitionId,
     homeTeamId:        homeRegistered ? homeTeam.id : null,
     homeTeamName:      homeTeam.displayName,
@@ -976,6 +976,16 @@ export async function createMatch(competitionId, homeTeam, awayTeam, {
     ...(competitionId && competitionSlug && seasonStr ? { competitionSlug, competitionSeason: seasonStr } : {}),
     createdBy: uid(), createdAt: serverTimestamp(),
   })
+  // Seed line-ups from both teams' registered competition squads (best-effort,
+  // idempotent) so a squad set up front carries into fixtures added later.
+  if (competitionId) {
+    seedMatchLineupsFromSquads({
+      id: ref.id, competitionId,
+      homeTeamId: homeRegistered ? homeTeam.id : null,
+      awayTeamId: awayRegistered ? awayTeam.id : null,
+    }).catch(() => {})
+  }
+  return ref
 }
 
 export async function updateMatch(id, data) {
@@ -2511,6 +2521,86 @@ export async function inviteTeamToCompetition(competitionId, teamId, data = {}) 
     invitedAt: serverTimestamp(),
     invitedBy: uid(),
   }, { merge: false })
+}
+
+// ── Competition squads ────────────────────────────────────────────────────────
+// A team's registered squad for ONE competition, stored at
+// competitions/{compId}/squads/{teamId}. Players in the squad are assigned to
+// EVERY match the team plays in the competition (past and future), by default:
+// editing the squad fans out to existing matches immediately, and a competition
+// fixture created later seeds its line-up from both teams' squads. Editable by a
+// competition admin or the team's own org staff (firestore rules enforce this);
+// the lineup writes it triggers are authorised by the match rule (competition or
+// team-side authority), so no extra grant is needed.
+
+// Every match the team plays in a competition, tagged with the side it is on.
+async function competitionTeamMatchesForSquad(competitionId, teamId) {
+  const [homeSnap, awaySnap] = await Promise.all([
+    getDocs(query(collection(db, 'matches'),
+      where('competitionId', '==', competitionId), where('homeTeamId', '==', teamId))),
+    getDocs(query(collection(db, 'matches'),
+      where('competitionId', '==', competitionId), where('awayTeamId', '==', teamId))),
+  ])
+  return [
+    ...homeSnap.docs.map(d => ({ id: d.id, side: 'home', ...d.data() })),
+    ...awaySnap.docs.map(d => ({ id: d.id, side: 'away', ...d.data() })),
+  ]
+}
+
+export async function fetchCompetitionSquad(competitionId, teamId) {
+  const snap = await getDoc(doc(db, 'competitions', competitionId, 'squads', teamId))
+  return snap.exists() ? (snap.data().squad ?? []) : []
+}
+
+// Add a player to a team's competition squad, then assign them to every match
+// the team plays in this competition. Idempotent per match.
+export async function addToCompetitionSquad(competitionId, teamId, { personId, personName, personSlug = null, shirtNumber = null }) {
+  if (!personId) throw new Error('No player selected.')
+  const ref = doc(db, 'competitions', competitionId, 'squads', teamId)
+  const snap = await getDoc(ref)
+  const squad = snap.exists() ? (snap.data().squad ?? []) : []
+  if (!squad.some(s => s.personId === personId)) {
+    const entry = { personId, personName: personName ?? null, personSlug: personSlug ?? null, shirtNumber: shirtNumber || null }
+    await setDoc(ref, { teamId, squad: [...squad, entry], updatedAt: serverTimestamp(), updatedBy: uid() }, { merge: true })
+  }
+  const matches = await competitionTeamMatchesForSquad(competitionId, teamId)
+  for (const m of matches) {
+    await addPersonToMatchLineup(m.id, { personId, personName, side: m.side, shirtNumber }).catch(() => {})
+  }
+}
+
+// Remove a player from a team's competition squad and from the team's match
+// line-ups in this competition.
+export async function removeFromCompetitionSquad(competitionId, teamId, personId) {
+  const ref = doc(db, 'competitions', competitionId, 'squads', teamId)
+  const snap = await getDoc(ref)
+  if (snap.exists()) {
+    const squad = (snap.data().squad ?? []).filter(s => s.personId !== personId)
+    await setDoc(ref, { squad, updatedAt: serverTimestamp(), updatedBy: uid() }, { merge: true })
+  }
+  const matches = await competitionTeamMatchesForSquad(competitionId, teamId)
+  for (const m of matches) {
+    const field = m.side === 'home' ? 'homeLineup' : 'awayLineup'
+    const entry = (m[field] ?? []).find(e => e.personId === personId)
+    if (entry) await removePersonFromMatchLineup(m.id, entry.id, m.side).catch(() => {})
+  }
+}
+
+// Seed a competition match's line-ups from both teams' registered squads, so a
+// squad set up front carries into fixtures created later. Idempotent and
+// best-effort — a permission gap for one team never blocks the other.
+export async function seedMatchLineupsFromSquads(match) {
+  if (!match?.id || !match.competitionId) return
+  for (const side of ['home', 'away']) {
+    const teamId = side === 'home' ? match.homeTeamId : match.awayTeamId
+    if (!teamId) continue
+    const squad = await fetchCompetitionSquad(match.competitionId, teamId).catch(() => [])
+    for (const p of squad) {
+      await addPersonToMatchLineup(match.id, {
+        personId: p.personId, personName: p.personName, side, shirtNumber: p.shirtNumber,
+      }).catch(() => {})
+    }
+  }
 }
 
 export async function acceptCompetitionInvite(competitionId, teamId, token) {
