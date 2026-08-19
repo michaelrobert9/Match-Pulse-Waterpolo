@@ -404,8 +404,15 @@ export async function addPersonToMatchLineup(matchId, { personId, personName, si
   // Auto-link the player to the org they turned out for, so their appearance
   // rolls up to that school / club / association. Uses the match's own org
   // fields when present, otherwise linkPersonToOrg fetches the org name.
-  const _orgId   = side === 'home' ? data.homeOrgId   : data.awayOrgId
-  const _orgName = side === 'home' ? data.homeOrgName : data.awayOrgName
+  // Prefer the org denormalised on the match; fall back to the TEAM's own
+  // organisation (authoritative) when the match doc doesn't carry one.
+  let _orgId   = side === 'home' ? data.homeOrgId   : data.awayOrgId
+  let _orgName = side === 'home' ? data.homeOrgName : data.awayOrgName
+  if (!_orgId) {
+    const _tid = side === 'home' ? data.homeTeamId : data.awayTeamId
+    const _tSnap = _tid ? await getDoc(doc(db, 'teams', _tid)).catch(() => null) : null
+    if (_tSnap && _tSnap.exists()) { _orgId = _tSnap.data().organizationId ?? null; _orgName = null }
+  }
   if (_orgId) await linkPersonToOrg(personId, _orgId, _orgName ?? null).catch(() => {})
 }
 
@@ -2799,6 +2806,16 @@ export async function seedFixturesFromTeamSheet(competitionId, teamId, squad = [
   const byId = new Map(existing.map(s => [s.personId, s]))
   for (const p of players) if (!byId.has(p.personId)) byId.set(p.personId, p)
   await setDoc(ref, { teamId, squad: [...byId.values()], updatedAt: serverTimestamp(), updatedBy: uid() }, { merge: true }).catch(() => {})
+
+  // Link every player to the team's own organisation (authoritative) so
+  // their stats roll up. Done directly here — not only via
+  // addPersonToMatchLineup — so a RE-RUN still links players already in the
+  // lineup (that helper returns early for those and would skip the org link).
+  const teamSnap = await getDoc(doc(db, 'teams', teamId)).catch(() => null)
+  const teamOrgId = teamSnap && teamSnap.exists() ? (teamSnap.data().organizationId ?? null) : null
+  if (teamOrgId) {
+    for (const p of players) await linkPersonToOrg(p.personId, teamOrgId).catch(() => {})
+  }
 
   const matches = await competitionTeamMatchesForSquad(competitionId, teamId)
   for (const m of matches) {
