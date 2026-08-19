@@ -321,6 +321,35 @@ export async function mergePeople(sourceId, targetId) {
   })
 }
 
+// ── Link a player to the org they represent (for stats roll-up) ─────────────
+// When a player is pasted into / added to a team, they represent that team's
+// school / club / association. representativeOrgIds powers the org's player-
+// rollup query; representativeOrgs carries the display name. Append-only and
+// idempotent — an org already listed is left untouched.
+//
+// Best-effort: writing a person doc is permitted for a platform admin (the
+// operator) and swallowed otherwise, so a permission gap never blocks the
+// paste. The nightly stats engine is the eventual backstop for coverage.
+export async function linkPersonToOrg(personId, orgId, orgName = null) {
+  if (!personId || !orgId) return
+  const ref = doc(db, 'people', personId)
+  const snap = await getDoc(ref).catch(() => null)
+  if (!snap || !snap.exists()) return
+  const orgs = snap.data().representativeOrgs ?? []
+  if (orgs.some(o => o.orgId === orgId)) return
+  let name = orgName
+  if (!name) {
+    const o = await getDoc(doc(db, 'organizations', orgId)).catch(() => null)
+    name = o && o.exists() ? (o.data().name ?? null) : null
+  }
+  const next = [...orgs, { orgId, orgName: name ?? null }]
+  await updateDoc(ref, {
+    representativeOrgs: next,
+    representativeOrgIds: next.map(o => o.orgId),
+    updatedAt: serverTimestamp(),
+  }).catch(() => {})
+}
+
 // Per-match player lineup — stored as homeLineup / awayLineup arrays on the
 // match document so existing Firestore rules for match writes already apply.
 // Entries are independent of the permanent `players` roster.
@@ -371,6 +400,13 @@ export async function addPersonToMatchLineup(matchId, { personId, personName, si
   // gap nightly, so a permission failure here is harmless.
   await ensurePlayerSlice(data, side, { id: personId, fullName: personName, slug: pd.slug ?? null })
     .catch(() => {})
+
+  // Auto-link the player to the org they turned out for, so their appearance
+  // rolls up to that school / club / association. Uses the match's own org
+  // fields when present, otherwise linkPersonToOrg fetches the org name.
+  const _orgId   = side === 'home' ? data.homeOrgId   : data.awayOrgId
+  const _orgName = side === 'home' ? data.homeOrgName : data.awayOrgName
+  if (_orgId) await linkPersonToOrg(personId, _orgId, _orgName ?? null).catch(() => {})
 }
 
 // Create the (person, team, competition | season) stat slice for a lineup
@@ -2618,6 +2654,15 @@ export async function saveFixtureLineup(matchId, side, squad = []) {
     lineupPersonIds,
     updatedBy: uid(), updatedAt: serverTimestamp(),
   })
+
+  // Auto-link every pasted player to the side's org for stats roll-up.
+  const _orgId = side === 'home' ? m.homeOrgId : m.awayOrgId
+  const _orgName = side === 'home' ? m.homeOrgName : m.awayOrgName
+  if (_orgId) {
+    for (const _e of entries) {
+      if (_e.personId) await linkPersonToOrg(_e.personId, _orgId, _orgName ?? null).catch(() => {})
+    }
+  }
 }
 
 export async function inviteTeamToCompetition(competitionId, teamId, data = {}) {
@@ -2681,6 +2726,13 @@ export async function addToCompetitionSquad(competitionId, teamId, { personId, p
     const entry = { personId, personName: personName ?? null, personSlug: personSlug ?? null, shirtNumber: shirtNumber || null }
     await setDoc(ref, { teamId, squad: [...squad, entry], updatedAt: serverTimestamp(), updatedBy: uid() }, { merge: true })
   }
+
+  // Link the player to the team's org up front, so the roll-up holds even
+  // before the team has any fixtures.
+  const _teamSnap = await getDoc(doc(db, 'teams', teamId)).catch(() => null)
+  const _teamOrgId = _teamSnap && _teamSnap.exists() ? (_teamSnap.data().organizationId ?? null) : null
+  if (_teamOrgId) await linkPersonToOrg(personId, _teamOrgId).catch(() => {})
+
   const matches = await competitionTeamMatchesForSquad(competitionId, teamId)
   for (const m of matches) {
     await addPersonToMatchLineup(m.id, { personId, personName, side: m.side, shirtNumber }).catch(() => {})
