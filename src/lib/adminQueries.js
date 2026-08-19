@@ -449,6 +449,44 @@ async function ensurePlayerSlice(match, side, person) {
   })
 }
 
+// Ensure a competition stat slice exists for EVERY player in a team's sheet the
+// moment it is saved — so a pasted player has a proper, linked record on the
+// players list right away, not only once a fixture is played. One slice per
+// (person, team, competition); caps start at 0 and the stats engine fills them
+// in from played fixtures. Idempotent — existing slices are left untouched.
+export async function ensureCompetitionSquadSlices(competitionId, teamId, squad = []) {
+  if (!competitionId || !teamId || !squad.length) return
+  const [existingSnap, teamSnap, compSnap] = await Promise.all([
+    getDocs(query(collection(db, 'players'),
+      where('teamId', '==', teamId), where('competitionId', '==', competitionId))),
+    getDoc(doc(db, 'teams', teamId)),
+    getDoc(doc(db, 'competitions', competitionId)),
+  ])
+  const have = new Set(existingSnap.docs.map(d => d.data().personId).filter(Boolean))
+  const t = teamSnap.exists() ? teamSnap.data() : {}
+  const c = compSnap.exists() ? compSnap.data() : {}
+  for (const s of squad) {
+    const personId = s.playerId ?? s.personId
+    if (!personId || have.has(personId)) continue
+    have.add(personId)
+    await addDoc(collection(db, 'players'), {
+      personId,
+      personName: s.playerName ?? s.personName ?? null,
+      personSlug: s.personSlug ?? null,
+      teamId, competitionId, season: null,
+      organizationId: t.organizationId ?? null,
+      shirtNumber: s.shirtNumber ?? null, position: null, isCaptain: s.isCaptain === true,
+      caps: 0, goals: 0, assists: 0, cards: { green: 0, yellow: 0, red: 0 },
+      competitionName: c.name ?? null,
+      competitionSeason: c.season ?? null,
+      competitionStatus: c.status ?? null,
+      teamDisplayName: t.displayName ?? null,
+      teamPrimaryColor: t.primaryColor ?? null,
+      createdBy: uid(), createdAt: serverTimestamp(),
+    }).catch(() => {})
+  }
+}
+
 export async function removePersonFromMatchLineup(matchId, entryId, side) {
   const matchRef = doc(db, 'matches', matchId)
   const snap = await getDoc(matchRef)
@@ -2501,6 +2539,19 @@ export async function saveCompetitionTeamSheet(competitionId, teamId, { squad = 
       ? updateDoc(doc(db, 'people', s.playerId), { competitionIds: arrayUnion(competitionId) }).catch(() => {})
       : Promise.resolve()
   ))
+
+  // Give every pasted player a proper linked record right away: a competition
+  // stat slice (so they show on the players list and accrue stats as fixtures
+  // play) and a link to the team's org for the roll-up. Best-effort, idempotent.
+  await ensureCompetitionSquadSlices(competitionId, teamId, squad ?? []).catch(() => {})
+  const _teamSnap = await getDoc(doc(db, 'teams', teamId)).catch(() => null)
+  const _teamOrgId = _teamSnap && _teamSnap.exists() ? (_teamSnap.data().organizationId ?? null) : null
+  if (_teamOrgId) {
+    for (const s of (squad ?? [])) {
+      const pid = s.playerId ?? s.personId
+      if (pid) await linkPersonToOrg(pid, _teamOrgId).catch(() => {})
+    }
+  }
 }
 
 export async function fetchCompetitionTeamSheet(competitionId, teamId) {
