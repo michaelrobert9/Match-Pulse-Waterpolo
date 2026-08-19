@@ -241,6 +241,7 @@ export async function addPersonToMatchLineup(matchId, { personId, personName, si
   const entry = {
     id: crypto.randomUUID(),
     personId, personName,
+    personSlug: pd.slug ?? null,   // carry the slug so the entry links straight to /player/{slug}
     photoUrl: pd.photoUrl ?? null,
     shirtNumber: shirtNumber || null,
     isStarter,

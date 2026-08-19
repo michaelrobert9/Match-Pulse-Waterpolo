@@ -225,8 +225,15 @@ export default function CompetitionTeams() {
       .sort((a, b) => (toDate(b.scheduledAt)?.getTime() ?? 0) - (toDate(a.scheduledAt)?.getTime() ?? 0))
     const upcoming = teamMatches.filter(m => m.status !== 'final')
       .sort((a, b) => (toDate(a.scheduledAt)?.getTime() ?? 0) - (toDate(b.scheduledAt)?.getTime() ?? 0))
-    const displaySquad = squad.length ? sortSquad(squad) : deriveSquad(teamId, teamMatches)
-    const existingIds = new Set(displaySquad.map(p => p.personId))
+    // Squad = registered players UNION anyone named in the team's competition
+    // match line-ups, so a player added straight to a fixture is still listed.
+    const registered = sortSquad(squad)
+    const byId = new Map(registered.map(p => [p.personId, p]))
+    for (const p of deriveSquad(teamId, teamMatches)) if (!byId.has(p.personId)) byId.set(p.personId, p)
+    const displaySquad = sortSquad([...byId.values()])
+    // The picker excludes only REGISTERED players, so a match-only player can
+    // still be formally added (which assigns them to every match).
+    const existingIds = new Set(registered.map(p => p.personId))
 
     async function reloadSquad() {
       setSquad(await fetchCompetitionSquad(competition.id, teamId).catch(() => squad))

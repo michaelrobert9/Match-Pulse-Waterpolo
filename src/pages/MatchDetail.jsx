@@ -397,7 +397,7 @@ export default function MatchDetail() {
           personName:  e.personName ?? r?.personName ?? 'Unknown',
           photoUrl:    e.photoUrl ?? r?.photoUrl ?? null,
           shirtNumber: e.shirtNumber ?? r?.shirtNumber ?? null,
-          personSlug:  r?.personSlug ?? null,
+          personSlug:  e.personSlug ?? r?.personSlug ?? null,
           // Captaincy reads from the LINE-UP ENTRY first — that is where the
           // team sheet writes it. The roster is a legacy fallback only; a
           // pasted captain would not appear if this joined the roster first.
