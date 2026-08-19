@@ -99,9 +99,19 @@ export default function CompetitionKnockout() {
   if (!competition || !competitionViewableBy(competition, auth))
     return <div className="px-4 py-12 text-center text-slate-500 text-sm">Competition not found.</div>
 
+  // Competition administrators still see provisional (pre-verification) knockout
+  // positions so they can plan; the public sees only the seedings until pools are
+  // verified — a live best-guess placement read as a result caused confusion.
+  const canAdmin = !!auth.canAdministerCompetition?.(competition)
+
   // Group slots into ROUNDS, then pair consecutive slots into GAMES (home/away)
   // so each match shows as one card with its score — not two disconnected rows.
+  // A provisional slot (pool not yet verified) is hidden from the public: show
+  // its seed label, not the live best-guess team. Admins still see the team.
+  const isProvisionalHidden = (slot) =>
+    resolved[slot?.slotId]?.status === SLOT_STATUS.provisional && !canAdmin
   const nameOf = (slot) => {
+    if (isProvisionalHidden(slot)) return slot?.name ?? 'TBC'
     const r = resolved[slot?.slotId] ?? {}
     return r.teamId ? (teamNames[r.teamId] ?? r.teamId) : (slot?.name ?? 'TBC')
   }
@@ -135,7 +145,9 @@ export default function CompetitionKnockout() {
       <div className="mt-4 px-4 sm:px-6 lg:px-8 space-y-6">
         {provisional && (
           <div className="bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-[12px] text-slate-500">
-            Knockout positions are based on current pool standings and have not yet been verified.
+            {canAdmin
+              ? 'Provisional knockout positions (from current pool standings) are shown to you as the organiser — the public sees only the seedings until you verify each pool. Verify the pools to confirm these positions and publish them.'
+              : 'Knockout teams are confirmed once the pool stages are complete.'}
           </div>
         )}
 
@@ -151,8 +163,8 @@ export default function CompetitionKnockout() {
                 const match   = gm?.match
                 const played  = match?.status === 'final'
                 const winSide = played ? knockoutWinnerSide(match) : null   // by score, not team id
-                const hId = resolved[home?.slotId]?.teamId ?? null
-                const aId = resolved[away?.slotId]?.teamId ?? null
+                const hId = isProvisionalHidden(home) ? null : (resolved[home?.slotId]?.teamId ?? null)
+                const aId = isProvisionalHidden(away) ? null : (resolved[away?.slotId]?.teamId ?? null)
                 const Row = ({ slot, teamId, side }) => {
                   const won = played && winSide === side
                   return (
