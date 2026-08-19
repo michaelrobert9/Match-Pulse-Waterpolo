@@ -213,6 +213,143 @@ export async function updatePerson(id, data) {
   return updateDoc(doc(db, 'people', id), { ...data, ...extra, updatedAt: serverTimestamp() })
 }
 
+// ── Merge duplicate player records (master admin) ───────────────────────────
+// The system can end up with two `people` records for one person. Merge folds
+// a SOURCE (the duplicate) into a TARGET (the record to keep): every match the
+// source appears in, its goals, and its stat slices repoint to the target,
+// org links are unioned onto the target, and the source is tombstoned
+// (mergedInto) so it drops out of lists/search but stays for audit. Career
+// totals self-heal on the next stats recompute from the repointed slices.
+// Master-admin only (enforced by the rules on the match/people/players writes).
+
+async function matchesWithPerson(personId) {
+  const snap = await getDocs(query(collection(db, 'matches'), where('lineupPersonIds', 'array-contains', personId)))
+  return snap.docs.map(d => ({ id: d.id, ...d.data() }))
+}
+
+// What a merge WOULD touch — shown to the admin before they commit.
+export async function previewMergePeople(sourceId, targetId) {
+  if (!sourceId || !targetId || sourceId === targetId) throw new Error('Pick two different players.')
+  const [source, target, matches, slices] = await Promise.all([
+    getDoc(doc(db, 'people', sourceId)),
+    getDoc(doc(db, 'people', targetId)),
+    matchesWithPerson(sourceId),
+    getDocs(query(collection(db, 'players'), where('personId', '==', sourceId))),
+  ])
+  return {
+    source: source.exists() ? { id: source.id, ...source.data() } : null,
+    target: target.exists() ? { id: target.id, ...target.data() } : null,
+    matchCount: matches.length,
+    sliceCount: slices.size,
+  }
+}
+
+export async function mergePeople(sourceId, targetId) {
+  if (!sourceId || !targetId || sourceId === targetId) throw new Error('Pick two different players.')
+  const [srcSnap, tgtSnap] = await Promise.all([
+    getDoc(doc(db, 'people', sourceId)),
+    getDoc(doc(db, 'people', targetId)),
+  ])
+  if (!tgtSnap.exists()) throw new Error('Target player not found.')
+  const source = { id: srcSnap.id, ...srcSnap.data() }
+  const target = { id: tgtSnap.id, ...tgtSnap.data() }
+  const tName = target.fullName ?? null
+  const tSlug = target.slug ?? null
+
+  // 1. Repoint every match the source appears in.
+  for (const m of await matchesWithPerson(sourceId)) {
+    const patch = {}
+    for (const field of ['homeLineup', 'awayLineup']) {
+      const arr = m[field]
+      if (!Array.isArray(arr) || !arr.some(e => e.personId === sourceId)) continue
+      const hasTarget = arr.some(e => e.personId === targetId)
+      patch[field] = arr
+        .filter(e => !(hasTarget && e.personId === sourceId))   // drop dup if target already listed
+        .map(e => e.personId === sourceId
+          ? { ...e, personId: targetId, personName: tName ?? e.personName, personSlug: tSlug ?? e.personSlug ?? null }
+          : e)
+    }
+    patch.lineupPersonIds = [...new Set((m.lineupPersonIds ?? []).map(x => x === sourceId ? targetId : x))]
+    if (Array.isArray(m.goals) && m.goals.some(g => g.scorerPersonId === sourceId || g.assistPersonId === sourceId)) {
+      patch.goals = m.goals.map(g => ({
+        ...g,
+        ...(g.scorerPersonId === sourceId ? { scorerPersonId: targetId, scorerName: tName ?? g.scorerName } : {}),
+        ...(g.assistPersonId === sourceId ? { assistPersonId: targetId, assistName: tName ?? g.assistName } : {}),
+      }))
+    }
+    await updateDoc(doc(db, 'matches', m.id), patch).catch(() => {})
+  }
+
+  // 2. Repoint stat slices; fold into the target's slice when one already exists
+  //    for the same team+competition+season (avoids a duplicate slice).
+  const [srcSlices, tgtSlices] = await Promise.all([
+    getDocs(query(collection(db, 'players'), where('personId', '==', sourceId))),
+    getDocs(query(collection(db, 'players'), where('personId', '==', targetId))),
+  ])
+  const sliceKey = s => `${s.teamId}|${s.competitionId ?? ''}|${s.season ?? ''}`
+  const tgtByKey = new Map(tgtSlices.docs.map(d => [sliceKey(d.data()), { id: d.id, ...d.data() }]))
+  for (const d of srcSlices.docs) {
+    const s = d.data()
+    const dup = tgtByKey.get(sliceKey(s))
+    if (dup) {
+      await updateDoc(doc(db, 'players', dup.id), {
+        caps: (dup.caps ?? 0) + (s.caps ?? 0),
+        goals: (dup.goals ?? 0) + (s.goals ?? 0),
+        assists: (dup.assists ?? 0) + (s.assists ?? 0),
+        cards: {
+          green: (dup.cards?.green ?? 0) + (s.cards?.green ?? 0),
+          yellow: (dup.cards?.yellow ?? 0) + (s.cards?.yellow ?? 0),
+          red: (dup.cards?.red ?? 0) + (s.cards?.red ?? 0),
+        },
+      }).catch(() => {})
+      await deleteDoc(doc(db, 'players', d.id)).catch(() => {})
+    } else {
+      await updateDoc(doc(db, 'players', d.id), { personId: targetId, personName: tName, personSlug: tSlug }).catch(() => {})
+    }
+  }
+
+  // 3. Union the source's representative orgs onto the target.
+  const orgs = [...(target.representativeOrgs ?? [])]
+  for (const o of (source.representativeOrgs ?? [])) if (o?.orgId && !orgs.some(x => x.orgId === o.orgId)) orgs.push(o)
+  await updateDoc(doc(db, 'people', targetId), {
+    representativeOrgs: orgs, representativeOrgIds: orgs.map(o => o.orgId), updatedAt: serverTimestamp(),
+  }).catch(() => {})
+
+  // 4. Tombstone the source: hidden from lists/search, kept for audit.
+  await updateDoc(doc(db, 'people', sourceId), {
+    mergedInto: targetId, claimStatus: 'merged', slug: null, updatedAt: serverTimestamp(),
+  })
+}
+
+// ── Link a player to the org they represent (for stats roll-up) ─────────────
+// When a player is pasted into / added to a team, they represent that team's
+// school / club / association. representativeOrgIds powers the org's player-
+// rollup query; representativeOrgs carries the display name. Append-only and
+// idempotent — an org already listed is left untouched.
+//
+// Best-effort: writing a person doc is permitted for a platform admin (the
+// operator) and swallowed otherwise, so a permission gap never blocks the
+// paste. The nightly stats engine is the eventual backstop for coverage.
+export async function linkPersonToOrg(personId, orgId, orgName = null) {
+  if (!personId || !orgId) return
+  const ref = doc(db, 'people', personId)
+  const snap = await getDoc(ref).catch(() => null)
+  if (!snap || !snap.exists()) return
+  const orgs = snap.data().representativeOrgs ?? []
+  if (orgs.some(o => o.orgId === orgId)) return
+  let name = orgName
+  if (!name) {
+    const o = await getDoc(doc(db, 'organizations', orgId)).catch(() => null)
+    name = o && o.exists() ? (o.data().name ?? null) : null
+  }
+  const next = [...orgs, { orgId, orgName: name ?? null }]
+  await updateDoc(ref, {
+    representativeOrgs: next,
+    representativeOrgIds: next.map(o => o.orgId),
+    updatedAt: serverTimestamp(),
+  }).catch(() => {})
+}
+
 // Per-match player lineup — stored as homeLineup / awayLineup arrays on the
 // match document so existing Firestore rules for match writes already apply.
 // Entries are independent of the permanent `players` roster.
@@ -241,6 +378,7 @@ export async function addPersonToMatchLineup(matchId, { personId, personName, si
   const entry = {
     id: crypto.randomUUID(),
     personId, personName,
+    personSlug: pd.slug ?? null,   // carry the slug so the entry links straight to /player/{slug}
     photoUrl: pd.photoUrl ?? null,
     shirtNumber: shirtNumber || null,
     isStarter,
@@ -262,6 +400,13 @@ export async function addPersonToMatchLineup(matchId, { personId, personName, si
   // gap nightly, so a permission failure here is harmless.
   await ensurePlayerSlice(data, side, { id: personId, fullName: personName, slug: pd.slug ?? null })
     .catch(() => {})
+
+  // Auto-link the player to the org they turned out for, so their appearance
+  // rolls up to that school / club / association. Uses the match's own org
+  // fields when present, otherwise linkPersonToOrg fetches the org name.
+  const _orgId   = side === 'home' ? data.homeOrgId   : data.awayOrgId
+  const _orgName = side === 'home' ? data.homeOrgName : data.awayOrgName
+  if (_orgId) await linkPersonToOrg(personId, _orgId, _orgName ?? null).catch(() => {})
 }
 
 // Create the (person, team, competition | season) stat slice for a lineup
@@ -302,6 +447,44 @@ async function ensurePlayerSlice(match, side, person) {
     teamPrimaryColor: t.primaryColor ?? null,
     createdBy: uid(), createdAt: serverTimestamp(),
   })
+}
+
+// Ensure a competition stat slice exists for EVERY player in a team's sheet the
+// moment it is saved — so a pasted player has a proper, linked record on the
+// players list right away, not only once a fixture is played. One slice per
+// (person, team, competition); caps start at 0 and the stats engine fills them
+// in from played fixtures. Idempotent — existing slices are left untouched.
+export async function ensureCompetitionSquadSlices(competitionId, teamId, squad = []) {
+  if (!competitionId || !teamId || !squad.length) return
+  const [existingSnap, teamSnap, compSnap] = await Promise.all([
+    getDocs(query(collection(db, 'players'),
+      where('teamId', '==', teamId), where('competitionId', '==', competitionId))),
+    getDoc(doc(db, 'teams', teamId)),
+    getDoc(doc(db, 'competitions', competitionId)),
+  ])
+  const have = new Set(existingSnap.docs.map(d => d.data().personId).filter(Boolean))
+  const t = teamSnap.exists() ? teamSnap.data() : {}
+  const c = compSnap.exists() ? compSnap.data() : {}
+  for (const s of squad) {
+    const personId = s.playerId ?? s.personId
+    if (!personId || have.has(personId)) continue
+    have.add(personId)
+    await addDoc(collection(db, 'players'), {
+      personId,
+      personName: s.playerName ?? s.personName ?? null,
+      personSlug: s.personSlug ?? null,
+      teamId, competitionId, season: null,
+      organizationId: t.organizationId ?? null,
+      shirtNumber: s.shirtNumber ?? null, position: null, isCaptain: s.isCaptain === true,
+      caps: 0, goals: 0, assists: 0, cards: { green: 0, yellow: 0, red: 0 },
+      competitionName: c.name ?? null,
+      competitionSeason: c.season ?? null,
+      competitionStatus: c.status ?? null,
+      teamDisplayName: t.displayName ?? null,
+      teamPrimaryColor: t.primaryColor ?? null,
+      createdBy: uid(), createdAt: serverTimestamp(),
+    }).catch(() => {})
+  }
 }
 
 export async function removePersonFromMatchLineup(matchId, entryId, side) {
@@ -941,7 +1124,7 @@ export async function createMatch(competitionId, homeTeam, awayTeam, {
   const homeRegistered = homeTeam.id != null
   const awayRegistered = awayTeam.id != null
 
-  return addDoc(collection(db, 'matches'), {
+  const ref = await addDoc(collection(db, 'matches'), {
     competitionId,
     homeTeamId:        homeRegistered ? homeTeam.id : null,
     homeTeamName:      homeTeam.displayName,
@@ -976,6 +1159,16 @@ export async function createMatch(competitionId, homeTeam, awayTeam, {
     ...(competitionId && competitionSlug && seasonStr ? { competitionSlug, competitionSeason: seasonStr } : {}),
     createdBy: uid(), createdAt: serverTimestamp(),
   })
+  // Seed line-ups from both teams' registered competition squads (best-effort,
+  // idempotent) so a squad set up front carries into fixtures added later.
+  if (competitionId) {
+    seedMatchLineupsFromSquads({
+      id: ref.id, competitionId,
+      homeTeamId: homeRegistered ? homeTeam.id : null,
+      awayTeamId: awayRegistered ? awayTeam.id : null,
+    }).catch(() => {})
+  }
+  return ref
 }
 
 export async function updateMatch(id, data) {
@@ -2346,6 +2539,24 @@ export async function saveCompetitionTeamSheet(competitionId, teamId, { squad = 
       ? updateDoc(doc(db, 'people', s.playerId), { competitionIds: arrayUnion(competitionId) }).catch(() => {})
       : Promise.resolve()
   ))
+
+  // Give every pasted player a proper linked record right away: a competition
+  // stat slice (so they show on the players list and accrue stats as fixtures
+  // play) and a link to the team's org for the roll-up. Best-effort, idempotent.
+  await ensureCompetitionSquadSlices(competitionId, teamId, squad ?? []).catch(() => {})
+  const _teamSnap = await getDoc(doc(db, 'teams', teamId)).catch(() => null)
+  const _teamOrgId = _teamSnap && _teamSnap.exists() ? (_teamSnap.data().organizationId ?? null) : null
+  if (_teamOrgId) {
+    for (const s of (squad ?? [])) {
+      const pid = s.playerId ?? s.personId
+      if (pid) await linkPersonToOrg(pid, _teamOrgId).catch(() => {})
+    }
+  }
+
+  // Link every pasted player into the team's actual fixtures (real lineups +
+  // lineupPersonIds), so their profile lists those matches and the merge tool
+  // can move them — the standard behaviour, not the derived-only sheet.
+  await seedFixturesFromTeamSheet(competitionId, teamId, squad ?? []).catch(() => {})
 }
 
 export async function fetchCompetitionTeamSheet(competitionId, teamId) {
@@ -2499,6 +2710,15 @@ export async function saveFixtureLineup(matchId, side, squad = []) {
     lineupPersonIds,
     updatedBy: uid(), updatedAt: serverTimestamp(),
   })
+
+  // Auto-link every pasted player to the side's org for stats roll-up.
+  const _orgId = side === 'home' ? m.homeOrgId : m.awayOrgId
+  const _orgName = side === 'home' ? m.homeOrgName : m.awayOrgName
+  if (_orgId) {
+    for (const _e of entries) {
+      if (_e.personId) await linkPersonToOrg(_e.personId, _orgId, _orgName ?? null).catch(() => {})
+    }
+  }
 }
 
 export async function inviteTeamToCompetition(competitionId, teamId, data = {}) {
@@ -2511,6 +2731,139 @@ export async function inviteTeamToCompetition(competitionId, teamId, data = {}) 
     invitedAt: serverTimestamp(),
     invitedBy: uid(),
   }, { merge: false })
+}
+
+// ── Competition squads ────────────────────────────────────────────────────────
+// A team's registered squad for ONE competition, stored at
+// competitions/{compId}/squads/{teamId}. Players in the squad are assigned to
+// EVERY match the team plays in the competition (past and future), by default:
+// editing the squad fans out to existing matches immediately, and a competition
+// fixture created later seeds its line-up from both teams' squads. Editable by a
+// competition admin or the team's own org staff (firestore rules enforce this);
+// the lineup writes it triggers are authorised by the match rule (competition or
+// team-side authority), so no extra grant is needed.
+
+// Every match the team plays in a competition, tagged with the side it is on.
+async function competitionTeamMatchesForSquad(competitionId, teamId) {
+  const [homeSnap, awaySnap] = await Promise.all([
+    getDocs(query(collection(db, 'matches'),
+      where('competitionId', '==', competitionId), where('homeTeamId', '==', teamId))),
+    getDocs(query(collection(db, 'matches'),
+      where('competitionId', '==', competitionId), where('awayTeamId', '==', teamId))),
+  ])
+  return [
+    ...homeSnap.docs.map(d => ({ id: d.id, side: 'home', ...d.data() })),
+    ...awaySnap.docs.map(d => ({ id: d.id, side: 'away', ...d.data() })),
+  ]
+}
+
+export async function fetchCompetitionSquad(competitionId, teamId) {
+  const snap = await getDoc(doc(db, 'competitions', competitionId, 'squads', teamId))
+  return snap.exists() ? (snap.data().squad ?? []) : []
+}
+
+// The team's TEAM-SHEET squad (stored on the competition membership doc) as its
+// raw squad array. Used by the competition Teams page to list every player in
+// the team's squad, however they were added.
+export async function fetchCompetitionTeamSheetSquad(competitionId, teamId) {
+  if (!competitionId || !teamId) return []
+  const snap = await getDoc(doc(db, 'competitions', competitionId, 'teams', teamId))
+  return snap.exists() ? (snap.data().squad ?? []) : []
+}
+
+// Add a player to a team's competition squad, then assign them to every match
+// the team plays in this competition. Idempotent per match.
+// Register a whole pasted team-sheet squad into the competition and link every
+// player to all the team's fixtures the STANDARD way: merge them into the
+// registered competition squad AND write each into every fixture's real lineup
+// (homeLineup / awayLineup + lineupPersonIds, plus a stat slice and org link,
+// via addPersonToMatchLineup). This makes pasted players first-class — their
+// profile's match list finds them (lineupPersonIds), the merge tool can move
+// them, and their stats accrue — the same as a player added one at a time.
+// Idempotent.
+export async function seedFixturesFromTeamSheet(competitionId, teamId, squad = []) {
+  if (!competitionId || !teamId || !squad.length) return
+  const players = squad
+    .map(s => ({
+      personId:   s.playerId ?? s.personId ?? null,
+      personName: s.playerName ?? s.personName ?? null,
+      personSlug: s.personSlug ?? null,
+      shirtNumber: s.shirtNumber ?? null,
+    }))
+    .filter(p => p.personId)
+  if (!players.length) return
+
+  const ref = doc(db, 'competitions', competitionId, 'squads', teamId)
+  const snap = await getDoc(ref).catch(() => null)
+  const existing = snap && snap.exists() ? (snap.data().squad ?? []) : []
+  const byId = new Map(existing.map(s => [s.personId, s]))
+  for (const p of players) if (!byId.has(p.personId)) byId.set(p.personId, p)
+  await setDoc(ref, { teamId, squad: [...byId.values()], updatedAt: serverTimestamp(), updatedBy: uid() }, { merge: true }).catch(() => {})
+
+  const matches = await competitionTeamMatchesForSquad(competitionId, teamId)
+  for (const m of matches) {
+    for (const p of players) {
+      await addPersonToMatchLineup(m.id, {
+        personId: p.personId, personName: p.personName, side: m.side, shirtNumber: p.shirtNumber,
+      }).catch(() => {})
+    }
+  }
+}
+
+export async function addToCompetitionSquad(competitionId, teamId, { personId, personName, personSlug = null, shirtNumber = null }) {
+  if (!personId) throw new Error('No player selected.')
+  const ref = doc(db, 'competitions', competitionId, 'squads', teamId)
+  const snap = await getDoc(ref)
+  const squad = snap.exists() ? (snap.data().squad ?? []) : []
+  if (!squad.some(s => s.personId === personId)) {
+    const entry = { personId, personName: personName ?? null, personSlug: personSlug ?? null, shirtNumber: shirtNumber || null }
+    await setDoc(ref, { teamId, squad: [...squad, entry], updatedAt: serverTimestamp(), updatedBy: uid() }, { merge: true })
+  }
+
+  // Link the player to the team's org up front, so the roll-up holds even
+  // before the team has any fixtures.
+  const _teamSnap = await getDoc(doc(db, 'teams', teamId)).catch(() => null)
+  const _teamOrgId = _teamSnap && _teamSnap.exists() ? (_teamSnap.data().organizationId ?? null) : null
+  if (_teamOrgId) await linkPersonToOrg(personId, _teamOrgId).catch(() => {})
+
+  const matches = await competitionTeamMatchesForSquad(competitionId, teamId)
+  for (const m of matches) {
+    await addPersonToMatchLineup(m.id, { personId, personName, side: m.side, shirtNumber }).catch(() => {})
+  }
+}
+
+// Remove a player from a team's competition squad and from the team's match
+// line-ups in this competition.
+export async function removeFromCompetitionSquad(competitionId, teamId, personId) {
+  const ref = doc(db, 'competitions', competitionId, 'squads', teamId)
+  const snap = await getDoc(ref)
+  if (snap.exists()) {
+    const squad = (snap.data().squad ?? []).filter(s => s.personId !== personId)
+    await setDoc(ref, { squad, updatedAt: serverTimestamp(), updatedBy: uid() }, { merge: true })
+  }
+  const matches = await competitionTeamMatchesForSquad(competitionId, teamId)
+  for (const m of matches) {
+    const field = m.side === 'home' ? 'homeLineup' : 'awayLineup'
+    const entry = (m[field] ?? []).find(e => e.personId === personId)
+    if (entry) await removePersonFromMatchLineup(m.id, entry.id, m.side).catch(() => {})
+  }
+}
+
+// Seed a competition match's line-ups from both teams' registered squads, so a
+// squad set up front carries into fixtures created later. Idempotent and
+// best-effort — a permission gap for one team never blocks the other.
+export async function seedMatchLineupsFromSquads(match) {
+  if (!match?.id || !match.competitionId) return
+  for (const side of ['home', 'away']) {
+    const teamId = side === 'home' ? match.homeTeamId : match.awayTeamId
+    if (!teamId) continue
+    const squad = await fetchCompetitionSquad(match.competitionId, teamId).catch(() => [])
+    for (const p of squad) {
+      await addPersonToMatchLineup(match.id, {
+        personId: p.personId, personName: p.personName, side, shirtNumber: p.shirtNumber,
+      }).catch(() => {})
+    }
+  }
 }
 
 export async function acceptCompetitionInvite(competitionId, teamId, token) {

@@ -5,28 +5,31 @@ import CompetitionCrest from './CompetitionCrest'
 
 // Tabs are type-aware. League shows a full standings table; tournaments show
 // pools + knockout; festivals show no ranking (fixtures + optional info stats).
+// Order: Overview, Matches, then the type-specific tabs, then Teams (last).
+// Matches sits second because a live/upcoming competition lands there.
 function tabsForType(base, type, { festivalStats } = {}) {
+  const overview = { to: `${base}/overview`, label: 'Overview' }
+  const matches  = { to: `${base}/matches`,  label: 'Matches' }
+  const teams    = { to: `${base}/teams`,    label: 'Teams' }
   if (type === 'tournament') {
     return [
-      { to: base,               label: 'Overview' },
-      { to: `${base}/pools`,     label: 'Pools' },
-      { to: `${base}/knockout`,  label: 'Playoffs' },
-      { to: `${base}/matches`,  label: 'Matches' },
+      overview, matches,
+      { to: `${base}/pools`,    label: 'Pools' },
+      { to: `${base}/knockout`, label: 'Playoffs' },
+      teams,
     ]
   }
   if (type === 'festival') {
-    const t = [
-      { to: base,               label: 'Overview' },
-      { to: `${base}/matches`,  label: 'Matches' },
-    ]
+    const t = [overview, matches]
     if (festivalStats) t.push({ to: `${base}/stats`, label: 'Stats' })
+    t.push(teams)
     return t
   }
   // league (default)
   return [
-    { to: base,                label: 'Overview' },
+    overview, matches,
     { to: `${base}/standings`, label: 'Standings' },
-    { to: `${base}/matches`,  label: 'Matches' },
+    teams,
   ]
 }
 
@@ -37,7 +40,7 @@ export default function CompetitionNav({ competition }) {
   const festivalStats = competition.rules?.statsTable?.enabled === true
   const tabs = tabsForType(base, competition.type, { festivalStats }).map(t => ({
     ...t,
-    active: t.to === base ? pathname === base : pathname.startsWith(t.to),
+    active: pathname === t.to || pathname.startsWith(`${t.to}/`),
   }))
 
   return (

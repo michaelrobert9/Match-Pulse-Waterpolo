@@ -6,7 +6,7 @@ import { fetchSeoSettings, saveSeoSettings, DEFAULT_SEO } from '../../lib/seoSet
 import { slugify, matchSlug as buildMatchSlug } from '../../lib/slugify'
 import { composeTeamDisplay } from '../../lib/teamNaming'
 import { matchPath, competitionMatchPath } from '../../lib/matchPaths'
-import { writeMatchRedirect } from '../../lib/adminQueries'
+import { writeMatchRedirect, seedFixturesFromTeamSheet } from '../../lib/adminQueries'
 import { useAuth } from '../../contexts/AuthContext'
 
 function Field({ label, hint, children }) {
@@ -540,6 +540,81 @@ function BackfillLineupPersonIds() {
   )
 }
 
+// One-time repair for team sheets saved BEFORE pasted players were linked into
+// their fixtures. The lineup-index backfill above can't help here: it rebuilds
+// lineupPersonIds from each match's real lineup arrays, but a derived team-sheet
+// squad was never written into those arrays — the players live only on the
+// competition membership doc. This walks every stored sheet and seeds its squad
+// into the team's actual fixtures (real line-ups + stat records + org links), so
+// the pasted players finally appear on their profiles and can be merged. Idempotent.
+function BackfillTeamSheetFixtures() {
+  const [state, setState] = useState('idle') // idle | running | done | error
+  const [log,   setLog]   = useState([])
+
+  function addLog(msg) { setLog(prev => [...prev, msg]) }
+
+  async function run() {
+    setState('running')
+    setLog([])
+    try {
+      const compsSnap = await getDocs(collection(db, 'competitions'))
+      const sheets = []
+      for (const c of compsSnap.docs) {
+        const teamsSnap = await getDocs(collection(db, 'competitions', c.id, 'teams'))
+        for (const t of teamsSnap.docs) {
+          const squad = t.data().squad ?? []
+          if (squad.length) sheets.push({ competitionId: c.id, teamId: t.id, squad })
+        }
+      }
+
+      if (sheets.length === 0) {
+        addLog('No stored team sheets with players found — nothing to do.')
+        setState('done')
+        return
+      }
+
+      addLog(`Found ${sheets.length} team sheet(s). Linking each squad into its fixtures…`)
+      let done = 0
+      for (const s of sheets) {
+        addLog(`  ${s.competitionId} · ${s.teamId} → ${s.squad.length} player(s)`)
+        await seedFixturesFromTeamSheet(s.competitionId, s.teamId, s.squad)
+        done++
+      }
+      addLog(`\nDone — ${done} team sheet(s) processed. Give the profiles a moment to reflect.`)
+      setState('done')
+    } catch (err) {
+      addLog(`Error: ${err.message}`)
+      setState('error')
+    }
+  }
+
+  return (
+    <Section icon={Wrench} title="Team-sheet fixture backfill">
+      <p className="text-sm text-slate-600">
+        Players pasted into a competition team sheet are stored on the team's squad, but sheets
+        saved before this repair never wrote those players into the team's actual fixtures — so
+        they don't show on their own profile's match list and their stats don't accrue. This
+        button walks every stored team sheet and links its squad into all of that team's fixtures
+        (real line-ups + stat records + org links). Safe to run more than once — players already
+        linked are skipped.
+      </p>
+      {log.length > 0 && (
+        <div className="bg-slate-900 text-slate-100 rounded-xl px-4 py-3 font-mono text-xs leading-relaxed whitespace-pre-wrap max-h-64 overflow-y-auto">
+          {log.join('\n')}
+        </div>
+      )}
+      <button
+        type="button"
+        onClick={run}
+        disabled={state === 'running'}
+        className="bg-slate-700 hover:bg-slate-600 disabled:opacity-50 text-white font-bold text-sm uppercase tracking-wider rounded-xl px-5 py-2.5 transition-colors"
+      >
+        {state === 'running' ? 'Running…' : state === 'done' ? 'Run again' : 'Backfill team-sheet fixtures'}
+      </button>
+    </Section>
+  )
+}
+
 function BackfillTeamSlugs() {
   const [state, setState] = useState('idle')
   const [log,   setLog]   = useState([])
@@ -937,6 +1012,7 @@ export default function SeoSettings() {
         <BackfillCompetitionOwners />
         <BackfillTeamSlugs />
         <BackfillLineupPersonIds />
+        <BackfillTeamSheetFixtures />
 
         {/* Save bar */}
         <div className="flex items-center justify-between gap-4 pt-2">

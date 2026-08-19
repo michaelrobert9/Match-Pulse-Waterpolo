@@ -22,6 +22,8 @@ import MatchGroupPage from './pages/MatchGroupPage'
 import CreateMatchGroup from './pages/fixtures/CreateMatchGroup'
 import MatchTimesGrid from './pages/fixtures/MatchTimesGrid'
 import CompetitionOverview from './pages/CompetitionOverview'
+import CompetitionLanding from './pages/CompetitionLanding'
+import CompetitionTeams from './pages/CompetitionTeams'
 import CompetitionStandings from './pages/CompetitionStandings'
 import CompetitionFixtures from './pages/CompetitionFixtures'
 import CompetitionPools from './pages/CompetitionPools'
@@ -140,27 +142,36 @@ export default function App() {
           } />
           <Route path="/match/:date/:slug/:child"       element={<MatchDetail />} />
           {/* Slug-based SEO routes */}
-          <Route path="/competition/:series/:ageGroup/:season"              element={<CompetitionOverview />} />
+          <Route path="/competition/:series/:ageGroup/:season"              element={<CompetitionLanding />} />
+          <Route path="/competition/:series/:ageGroup/:season/overview"     element={<CompetitionOverview />} />
           <Route path="/competition/:series/:ageGroup/:season/standings"    element={<CompetitionStandings />} />
           <Route path="/competition/:series/:ageGroup/:season/matches"     element={<CompetitionFixtures />} />
           <Route path="/competition/:series/:ageGroup/:season/pools"        element={<CompetitionPools />} />
           <Route path="/competition/:series/:ageGroup/:season/knockout"     element={<CompetitionKnockout />} />
           <Route path="/competition/:series/:ageGroup/:season/stats"        element={<CompetitionFestivalStats />} />
+          <Route path="/competition/:series/:ageGroup/:season/teams"        element={<CompetitionTeams />} />
+          <Route path="/competition/:series/:ageGroup/:season/teams/:teamId" element={<CompetitionTeams />} />
           <Route path="/team/:slug"                     element={<TeamDetail />} />
           {/* ID-based competition routes */}
-          <Route path="/competitions/:id"               element={<CompetitionOverview />} />
+          <Route path="/competitions/:id"               element={<CompetitionLanding />} />
+          <Route path="/competitions/:id/overview"      element={<CompetitionOverview />} />
           <Route path="/competitions/:id/standings"     element={<CompetitionStandings />} />
           <Route path="/competitions/:id/matches"      element={<CompetitionFixtures />} />
           <Route path="/competitions/:id/pools"         element={<CompetitionPools />} />
           <Route path="/competitions/:id/knockout"      element={<CompetitionKnockout />} />
           <Route path="/competitions/:id/stats"         element={<CompetitionFestivalStats />} />
+          <Route path="/competitions/:id/teams"         element={<CompetitionTeams />} />
+          <Route path="/competitions/:id/teams/:teamId" element={<CompetitionTeams />} />
           {/* Season+slug competition routes: /competitions/:season/:slug */}
-          <Route path="/competitions/:season/:competitionSlug"              element={<CompetitionOverview />} />
+          <Route path="/competitions/:season/:competitionSlug"              element={<CompetitionLanding />} />
+          <Route path="/competitions/:season/:competitionSlug/overview"     element={<CompetitionOverview />} />
           <Route path="/competitions/:season/:competitionSlug/standings"    element={<CompetitionStandings />} />
           <Route path="/competitions/:season/:competitionSlug/matches"     element={<CompetitionFixtures />} />
           <Route path="/competitions/:season/:competitionSlug/pools"        element={<CompetitionPools />} />
           <Route path="/competitions/:season/:competitionSlug/knockout"     element={<CompetitionKnockout />} />
           <Route path="/competitions/:season/:competitionSlug/stats"        element={<CompetitionFestivalStats />} />
+          <Route path="/competitions/:season/:competitionSlug/teams"        element={<CompetitionTeams />} />
+          <Route path="/competitions/:season/:competitionSlug/teams/:teamId" element={<CompetitionTeams />} />
           {/* Management routes (/profile, /my-players, /manage/*, /match/new*,
               /score list) now render inside the AppShell block below, not here. */}
 

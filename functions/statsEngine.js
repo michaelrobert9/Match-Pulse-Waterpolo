@@ -369,15 +369,46 @@ async function recomputeAllCareerStats(db) {
     if (p.competitionId) agg.comps.add(p.competitionId)
   }
 
+  // 2b — Org roll-up backstop: union each person's teams' organisations onto
+  // representativeOrgs so their stats surface under the school / club /
+  // association even when the paste that entered them couldn't write the person
+  // doc (the client-side link is platform-admin only). Ids come from each
+  // slice's organizationId; names from the org docs.
+  const personOrgIds = {}
+  for (const p of slices) {
+    if (!p.personId || !p.organizationId) continue
+    ;(personOrgIds[p.personId] ??= new Set()).add(p.organizationId)
+  }
+  const allOrgIds = [...new Set(Object.values(personOrgIds).flatMap(s => [...s]))]
+  const orgNames = {}
+  for (let i = 0; i < allOrgIds.length; i += 300) {
+    const refs = allOrgIds.slice(i, i + 300).map(id => db.doc(`organizations/${id}`))
+    const docs = refs.length ? await db.getAll(...refs) : []
+    docs.forEach(d => { if (d.exists) orgNames[d.id] = d.data().name ?? null })
+  }
+
   const personIds = Object.keys(personAgg)
   for (let i = 0; i < personIds.length; i += 400) {
+    const chunk = personIds.slice(i, i + 400)
+    // Read the batch's people docs so representativeOrgs is UNIONED, never
+    // clobbered — manually-added org links (from the admin UI) are preserved.
+    const existingDocs = await db.getAll(...chunk.map(pid => db.doc(`people/${pid}`)))
+    const existingById = {}
+    existingDocs.forEach(d => { existingById[d.id] = d.exists ? d.data() : {} })
+
     const batch = db.batch()
-    for (const pid of personIds.slice(i, i + 400)) {
+    for (const pid of chunk) {
       const a = personAgg[pid]
+      const repOrgs = [...((existingById[pid] ?? {}).representativeOrgs ?? [])]
+      for (const oid of (personOrgIds[pid] ?? [])) {
+        if (!repOrgs.some(o => o.orgId === oid)) repOrgs.push({ orgId: oid, orgName: orgNames[oid] ?? null })
+      }
       batch.set(db.doc(`people/${pid}`), {
         careerCaps: a.caps, careerGoals: a.goals, careerAssists: a.assists,
         careerCards: { green: a.green, yellow: a.yellow, red: a.red },
         competitionIds: [...a.comps],
+        representativeOrgs: repOrgs,
+        representativeOrgIds: repOrgs.map(o => o.orgId),
         updatedAt: admin.firestore.FieldValue.serverTimestamp(),
       }, { merge: true })
     }

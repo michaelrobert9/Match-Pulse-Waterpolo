@@ -65,6 +65,41 @@ export function splitName(fullName) {
   }
 }
 
+// Position / role tokens that sometimes get pasted next to a name — e.g.
+// "GK John Smith", "John Smith (GK)", "John Smith - Keeper". Left in place they
+// become part of the person's name and spawn a bogus profile. stripPositions
+// removes a recognised position when it stands alone at the start or end of the
+// name. Deliberately conservative: a BARE token (no bracket/delimiter) is only
+// removed for the goalkeeper set, so a real name or initial is never clipped;
+// other positions are removed only when clearly set off by brackets or a
+// delimiter (comma / dash / slash / colon).
+const KEEPER_TOKENS = new Set(['gk', 'gkp', 'gks', 'keeper', 'goalie', 'goalkeeper'])
+// Bare-token stripping (step 4) uses ONLY the unambiguous abbreviations — a
+// full word like "Keeper" can be a real surname ("Gary Keeper"), so it is
+// stripped only when bracketed or delimited.
+const KEEPER_ABBR = new Set(['gk', 'gkp', 'gks'])
+const POSITION_TOKENS = new Set([...KEEPER_TOKENS, 'driver', 'centre', 'center', 'wing', 'flat', 'point', 'hole', 'sub', 'res', 'reserve'])
+
+function stripPositions(name) {
+  let s = String(name ?? '').trim()
+  if (!s) return s
+  // 1. Bracketed position anywhere: "(GK)", "[keeper]", "{sub}".
+  s = s.replace(/[([{]\s*([A-Za-z]{1,12})\s*[)\]}]/g, (m, tok) =>
+    POSITION_TOKENS.has(tok.toLowerCase()) ? ' ' : m)
+  // 2. Delimited trailing position: "John Smith - GK", "John Smith, keeper".
+  s = s.replace(/\s*[-–—,/:]\s*([A-Za-z]{1,12})\s*$/, (m, tok) =>
+    POSITION_TOKENS.has(tok.toLowerCase()) ? '' : m)
+  // 3. Delimited leading position: "GK - John Smith", "keeper: John Smith".
+  s = s.replace(/^([A-Za-z]{1,12})\s*[-–—/:]\s*/, (m, tok) =>
+    POSITION_TOKENS.has(tok.toLowerCase()) ? '' : m)
+  // 4. Bare goalkeeper token at the very start or end: "GK John Smith",
+  //    "John Smith GK". Keeper set only — never risk clipping a real name.
+  const toks = s.trim().split(/\s+/).filter(Boolean)
+  if (toks.length > 1 && KEEPER_ABBR.has(toks[0].toLowerCase())) toks.shift()
+  if (toks.length > 1 && KEEPER_ABBR.has(toks[toks.length - 1].toLowerCase())) toks.pop()
+  return toks.join(' ').replace(/\s+/g, ' ').trim()
+}
+
 // Parse ONE line into { parsedNumber, name, isCaptain, unreadable, raw }.
 // parsedNumber is the number as written — whether it is a cap number or a
 // list ordinal is decided later, over the whole sheet (guessNumbersAreCaps).
@@ -72,6 +107,11 @@ export function parseLine(raw) {
   const out = { parsedNumber: null, name: '', isCaptain: false, unreadable: false, raw }
   let line = (raw ?? '').replace(/\u00A0/g, ' ').trim()
   if (!line) return null // caller drops empty lines
+
+  // Strip a leading bullet / list marker so it never lands in the name and does
+  // not hide a following number.
+  line = line.replace(/^\s*(?:[•·▪▫◦‣⁃*]+|[-–—])\s+/, '').trim()
+  if (!line) return null
 
   // Trailing captain marker: "(C)", "(c)" or "©"
   const capMatch = line.match(/\s*(\(c\)|©)\s*$/i)
@@ -96,7 +136,7 @@ export function parseLine(raw) {
       if (n != null && out.parsedNumber == null) out.parsedNumber = n
       else nameCells.push(cell)
     }
-    out.name = normaliseName(nameCells.join(' '))
+    out.name = normaliseName(stripPositions(nameCells.join(' ')))
     if (!out.name) out.unreadable = true
     if (out.unreadable) out.name = raw.trim()
     return out
@@ -106,7 +146,7 @@ export function parseLine(raw) {
   let m = line.match(/^(?:cap\s+|#)?(\d{1,3})[.)]?\s+(.+)$/i)
   if (m) {
     out.parsedNumber = parseInt(m[1], 10)
-    out.name = normaliseName(m[2])
+    out.name = normaliseName(stripPositions(m[2]))
     return out
   }
 
@@ -114,11 +154,11 @@ export function parseLine(raw) {
   m = line.match(/^(.+?)[,\s]\s*(?:cap\s*|#)?(\d{1,3})$/i)
   if (m && /[A-Za-z]/.test(m[1])) {
     out.parsedNumber = parseInt(m[2], 10)
-    out.name = normaliseName(m[1].replace(/[,\s]+$/, ''))
+    out.name = normaliseName(stripPositions(m[1].replace(/[,\s]+$/, '')))
     // "Smith, John 7" — reversed name AND trailing number; reverse below.
   } else if (/[A-Za-z]/.test(line)) {
     // 4. No number — the whole line is the name.
-    out.name = normaliseName(line)
+    out.name = normaliseName(stripPositions(line))
   } else {
     // Nothing readable (no letters). Raw text into the name field, flagged.
     out.unreadable = true
