@@ -74,7 +74,9 @@ function buildTimeline(match) {
       time:      g.matchTimestamp != null ? gameMinuteLabel(match, g.matchTimestamp) : null,
       side:      g.side,
       primary:   'Goal',
-      secondary: GOAL_TYPE_LABEL[g.goalType] ?? 'Action',
+      // Only show a goal type when one was actually assigned — a result entered
+      // after the match carries no type, and the system must NOT assume one.
+      secondary: g.goalType ? (GOAL_TYPE_LABEL[g.goalType] ?? null) : null,
       player:    cleanName(g.scorerName),
       playerLabel: 'Scorer',
       playerPhoto: g.scorerPersonId ? (photoByPerson[g.scorerPersonId] ?? null) : null,
@@ -137,7 +139,7 @@ function buildTimeline(match) {
           time:      s.minute != null ? `${s.minute}'` : null,
           side,
           primary:   'Goal',
-          secondary: s.isOwnGoal ? 'Own Goal' : 'Penalty',
+          secondary: s.isOwnGoal ? 'Own Goal' : null,
           player:    cleanName(s.name),
           playerLabel: 'Scorer',
           color:     '#1d4ed8',
