@@ -9,6 +9,8 @@ import {
   fetchCompetitionSquad, addToCompetitionSquad, removeFromCompetitionSquad,
 } from '../lib/adminQueries'
 import { competitionTeamLabel } from '../lib/teamNaming'
+import { buildIdentity } from '../lib/teamIdentity'
+import { prefetchTeams, prefetchOrgs, peekTeam, peekOrg } from '../lib/teamCache'
 import { competitionUrl, matchUrl, playerUrl } from '../lib/slugify'
 import { competitionViewableBy } from '../lib/competitionRules'
 import CompetitionNav from '../components/CompetitionNav'
@@ -20,6 +22,22 @@ function Spinner() {
 
 function monogram(name) {
   return (name || '?').trim().split(/\s+/).slice(0, 2).map(w => w[0]).join('').toUpperCase() || '?'
+}
+
+// Team crest: the resolved logo (team's own when team-level management is on,
+// otherwise the org's) on a colour-tinted tile, else a monogram of the name.
+function Crest({ identity, size = 36 }) {
+  const [ok, setOk] = useState(true)
+  const color = identity?.color || '#64748b'
+  const showImg = !!identity?.logo && ok
+  return (
+    <span className="rounded-lg shrink-0 flex items-center justify-center overflow-hidden"
+      style={{ width: size, height: size, backgroundColor: color + '20', border: `1.5px solid ${color}` }}>
+      {showImg
+        ? <img src={identity.logo} alt="" className="w-full h-full object-contain" onError={() => setOk(false)} />
+        : <span className="font-bold font-mono" style={{ color, fontSize: Math.round(size * 0.3) }}>{monogram(identity?.primary || '')}</span>}
+    </span>
+  )
 }
 
 // Order a squad by shirt number, then name.
@@ -62,13 +80,13 @@ function MatchRow({ match, teamId }) {
   return (
     <Link to={matchUrl(match)} className="block bg-white rounded-xl border border-slate-200 px-4 py-3 hover:border-slate-300 transition-colors shadow-sm">
       <div className="flex items-center gap-2">
-        <span className={`text-sm truncate flex-1 ${homeIsTeam ? 'font-bold text-slate-900' : 'text-slate-600'}`}>{match.homeTeamName}</span>
+        <span className={`text-sm truncate flex-1 ${homeIsTeam ? 'font-bold text-slate-900' : 'text-slate-600'}`}>{match.homeDisplay || match.homeTeamName}</span>
         <span className="mx-2 text-center shrink-0 min-w-[48px]">
           {isFinal || isLive
             ? <span className={`font-mono font-black tabular-nums ${isLive ? 'text-red-600' : 'text-slate-900'}`}>{match.homeScore}–{match.awayScore}</span>
             : <span className="font-mono text-slate-500 text-xs">{fmtDate(match.scheduledAt)}</span>}
         </span>
-        <span className={`text-sm truncate flex-1 text-right ${!homeIsTeam ? 'font-bold text-slate-900' : 'text-slate-600'}`}>{match.awayTeamName}</span>
+        <span className={`text-sm truncate flex-1 text-right ${!homeIsTeam ? 'font-bold text-slate-900' : 'text-slate-600'}`}>{match.awayDisplay || match.awayTeamName}</span>
       </div>
     </Link>
   )
@@ -145,6 +163,7 @@ export default function CompetitionTeams() {
   const auth = useAuth()
   const [competition, setCompetition] = useState(null)
   const [members, setMembers] = useState([])
+  const [identities, setIdentities] = useState({})
   const [fixtures, setFixtures] = useState([])
   const [squad, setSquad] = useState([])
   const [busy, setBusy] = useState(false)
@@ -165,7 +184,25 @@ export default function CompetitionTeams() {
         fetchCompetitionFixtures(comp.id),
         teamId ? fetchCompetitionSquad(comp.id, teamId).catch(() => []) : Promise.resolve([]),
       ])
-      setMembers(ms); setFixtures(fx); setSquad(sq)
+      // Resolve each team's LIVE identity — its crest and org-composed name
+      // (org match name + team), pulling the org from the synced sport org doc.
+      const tids = ms.map(m => m.id ?? m.teamId).filter(Boolean)
+      const oids = ms.map(m => m.organizationId).filter(Boolean)
+      await Promise.all([prefetchTeams(tids), prefetchOrgs(oids)]).catch(() => {})
+      const idMap = {}
+      for (const m of ms) {
+        const tid = m.id ?? m.teamId
+        idMap[tid] = buildIdentity({
+          team: peekTeam(tid) ?? null,
+          org:  m.organizationId ? (peekOrg(m.organizationId) ?? null) : null,
+          fallback: {
+            teamName: m.displaySnapshot?.teamName,
+            orgName:  m.displaySnapshot?.orgName,
+            color:    m.displaySnapshot?.primaryColor,
+          },
+        })
+      }
+      setMembers(ms); setFixtures(fx); setSquad(sq); setIdentities(idMap)
     }).finally(() => setLoading(false))
   }, [id, series, ageGroup, season, competitionSlug, teamId])
 
@@ -178,7 +215,8 @@ export default function CompetitionTeams() {
   // ── Team detail (Fixtures / Results / Squad) ──────────────────────────────
   if (teamId) {
     const member = members.find(m => m.id === teamId || m.teamId === teamId)
-    const name = member ? competitionTeamLabel(member.displaySnapshot) : 'Team'
+    const identity = identities[teamId]
+    const name = identity?.primary || (member ? competitionTeamLabel(member.displaySnapshot) : 'Team')
     const orgId = member?.organizationId ?? null
     const canManage = !!(auth.canAdministerCompetition?.(competition) || (orgId && auth.isOrgMember?.(orgId)))
 
@@ -217,7 +255,10 @@ export default function CompetitionTeams() {
           <Link to={`${base}/teams`} className="inline-flex items-center gap-1.5 text-slate-500 hover:text-slate-900 text-sm">
             <ChevronLeft className="w-4 h-4" /> All teams
           </Link>
-          <h1 className="font-display font-black text-slate-900 text-xl leading-tight">{name}</h1>
+          <div className="flex items-center gap-3">
+            <Crest identity={identity} size={44} />
+            <h1 className="font-display font-black text-slate-900 text-xl leading-tight">{name}</h1>
+          </div>
 
           <section>
             <div className="micro-label text-slate-500 mb-2">Fixtures</div>
@@ -269,8 +310,8 @@ export default function CompetitionTeams() {
   }
 
   // ── Team list ─────────────────────────────────────────────────────────────
-  const teams = [...members].sort((a, b) =>
-    (competitionTeamLabel(a.displaySnapshot) || '').localeCompare(competitionTeamLabel(b.displaySnapshot) || ''))
+  const labelOf = m => identities[m.id ?? m.teamId]?.primary || competitionTeamLabel(m.displaySnapshot) || ''
+  const teams = [...members].sort((a, b) => labelOf(a).localeCompare(labelOf(b)))
 
   return (
     <div className="max-w-4xl mx-auto pb-8">
@@ -282,12 +323,12 @@ export default function CompetitionTeams() {
           <div className="bg-white rounded-xl border border-slate-200 shadow-sm divide-y divide-slate-100">
             {teams.map(m => {
               const tid = m.id ?? m.teamId
-              const label = competitionTeamLabel(m.displaySnapshot)
-              const color = m.displaySnapshot?.primaryColor || '#64748b'
+              const identity = identities[tid]
+              const label = identity?.primary || competitionTeamLabel(m.displaySnapshot)
               return (
                 <Link key={tid} to={`${base}/teams/${tid}`}
                   className="flex items-center gap-3 px-4 py-3 hover:bg-slate-50 transition-colors">
-                  <span className="w-9 h-9 rounded-lg flex items-center justify-center text-white font-bold text-xs shrink-0" style={{ backgroundColor: color }}>{monogram(label)}</span>
+                  <Crest identity={identity ?? { primary: label, color: m.displaySnapshot?.primaryColor }} size={36} />
                   <span className="text-sm font-semibold text-slate-900 truncate">{label}</span>
                   <span className="ml-auto text-[10px] font-bold uppercase tracking-widest text-slate-400 shrink-0">View →</span>
                 </Link>
