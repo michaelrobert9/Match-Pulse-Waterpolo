@@ -1588,6 +1588,7 @@ export async function resetMatch(id) {
     homeScore: 0, awayScore: 0,
     goals: [], cards: [],
     shootoutHome: null, shootoutAway: null,
+    playerOfMatch: null, playersOfMatch: null,
     controlLog: [],
     updatedBy: uid(), updatedAt: serverTimestamp(),
   })
