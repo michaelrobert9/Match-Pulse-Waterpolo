@@ -255,9 +255,14 @@ export async function mergePeople(sourceId, targetId) {
   const target = { id: tgtSnap.id, ...tgtSnap.data() }
   const tName = target.fullName ?? null
   const tSlug = target.slug ?? null
+  const squadCtx = new Set()   // `${competitionId}|${teamId}` the source belonged to
 
   // 1. Repoint every match the source appears in.
   for (const m of await matchesWithPerson(sourceId)) {
+    if (m.competitionId) {
+      if (m.homeTeamId) squadCtx.add(`${m.competitionId}|${m.homeTeamId}`)
+      if (m.awayTeamId) squadCtx.add(`${m.competitionId}|${m.awayTeamId}`)
+    }
     const patch = {}
     for (const field of ['homeLineup', 'awayLineup']) {
       const arr = m[field]
@@ -290,6 +295,7 @@ export async function mergePeople(sourceId, targetId) {
   const tgtByKey = new Map(tgtSlices.docs.map(d => [sliceKey(d.data()), { id: d.id, ...d.data() }]))
   for (const d of srcSlices.docs) {
     const s = d.data()
+    if (s.teamId && s.competitionId) squadCtx.add(`${s.competitionId}|${s.teamId}`)
     const dup = tgtByKey.get(sliceKey(s))
     if (dup) {
       await updateDoc(doc(db, 'players', dup.id), {
@@ -315,9 +321,37 @@ export async function mergePeople(sourceId, targetId) {
     representativeOrgs: orgs, representativeOrgIds: orgs.map(o => o.orgId), updatedAt: serverTimestamp(),
   }).catch(() => {})
 
-  // 4. Tombstone the source: hidden from lists/search, kept for audit.
+  // 3b. Repoint the source out of every squad it sits in — the team-sheet squad
+  //     and the registered competition squad. Without this a later re-seed would
+  //     re-create a slice for the merged-away duplicate and it would reappear.
+  const repointSquad = async (ref, idField) => {
+    const snap = await getDoc(ref).catch(() => null)
+    if (!snap || !snap.exists()) return
+    const arr = snap.data().squad ?? []
+    if (!arr.some(e => e[idField] === sourceId)) return
+    const hasTarget = arr.some(e => e[idField] === targetId)
+    const next = arr
+      .filter(e => !(hasTarget && e[idField] === sourceId))
+      .map(e => e[idField] === sourceId
+        ? { ...e, [idField]: targetId,
+            ...(e.playerName !== undefined ? { playerName: tName ?? e.playerName } : {}),
+            ...(e.personName !== undefined ? { personName: tName ?? e.personName } : {}) }
+        : e)
+    await updateDoc(ref, { squad: next, updatedAt: serverTimestamp() }).catch(() => {})
+  }
+  for (const key of squadCtx) {
+    const [compId, teamId] = key.split('|')
+    if (!compId || !teamId) continue
+    await repointSquad(doc(db, 'competitions', compId, 'teams', teamId), 'playerId')     // team sheet
+    await repointSquad(doc(db, 'competitions', compId, 'squads', teamId), 'personId')     // registered squad
+  }
+
+  // 4. Tombstone the source: hidden from lists/search, its org links cleared so
+  //    it drops out of every organisation view, kept only for audit.
   await updateDoc(doc(db, 'people', sourceId), {
-    mergedInto: targetId, claimStatus: 'merged', slug: null, updatedAt: serverTimestamp(),
+    mergedInto: targetId, claimStatus: 'merged', slug: null,
+    representativeOrgs: [], representativeOrgIds: [],
+    updatedAt: serverTimestamp(),
   })
 }
 
