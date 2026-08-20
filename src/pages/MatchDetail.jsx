@@ -787,7 +787,7 @@ export default function MatchDetail() {
                   const isPOTM = isLineupEntryPOM(homePOTM, p)
                   const rowStyle  = isPOTM ? { backgroundColor: pomBgTint(homePOTM, homeCol) } : undefined
                   const nameStyle = isPOTM ? { color: pomColor(homePOTM, homeCol) } : undefined
-                  const nameCls   = `text-xs truncate flex-1 ${isPOTM ? 'font-semibold' : 'text-slate-700'} ${p.personId ? 'hover:text-emerald-600 transition-colors' : ''}`
+                  const nameCls   = `text-xs break-words leading-tight flex-1 min-w-0 ${isPOTM ? 'font-semibold' : 'text-slate-700'} ${p.personId ? 'hover:text-emerald-600 transition-colors' : ''}`
                   return (
                     // Row order: number slot → captain slot → name → POTM
                     // badge. The cap slot renders EMPTY when there is no cap
@@ -821,7 +821,7 @@ export default function MatchDetail() {
                   const isPOTM = isLineupEntryPOM(awayPOTM, p)
                   const rowStyle  = isPOTM ? { backgroundColor: pomBgTint(awayPOTM, awayCol) } : undefined
                   const nameStyle = isPOTM ? { color: pomColor(awayPOTM, awayCol) } : undefined
-                  const nameCls   = `text-xs truncate flex-1 text-right ${isPOTM ? 'font-semibold' : 'text-slate-700'} ${p.personId ? 'hover:text-emerald-600 transition-colors' : ''}`
+                  const nameCls   = `text-xs break-words leading-tight flex-1 min-w-0 text-right ${isPOTM ? 'font-semibold' : 'text-slate-700'} ${p.personId ? 'hover:text-emerald-600 transition-colors' : ''}`
                   return (
                     // Mirrored right column: POTM badge ← name ← captain slot
                     // ← number slot. Same reserved slots, no avatar.
