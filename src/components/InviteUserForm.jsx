@@ -8,6 +8,7 @@ import { ROLE_DISPLAY, invitableRoles } from '../lib/capabilities'
 const ROLE_HINT = {
   master_admin: 'Full platform control — handle with extreme care.',
   owner:        'Owners manage teams, competitions, and invite scorers.',
+  admin:        'Admins manage this sport’s teams, competitions and scoring — but can’t manage users or ownership.',
   staff:        'Scorers can create and score matches only.',
 }
 

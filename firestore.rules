@@ -45,6 +45,19 @@ service cloud.firestore {
       );
     }
 
+    // Org-wide OWNER or ADMIN (role owner|admin, no team scope). Admin is a
+    // co-manager the owner appoints for THIS sport only (staff records are
+    // per-sport): admins run teams, competitions, fixtures and scoring, but not
+    // user appointment, the team-management toggle, org settings, or ownership.
+    function isOrgAdmin(orgId) {
+      return isSignedIn() && (
+        isPlatformAdmin()
+        || (exists(staffDoc(orgId))
+            && get(staffDoc(orgId)).data.role in ['owner', 'admin']
+            && get(staffDoc(orgId)).data.get('teamId', null) == null)
+      );
+    }
+
     // Billing fields (entitlement, eventCredits, entitlementExpiresAt) are
     // written ONLY centrally (main-site Admin SDK) and mirrored to the Auth
     // claim. No client path may set or change them on the org doc — this is what
@@ -437,11 +450,18 @@ service cloud.firestore {
         // A team-scoped appointment (teamId set) is only valid while the org's
         // team-level management toggle is on.
         allow create: if isOrgOwner(orgId)
-          && request.resource.data.role == 'staff'
+          && request.resource.data.role in ['admin', 'staff']
+          && (request.resource.data.get('teamId', null) == null
+              || orgTeamMgmtOn(orgId));
+        // Owner edits a member's access level (Admin ↔ Scorer). Never to/from
+        // 'owner' — ownership transfer is a separate master-admin action.
+        allow update: if isOrgOwner(orgId)
+          && resource.data.role in ['admin', 'staff']
+          && request.resource.data.role in ['admin', 'staff']
           && (request.resource.data.get('teamId', null) == null
               || orgTeamMgmtOn(orgId));
         allow delete: if isOrgOwner(orgId)
-          && resource.data.role == 'staff';
+          && resource.data.role in ['admin', 'staff'];
 
         // A team-scoped OWNER may appoint a Team Scorer (role 'staff') for their
         // own team only, while the toggle is on. isTeamScopedOwnerOf() enforces
@@ -749,16 +769,16 @@ service cloud.firestore {
       allow read: if true;
 
       allow create: if isPlatformAdmin()
-        || isOrgOwner(request.resource.data.get('organizationId', ''));
+        || isOrgAdmin(request.resource.data.get('organizationId', ''));
 
       allow update: if isPlatformAdmin()
-        || isOrgOwner(resource.data.get('organizationId', ''))
+        || isOrgAdmin(resource.data.get('organizationId', ''))
         || (isTeamScopedOwnerOf(resource.data.get('organizationId', ''), id)
             && request.resource.data.diff(resource.data).affectedKeys()
                  .hasOnly(['name', 'logoUrl', 'bio', 'updatedAt']));
 
       allow delete: if isPlatformAdmin()
-        || isOrgOwner(resource.data.get('organizationId', ''));
+        || isOrgAdmin(resource.data.get('organizationId', ''));
     }
 
     // ── Players ───────────────────────────────────────────────────────────────
@@ -978,6 +998,7 @@ service cloud.firestore {
         (request.resource.data.orgId != null
          && isOrgOwner(request.resource.data.orgId)
          && (request.resource.data.role == 'owner'
+             || request.resource.data.role == 'admin'
              || request.resource.data.role == 'staff')
          && (request.resource.data.get('teamId', null) == null
              || orgTeamMgmtOn(request.resource.data.orgId)))

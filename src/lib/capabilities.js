@@ -91,6 +91,21 @@ const ROLE_CAPABILITIES = {
     'fixture.score',
     'fixture.player.add',
   ],
+  // Admin — a co-manager the owner appoints for THIS sport's profile only (staff
+  // records live in the sport DB, so the grant never reaches another sport).
+  // Full sport administration EXCEPT the ownership-level powers reserved to the
+  // owner: appointing/removing users (admin.appoint) and the team-management
+  // toggle. Cannot transfer or claim ownership.
+  admin: [
+    'org.settings.edit',
+    'team.add',
+    'team.remove',
+    'team.profile.edit',
+    'competition.manage',
+    'fixture.create',
+    'fixture.score',
+    'fixture.player.add',
+  ],
   staff: [
     'fixture.create',
     'fixture.score',
@@ -163,6 +178,7 @@ export function grantOf(value) {
 // the invite ceiling enforces separately.
 const TEAM_SCOPE_CAPABILITIES = {
   owner: ['team.profile.edit', 'admin.appoint', 'fixture.create', 'fixture.score', 'fixture.player.add'],
+  admin: ['team.profile.edit', 'fixture.create', 'fixture.score', 'fixture.player.add'],
   staff: ['fixture.create', 'fixture.score', 'fixture.player.add'],
 }
 
@@ -194,6 +210,7 @@ export function resolveScopedCapability(capability, {
 export const ROLE_DISPLAY = {
   master_admin: 'Master Admin',
   owner:        'Owner',
+  admin:        'Admin',
   staff:        'Scorer',
   player:       'Player',
   parent:       'Parent',
@@ -212,8 +229,9 @@ export function grantLabel(value) {
 // Roles an inviter can grant — "own role or below" rule.
 // Keep in sync with Firestore rules canCreateInvite().
 export const INVITE_TIERS = {
-  master_admin: ['master_admin', 'owner', 'staff'],
-  owner:        ['owner', 'staff'],
+  master_admin: ['master_admin', 'owner', 'admin', 'staff'],
+  owner:        ['admin', 'staff'],   // an owner appoints Admins and Scorers
+  admin:        [],                    // admins can't appoint — user management is the owner's
   staff:        [],
 }
 
