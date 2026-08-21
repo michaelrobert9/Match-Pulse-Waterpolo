@@ -2021,27 +2021,34 @@ export async function findUserByEmail(email) {
 // set exactly — the appointer never edits the appointee's permissions (only
 // a Master Admin can, via users/{uid}.permissionOverrides).
 export async function setOrgStaff(orgId, userId, role, { teamId = null } = {}) {
-  const batch = writeBatch(db)
-  batch.set(doc(db, 'organizations', orgId, 'staff', userId), {
+  // The staff doc (sport DB) and the orgRoles mirror (shared identity DB) live in
+  // two Firestore instances — a WriteBatch cannot span them, so these are two
+  // sequential writes. Write the authoritative staff doc first (rules read it).
+  await setDoc(doc(db, 'organizations', orgId, 'staff', userId), {
     role, teamId: teamId || null, grantedBy: uid(), grantedAt: serverTimestamp(),
   })
-  // Mirror the FULL grant (role + scope) so canDo() can resolve team scope
-  // without reading the authoritative staff doc on every check. Use a field-path
-  // update so this entry is merged into the existing map without replacing it.
-  batch.update(doc(identityDb, 'users', userId), {
-    [`orgRoles.${orgId}`]: { role, teamId: teamId || null },
-  })
-  return batch.commit()
+  // The orgRoles mirror on the SHARED identity DB is a client-side cache only.
+  // The main site owns that database, so writing ANOTHER user's users/{uid} doc
+  // is denied here — only the member themselves (or the central sync) may write
+  // it. Keep this best-effort: the authoritative staff doc above is what the
+  // rules read, and the mirror self-heals on that user's next sign-in / sync.
+  try {
+    await updateDoc(doc(identityDb, 'users', userId), {
+      [`orgRoles.${orgId}`]: { role, teamId: teamId || null },
+    })
+  } catch { /* mirror is best-effort; staff doc is authoritative */ }
 }
 
 export async function removeOrgStaff(orgId, userId) {
-  const batch = writeBatch(db)
-  batch.delete(doc(db, 'organizations', orgId, 'staff', userId))
-  // Atomically remove just this org's key from the mirrored map.
-  batch.update(doc(identityDb, 'users', userId), {
-    [`orgRoles.${orgId}`]: deleteField(),
-  })
-  return batch.commit()
+  // Revoke the authoritative staff doc first so access is cut immediately.
+  await deleteDoc(doc(db, 'organizations', orgId, 'staff', userId))
+  // Best-effort mirror cleanup — denied when userId isn't the caller (main site
+  // owns the identity DB). Access is already revoked by the staff-doc delete.
+  try {
+    await updateDoc(doc(identityDb, 'users', userId), {
+      [`orgRoles.${orgId}`]: deleteField(),
+    })
+  } catch { /* mirror is best-effort; staff doc is authoritative */ }
 }
 
 export async function fetchOrgStaff(orgId) {
