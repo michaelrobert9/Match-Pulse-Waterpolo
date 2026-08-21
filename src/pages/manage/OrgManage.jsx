@@ -1078,6 +1078,20 @@ function StaffSection({ orgId, org, isPlatformAdmin, uid, teams, canAppoint, inv
     } finally { setBusyId(null) }
   }
 
+  // Assign a member to one team (team scope) or back to the whole org. Preserves
+  // their role; only valid while team-level management is on.
+  async function changeTeam(memberId, teamId) {
+    setBusyId(memberId); setStaffErr('')
+    try {
+      const member = staff.find(s => s.id === memberId)
+      const next = teamId || null
+      await setOrgStaff(orgId, memberId, member?.role ?? 'staff', { teamId: next })
+      setStaff(prev => prev.map(s => s.id === memberId ? { ...s, teamId: next } : s))
+    } catch (e) {
+      setStaffErr(e.message || 'Could not change this member’s team.')
+    } finally { setBusyId(null) }
+  }
+
   function handleInvited() {
     // Re-fetch staff so any immediate grants show up
     fetchOrgStaff(orgId).then(setStaff).catch(() => {})
@@ -1181,6 +1195,16 @@ function StaffSection({ orgId, org, isPlatformAdmin, uid, teams, canAppoint, inv
                     className="text-[11px] border border-slate-200 rounded-lg px-1.5 py-1 bg-white text-slate-700 disabled:opacity-50">
                     {assignableRoles.map(r => <option key={r} value={r}>{roleLabel(r)}</option>)}
                   </select>
+                  {/* Team scope — assign the member to one team, or the whole
+                      org. Only offered while team-level management is on. */}
+                  {teamMgmtOn && (teams?.length ?? 0) > 0 && (
+                    <select value={s.teamId ?? ''} disabled={busyId === s.id}
+                      onChange={e => changeTeam(s.id, e.target.value)}
+                      className="text-[11px] border border-slate-200 rounded-lg px-1.5 py-1 bg-white text-slate-700 disabled:opacity-50 max-w-[8rem]">
+                      <option value="">Whole org</option>
+                      {teams.map(t => <option key={t.id} value={t.id}>{t.displayName}</option>)}
+                    </select>
+                  )}
                   <button onClick={() => { setStaffErr(''); setConfirmId(s.id) }} title="Remove"
                     className="text-slate-600 hover:text-red-400 transition-colors p-1">
                     <X className="w-4 h-4" />

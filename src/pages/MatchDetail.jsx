@@ -777,10 +777,10 @@ export default function MatchDetail() {
           <div className="text-[10px] font-bold uppercase tracking-widest text-slate-500 mb-4">Lineups</div>
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <div className="flex items-center gap-1.5 mb-3">
+              <div className="flex items-start gap-1.5 mb-3">
                 <MatchTeamCrest match={match} side="home" size={20} />
-                <MatchTeamIdentity match={match} side="home" hideIdentifier
-                  nameClass="text-[10px] font-bold uppercase tracking-widest text-slate-500 truncate" />
+                <MatchTeamIdentity match={match} side="home" hideIdentifier className="flex-1 min-w-0"
+                  nameClass="text-[10px] font-bold uppercase tracking-widest text-slate-500 break-words leading-tight" />
               </div>
               <div className="space-y-2">
                 {homeSelection.map(p => {
@@ -811,9 +811,9 @@ export default function MatchDetail() {
             </div>
 
             <div>
-              <div className="flex items-center gap-1.5 mb-3 justify-end">
-                <MatchTeamIdentity match={match} side="away" hideIdentifier align="right"
-                  nameClass="text-[10px] font-bold uppercase tracking-widest text-slate-500 truncate" />
+              <div className="flex items-start gap-1.5 mb-3 justify-end">
+                <MatchTeamIdentity match={match} side="away" hideIdentifier align="right" className="flex-1 min-w-0"
+                  nameClass="text-[10px] font-bold uppercase tracking-widest text-slate-500 break-words leading-tight" />
                 <MatchTeamCrest match={match} side="away" size={20} />
               </div>
               <div className="space-y-2">
