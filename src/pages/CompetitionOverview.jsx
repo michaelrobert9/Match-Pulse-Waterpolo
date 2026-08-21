@@ -113,6 +113,10 @@ export default function CompetitionOverview() {
     }
   })()
   const teamColorById = Object.fromEntries(teams.map(t => [t.id, t.primaryColor]))
+  // A player represents their ORGANISATION (the name it plays under) — the bare
+  // team label is not what we surface. Map teamId → org match-name for the
+  // top-scorer subtitle; fall back to the team label only when a team has no org.
+  const orgNameById = Object.fromEntries(teams.map(t => [t.id, t.orgName || null]))
 
   // Final positions are only "official" once every pool has been VERIFIED — the
   // organiser's explicit "these standings are final" action (which itself now
@@ -341,7 +345,7 @@ export default function CompetitionOverview() {
                   <span className="w-2.5 h-2.5 rounded-sm shrink-0" style={{ backgroundColor: player.teamPrimaryColor }} />
                   <div className="flex-1 min-w-0">
                     <div className="text-slate-900 text-sm font-semibold truncate">{player.personName}</div>
-                    <div className="micro-label">{player.teamDisplayName} · {player.position}</div>
+                    <div className="micro-label">{(orgNameById[player.teamId] || player.teamDisplayName)}{player.position ? ` · ${player.position}` : ''}</div>
                   </div>
                   <div className="text-right shrink-0">
                     <div className="font-mono font-black text-[color:var(--ca)] text-xl tabular-nums">{player.goals}</div>

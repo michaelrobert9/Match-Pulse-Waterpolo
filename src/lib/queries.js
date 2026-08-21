@@ -462,7 +462,7 @@ export async function fetchTopPeople(limit = 10) {
     .map(d => ({ id: d.id, ...d.data() }))
     // Addendum A3: unclaimed team-sheet profiles never enter a browsable
     // list — reachable from a team sheet or a claim search only.
-    .filter(p => p.claimStatus !== 'unclaimed')
+    .filter(p => p.claimStatus !== 'merged')
     .sort((a, b) => (b.careerCaps ?? 0) - (a.careerCaps ?? 0))
     .slice(0, limit)
 }
@@ -493,7 +493,7 @@ export async function fetchPlayers() {
     // Unclaimed team-sheet profiles never appear in a browsable index
     // (ownerless-profiles addendum A3) — reachable from a team sheet or a
     // claim search only. They join the directory once claimed.
-    .filter(p => p.claimStatus !== 'unclaimed')
+    .filter(p => p.claimStatus !== 'merged')
     .sort((a, b) => (a.fullName || '').localeCompare(b.fullName || ''))
 }
 

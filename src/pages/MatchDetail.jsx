@@ -74,7 +74,9 @@ function buildTimeline(match) {
       time:      g.matchTimestamp != null ? gameMinuteLabel(match, g.matchTimestamp) : null,
       side:      g.side,
       primary:   'Goal',
-      secondary: GOAL_TYPE_LABEL[g.goalType] ?? 'Action',
+      // Only show a goal type when one was actually assigned — a result entered
+      // after the match carries no type, and the system must NOT assume one.
+      secondary: g.goalType ? (GOAL_TYPE_LABEL[g.goalType] ?? null) : null,
       player:    cleanName(g.scorerName),
       playerLabel: 'Scorer',
       playerPhoto: g.scorerPersonId ? (photoByPerson[g.scorerPersonId] ?? null) : null,
@@ -137,7 +139,7 @@ function buildTimeline(match) {
           time:      s.minute != null ? `${s.minute}'` : null,
           side,
           primary:   'Goal',
-          secondary: s.isOwnGoal ? 'Own Goal' : 'Penalty',
+          secondary: s.isOwnGoal ? 'Own Goal' : null,
           player:    cleanName(s.name),
           playerLabel: 'Scorer',
           color:     '#1d4ed8',
@@ -785,7 +787,7 @@ export default function MatchDetail() {
                   const isPOTM = isLineupEntryPOM(homePOTM, p)
                   const rowStyle  = isPOTM ? { backgroundColor: pomBgTint(homePOTM, homeCol) } : undefined
                   const nameStyle = isPOTM ? { color: pomColor(homePOTM, homeCol) } : undefined
-                  const nameCls   = `text-xs truncate flex-1 ${isPOTM ? 'font-semibold' : 'text-slate-700'} ${p.personId ? 'hover:text-emerald-600 transition-colors' : ''}`
+                  const nameCls   = `text-xs break-words leading-tight flex-1 min-w-0 ${isPOTM ? 'font-semibold' : 'text-slate-700'} ${p.personId ? 'hover:text-emerald-600 transition-colors' : ''}`
                   return (
                     // Row order: number slot → captain slot → name → POTM
                     // badge. The cap slot renders EMPTY when there is no cap
@@ -819,7 +821,7 @@ export default function MatchDetail() {
                   const isPOTM = isLineupEntryPOM(awayPOTM, p)
                   const rowStyle  = isPOTM ? { backgroundColor: pomBgTint(awayPOTM, awayCol) } : undefined
                   const nameStyle = isPOTM ? { color: pomColor(awayPOTM, awayCol) } : undefined
-                  const nameCls   = `text-xs truncate flex-1 text-right ${isPOTM ? 'font-semibold' : 'text-slate-700'} ${p.personId ? 'hover:text-emerald-600 transition-colors' : ''}`
+                  const nameCls   = `text-xs break-words leading-tight flex-1 min-w-0 text-right ${isPOTM ? 'font-semibold' : 'text-slate-700'} ${p.personId ? 'hover:text-emerald-600 transition-colors' : ''}`
                   return (
                     // Mirrored right column: POTM badge ← name ← captain slot
                     // ← number slot. Same reserved slots, no avatar.

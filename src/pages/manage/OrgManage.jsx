@@ -15,7 +15,7 @@ import {
   createTeam, updateTeam, deleteTeam,
   createMatch,
   ensureCreatorOwnership,
-  fetchOrgStaff, removeOrgStaff,
+  fetchOrgStaff, removeOrgStaff, setOrgStaff,
   propagateTeamNameToMatches,
 } from '../../lib/adminQueries'
 import { DeleteOrgModal } from '../admin/Organizations'
@@ -1041,6 +1041,9 @@ function StaffSection({ orgId, org, isPlatformAdmin, uid, teams, canAppoint, inv
   const [staff,       setStaff]       = useState([])
   const [loading,     setLoading]     = useState(true)
   const [showInvite,  setShowInvite]  = useState(false)
+  const [confirmId,   setConfirmId]   = useState(null)   // member pending remove-confirm (window.confirm is suppressed in installed PWAs)
+  const [busyId,      setBusyId]      = useState(null)
+  const [staffErr,    setStaffErr]    = useState('')
 
   const entityLabel  = org?.type === 'school' ? 'school' : org?.type === 'association' ? 'association' : 'club'
   // The inviter's effective role for the invite ceiling. Platform admins invite
@@ -1053,10 +1056,26 @@ function StaffSection({ orgId, org, isPlatformAdmin, uid, teams, canAppoint, inv
     fetchOrgStaff(orgId).then(setStaff).catch(() => {}).finally(() => setLoading(false))
   }, [orgId])
 
-  async function handleRemove(memberId) {
-    if (!confirm('Remove this member?')) return
-    await removeOrgStaff(orgId, memberId)
-    setStaff(prev => prev.filter(s => s.id !== memberId))
+  async function doRemove(memberId) {
+    setBusyId(memberId); setStaffErr('')
+    try {
+      await removeOrgStaff(orgId, memberId)
+      setStaff(prev => prev.filter(s => s.id !== memberId))
+      setConfirmId(null)
+    } catch (e) {
+      setStaffErr(e.message || 'Could not remove this member.')
+    } finally { setBusyId(null) }
+  }
+
+  async function changeRole(memberId, role) {
+    setBusyId(memberId); setStaffErr('')
+    try {
+      const member = staff.find(s => s.id === memberId)
+      await setOrgStaff(orgId, memberId, role, { teamId: member?.teamId ?? null })
+      setStaff(prev => prev.map(s => s.id === memberId ? { ...s, role } : s))
+    } catch (e) {
+      setStaffErr(e.message || 'Could not change this member’s access.')
+    } finally { setBusyId(null) }
   }
 
   function handleInvited() {
@@ -1065,7 +1084,10 @@ function StaffSection({ orgId, org, isPlatformAdmin, uid, teams, canAppoint, inv
     setShowInvite(false)
   }
 
-  const ROLE_STYLE    = { owner: 'text-emerald-600', staff: 'text-blue-500' }
+  const ROLE_STYLE    = { owner: 'text-emerald-600', admin: 'text-violet-600', staff: 'text-blue-500' }
+  // Roles the current user may assign to an existing member (owner is never
+  // reassignable here — ownership transfer is a separate, master-admin action).
+  const assignableRoles = (isPlatformAdmin || canAppoint) ? ['admin', 'staff'] : []
   const teamNameById  = id => teams?.find(t => t.id === id)?.displayName ?? null
 
   if (loading) return <Section id="staff" title="Members"><Spinner /></Section>
@@ -1113,7 +1135,10 @@ function StaffSection({ orgId, org, isPlatformAdmin, uid, teams, canAppoint, inv
         </div>
       ) : (
         <div className="divide-y divide-slate-200">
-          {staff.map(s => (
+          {staffErr && <p className="px-4 py-2 text-red-600 text-xs">{staffErr}</p>}
+          {staff.map(s => {
+            const editable = (isPlatformAdmin || canAppoint) && s.role !== 'owner'
+            return (
             <div key={s.id} className="flex items-center gap-3 px-4 py-3">
               <div className="w-8 h-8 rounded-full bg-emerald-100 border border-emerald-300 flex items-center justify-center shrink-0">
                 <span className="text-[10px] font-black text-emerald-700">
@@ -1138,14 +1163,32 @@ function StaffSection({ orgId, org, isPlatformAdmin, uid, teams, canAppoint, inv
                   )}
                 </div>
               </div>
-              {(isPlatformAdmin || canAppoint) && s.role !== 'owner' && (
-                <button onClick={() => handleRemove(s.id)} title="Remove"
-                  className="text-slate-600 hover:text-red-400 transition-colors p-1 shrink-0">
-                  <X className="w-4 h-4" />
-                </button>
-              )}
+              {editable && confirmId === s.id ? (
+                <div className="flex items-center gap-1.5 shrink-0">
+                  <span className="text-[11px] text-slate-500">Remove?</span>
+                  <button disabled={busyId === s.id} onClick={() => doRemove(s.id)}
+                    className="text-[10px] font-bold uppercase tracking-widest text-red-600 hover:text-red-500 disabled:opacity-50 px-1.5 py-1">
+                    {busyId === s.id ? '…' : 'Yes'}
+                  </button>
+                  <button onClick={() => setConfirmId(null)}
+                    className="text-[10px] font-bold uppercase tracking-widest text-slate-400 px-1.5 py-1">No</button>
+                </div>
+              ) : editable ? (
+                <div className="flex items-center gap-1.5 shrink-0">
+                  {/* Owner edits a member's access level (Admin ↔ Scorer). */}
+                  <select value={s.role} disabled={busyId === s.id}
+                    onChange={e => changeRole(s.id, e.target.value)}
+                    className="text-[11px] border border-slate-200 rounded-lg px-1.5 py-1 bg-white text-slate-700 disabled:opacity-50">
+                    {assignableRoles.map(r => <option key={r} value={r}>{roleLabel(r)}</option>)}
+                  </select>
+                  <button onClick={() => { setStaffErr(''); setConfirmId(s.id) }} title="Remove"
+                    className="text-slate-600 hover:text-red-400 transition-colors p-1">
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+              ) : null}
             </div>
-          ))}
+          )})}
         </div>
       )}
     </Section>

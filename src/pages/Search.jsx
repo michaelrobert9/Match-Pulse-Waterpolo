@@ -66,7 +66,7 @@ export default function Search() {
   // Unclaimed team-sheet profiles never appear in browsable search (addendum
   // A3) — they are reachable from a team sheet or a claim search only.
   const matchedPeople = loaded && q.length >= 2
-    ? people.filter(p => p.fullName?.toLowerCase().includes(q) && p.claimStatus !== 'unclaimed')
+    ? people.filter(p => p.fullName?.toLowerCase().includes(q) && p.claimStatus !== 'merged')
     : []
   const showEmpty     = loaded && q.length >= 2 && !loading && matchedComps.length === 0 && matchedPeople.length === 0
   const showIdle      = q.length < 2

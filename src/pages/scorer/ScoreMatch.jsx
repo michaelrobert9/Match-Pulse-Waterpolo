@@ -1236,7 +1236,7 @@ export default function ScoreMatch() {
                   <span className="text-sm flex-1 min-w-0 truncate">
                     <span className="font-semibold">{ev.kind === 'goal' ? 'Goal' : (CARD_LABEL[ev.cardType] ?? 'Exclusion')}</span>
                     {' · '}{teamName(ev.side)}
-                    {ev.kind === 'goal' && <span className={t.muted}> · {GOAL_TYPE_SHORT[ev.goalType] ?? 'Action'}</span>}
+                    {ev.kind === 'goal' && ev.goalType && <span className={t.muted}> · {GOAL_TYPE_SHORT[ev.goalType] ?? ev.goalType}</span>}
                     {ev.scorerName && <span className={t.muted}> · {ev.scorerName}</span>}
                     {ev.kind === 'goal' && ev.assistName && <span className={t.muted}> · A: {ev.assistName}</span>}
                     {ev.kind === 'card' && ev.playerName && <span className={t.muted}> · {ev.playerName}</span>}
@@ -1336,7 +1336,8 @@ export default function ScoreMatch() {
           color={teamColor(goalEnrich.side)} onClose={() => setGoalEnrich(null)}>
           <div className="grid grid-cols-2 gap-2 mb-4">
             {GOAL_TYPES.map(gt => {
-              const active = (enrichGoalEvent?.goalType ?? 'open') === gt.key
+              // Don't pre-select a type when none is assigned — the system never assumes one.
+              const active = enrichGoalEvent?.goalType === gt.key
               return (
                 <button key={gt.key} onClick={() => applyGoalType(gt.key)}
                   className={`py-3 rounded-xl text-sm font-bold border transition-colors ${

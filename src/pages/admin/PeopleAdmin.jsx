@@ -311,14 +311,19 @@ const ORG_TYPE_SECTIONS = [
 function PeopleByOrg() {
   const [orgs, setOrgs] = useState(null)
   const [counts, setCounts] = useState({})
+  const [pidx, setPidx] = useState({ mergedMap: {}, nameById: {} })
 
   useEffect(() => {
     Promise.all([fetchOrganizations(), fetchAllPeople()])
       .then(([o, people]) => {
-        const c = {}
-        for (const p of people)
+        const c = {}, mergedMap = {}, nameById = {}
+        for (const p of people) {
+          nameById[p.id] = p.fullName || null
+          if (p.claimStatus === 'merged') { if (p.mergedInto) mergedMap[p.id] = p.mergedInto; continue }
           for (const id of (p.representativeOrgIds ?? [])) c[id] = (c[id] ?? 0) + 1
+        }
         setCounts(c)
+        setPidx({ mergedMap, nameById })
         setOrgs(o)
       })
       .catch(() => setOrgs([]))
@@ -339,7 +344,7 @@ function PeopleByOrg() {
           <div key={sec.key}>
             <h2 className="micro-label mb-2">{sec.label} · {list.length}</h2>
             <div className="space-y-1.5">
-              {list.map(o => <OrgNode key={o.id} org={o} linkedCount={counts[o.id] ?? 0} />)}
+              {list.map(o => <OrgNode key={o.id} org={o} linkedCount={counts[o.id] ?? 0} mergedMap={pidx.mergedMap} nameById={pidx.nameById} />)}
             </div>
           </div>
         )
@@ -348,7 +353,7 @@ function PeopleByOrg() {
   )
 }
 
-function OrgNode({ org, linkedCount }) {
+function OrgNode({ org, linkedCount, mergedMap = {}, nameById = {} }) {
   const [open, setOpen] = useState(false)
   const [tree, setTree] = useState(null)   // null = not loaded yet
 
@@ -368,12 +373,15 @@ function OrgNode({ org, linkedCount }) {
       for (const d of sliceSnap.docs) {
         const s = d.data()
         if (!s.personId) continue
+        let pid = s.personId, hops = 0
+        while (mergedMap[pid] && hops++ < 5) pid = mergedMap[pid]
+        const pname = nameById[pid] || s.personName || 'Unknown'
         const year = String(s.season || s.competitionSeason || '').trim() || 'Undated'
         const teamId = s.teamId || 'none'
         ;(years[year] ??= {})
         ;(years[year][teamId] ??= { name: teamNames[teamId] || s.teamDisplayName || 'Team', players: new Map() })
-        if (!years[year][teamId].players.has(s.personId))
-          years[year][teamId].players.set(s.personId, s.personName || 'Unknown')
+        if (!years[year][teamId].players.has(pid))
+          years[year][teamId].players.set(pid, pname)
       }
       setTree(years)
     } catch { setTree({}) }
@@ -454,6 +462,9 @@ export function EditPerson() {
   const navigate = useNavigate()
   const [person, setPerson] = useState(null)
   const [saving, setSaving] = useState(false)
+  const [deleteArmed, setDeleteArmed] = useState(false)   // in-UI confirm (window.confirm is suppressed in installed PWAs)
+  const [deleting, setDeleting] = useState(false)
+  const [delErr, setDelErr] = useState('')
 
   useEffect(() => {
     getDoc(doc(db, 'people', id)).then(snap => {
@@ -467,10 +478,15 @@ export function EditPerson() {
     finally { setSaving(false) }
   }
 
-  async function handleDelete() {
-    if (!confirm('Delete this person? This cannot be undone.')) return
-    await deleteDoc(doc(db, 'people', id))
-    navigate('/admin/people')
+  function handleDelete() { setDelErr(''); setDeleteArmed(true) }
+  async function performDelete() {
+    setDeleting(true); setDelErr('')
+    try {
+      await deleteDoc(doc(db, 'people', id))
+      navigate('/admin/people')
+    } catch (e) {
+      setDelErr(e.message || 'Delete failed.'); setDeleting(false)
+    }
   }
 
   if (!person) return <div className="flex justify-center py-12"><div className="w-5 h-5 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin"/></div>
@@ -484,6 +500,20 @@ export function EditPerson() {
         <h1 className="font-display font-bold text-slate-900 text-lg truncate">{person.fullName}</h1>
       </div>
       <PersonForm initial={person} onSave={handleSave} onDelete={handleDelete} saving={saving} />
+      {deleteArmed && (
+        <div className="mx-4 mb-2 rounded-xl border border-red-200 bg-red-50 p-3">
+          <p className="text-[13px] text-red-800 font-medium">Delete “{person.fullName}”? This permanently removes the profile and can't be undone.</p>
+          {delErr && <p className="text-red-600 text-sm mt-1">{delErr}</p>}
+          <div className="flex gap-2 mt-3">
+            <button disabled={deleting} onClick={performDelete}
+              className="bg-red-600 hover:bg-red-500 disabled:opacity-50 text-white text-[11px] font-bold uppercase tracking-widest rounded-lg px-3 py-2">
+              {deleting ? 'Deleting…' : 'Yes, delete'}
+            </button>
+            <button onClick={() => { setDeleteArmed(false); setDelErr('') }}
+              className="text-slate-500 text-[11px] font-bold uppercase tracking-widest px-3 py-2">Cancel</button>
+          </div>
+        </div>
+      )}
       <LinkUserSection person={person} onLinked={patch => setPerson(p => ({ ...p, ...patch }))} />
       <MergeSection person={person} />
       <ProfileReportsSection personId={person.id} />
