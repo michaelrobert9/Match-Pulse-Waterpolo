@@ -833,20 +833,39 @@ export async function createManualOpponent(data) {
 
 // Case-insensitive prefix search across registered teams and manual opponents.
 // Both collections store a lowercase `searchName` field for efficient range queries.
+// Opponent search is a SUBSTRING match, not a prefix match: typing "fatima"
+// must find "Our Lady of Fatima". Firestore has no native "contains" query, so
+// fetch the candidate teams / manual opponents once per session, cache them,
+// and filter on the client. The haystack is the org name + team name +
+// searchName, so a team is found by its school/club name even before the
+// searchName backfill has run. Word-start matches rank above mid-word ones.
+let opponentIndexPromise = null
+function fetchOpponentIndex() {
+  if (opponentIndexPromise) return opponentIndexPromise
+  const p = Promise.all([
+    getDocs(collection(db, 'teams')).then(s => s.docs.map(d => ({ id: d.id, ...d.data() }))).catch(() => []),
+    getDocs(collection(db, 'manualOpponents')).then(s => s.docs.map(d => ({ id: d.id, ...d.data() }))).catch(() => []),
+  ]).then(([teams, manual]) => ({ teams, manual }))
+    .catch(() => { opponentIndexPromise = null; return { teams: [], manual: [] } })
+  opponentIndexPromise = p
+  return p
+}
+
 export async function searchOpponents(term, { excludeOrgId } = {}) {
-  const t = (term ?? '').trim().toLowerCase()
-  if (t.length < 2) return { teams: [], manual: [] }
-  const hi = t + ''
-  const [teamSnap, manualSnap] = await Promise.all([
-    getDocs(query(collection(db, 'teams'),          orderBy('searchName'), startAt(t), endAt(hi), limit(8))).catch(() => ({ docs: [] })),
-    getDocs(query(collection(db, 'manualOpponents'), orderBy('searchName'), startAt(t), endAt(hi), limit(8))).catch(() => ({ docs: [] })),
-  ])
-  let teams = teamSnap.docs.map(d => ({ id: d.id, ...d.data() }))
-  if (excludeOrgId) teams = teams.filter(tm => tm.organizationId !== excludeOrgId)
-  return {
-    teams,
-    manual: manualSnap.docs.map(d => ({ id: d.id, ...d.data() })),
-  }
+  const q = (term ?? '').trim().toLowerCase().replace(/\s+/g, ' ')
+  if (q.length < 2) return { teams: [], manual: [] }
+  const { teams, manual } = await fetchOpponentIndex()
+  const hay  = o => [o.orgName, o.displayName, o.name, o.searchName].filter(Boolean).join(' ').toLowerCase()
+  const rank = h => h.startsWith(q) ? 0 : (h.split(' ').some(w => w.startsWith(q)) ? 1 : 2)
+  const pick = list => list
+    .map(o => ({ o, h: hay(o) }))
+    .filter(x => x.h.includes(q))
+    .sort((a, b) => rank(a.h) - rank(b.h) || a.h.localeCompare(b.h))
+    .slice(0, 10)
+    .map(x => x.o)
+  let teamMatches = pick(teams)
+  if (excludeOrgId) teamMatches = teamMatches.filter(tm => tm.organizationId !== excludeOrgId)
+  return { teams: teamMatches, manual: pick(manual) }
 }
 // Update a team. When the structured naming fields (gender/division +
 // teamLabel) change, the cached displayName + searchName are recomputed from
