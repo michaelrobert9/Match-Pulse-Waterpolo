@@ -209,6 +209,9 @@ export default function CompetitionTeams() {
   const [teamSquad, setTeamSquad] = useState([])
   const [busy, setBusy] = useState(false)
   const [loading, setLoading] = useState(true)
+  // Which squad row is armed for removal (window.confirm is suppressed in the
+  // installed PWA, so removal uses an in-UI two-step confirm instead).
+  const [confirmId, setConfirmId] = useState(null)
 
   useEffect(() => {
     setLoading(true)
@@ -287,9 +290,8 @@ export default function CompetitionTeams() {
       } catch (e) { alert(e.message || 'Could not add player.') } finally { setBusy(false) }
     }
     async function handleRemove(personId) {
-      if (!confirm('Remove this player from the squad? They will be taken out of the team’s matches in this competition.')) return
       setBusy(true)
-      try { await removeFromCompetitionSquad(competition.id, teamId, personId); await reloadSquad() }
+      try { await removeFromCompetitionSquad(competition.id, teamId, personId); setConfirmId(null); await reloadSquad() }
       catch (e) { alert(e.message || 'Could not remove player.') } finally { setBusy(false) }
     }
 
@@ -338,10 +340,21 @@ export default function CompetitionTeams() {
                     </Link>
                     <Link to={playerUrl({ id: p.personId, slug: p.personSlug })} className="ml-auto text-[10px] font-bold uppercase tracking-widest text-emerald-600 shrink-0">Profile →</Link>
                     {canManage && p.registered && (
-                      <button disabled={busy} onClick={() => handleRemove(p.personId)}
-                        className="text-slate-300 hover:text-red-500 disabled:opacity-40 shrink-0" title="Remove from squad">
-                        <X className="w-4 h-4" />
-                      </button>
+                      confirmId === p.personId ? (
+                        <span className="flex items-center gap-1.5 shrink-0">
+                          <button disabled={busy} onClick={() => handleRemove(p.personId)}
+                            className="text-[10px] font-bold uppercase tracking-widest text-red-600 hover:text-red-500 disabled:opacity-40">
+                            {busy ? '…' : 'Remove'}
+                          </button>
+                          <button onClick={() => setConfirmId(null)}
+                            className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Cancel</button>
+                        </span>
+                      ) : (
+                        <button disabled={busy} onClick={() => setConfirmId(p.personId)}
+                          className="text-slate-300 hover:text-red-500 disabled:opacity-40 shrink-0" title="Remove from squad">
+                          <X className="w-4 h-4" />
+                        </button>
+                      )
                     )}
                   </div>
                 ))}

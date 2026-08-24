@@ -77,6 +77,9 @@ export default function SquadManager({ team, readOnly = false }) {
   const [pos,    setPos]    = useState('')
   const [busy,   setBusy]   = useState(false)
   const [err,    setErr]    = useState('')
+  // Row armed for removal — in-UI confirm (window.confirm is suppressed in the
+  // installed PWA, so the ✕ did nothing).
+  const [confirmId, setConfirmId] = useState(null)
 
   // Edit-player flow
   const [editId,    setEditId]    = useState(null)
@@ -131,12 +134,7 @@ export default function SquadManager({ team, readOnly = false }) {
   }
 
   function remove(p) {
-    const hasStats = (p.caps ?? 0) > 0 || (p.goals ?? 0) > 0
-    const msg = hasStats
-      ? `${p.personName} has ${p.caps ?? 0} caps and ${p.goals ?? 0} goals recorded on this entry — removing it deletes those stats. Remove anyway?`
-      : `Remove ${p.personName} from the ${season} squad?`
-    if (!window.confirm(msg)) return
-    run(() => removePlayer(p.id))
+    run(() => removePlayer(p.id).then(() => setConfirmId(null)))
   }
 
   function carryOver() {
@@ -295,10 +293,24 @@ export default function SquadManager({ team, readOnly = false }) {
               </span>
               {canManage && season === currentYear && (
                 <>
-                  <button onClick={() => startEdit(p)} disabled={busy} title="Edit details"
-                    className="text-slate-300 hover:text-emerald-600 transition-colors shrink-0 text-xs font-bold uppercase tracking-widest">Edit</button>
-                  <button onClick={() => remove(p)} disabled={busy} title="Remove from squad"
-                    className="text-slate-300 hover:text-red-500 transition-colors shrink-0">✕</button>
+                  {confirmId === p.id ? (
+                    <span className="flex items-center gap-1.5 shrink-0">
+                      <button onClick={() => remove(p)} disabled={busy}
+                        title={((p.caps ?? 0) > 0 || (p.goals ?? 0) > 0) ? 'This entry has recorded stats — removing it deletes them.' : 'Remove from squad'}
+                        className="text-[10px] font-bold uppercase tracking-widest text-red-600 hover:text-red-500 disabled:opacity-40">
+                        {busy ? '…' : (((p.caps ?? 0) > 0 || (p.goals ?? 0) > 0) ? 'Remove + stats' : 'Remove')}
+                      </button>
+                      <button onClick={() => setConfirmId(null)} disabled={busy}
+                        className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Cancel</button>
+                    </span>
+                  ) : (
+                    <>
+                      <button onClick={() => startEdit(p)} disabled={busy} title="Edit details"
+                        className="text-slate-300 hover:text-emerald-600 transition-colors shrink-0 text-xs font-bold uppercase tracking-widest">Edit</button>
+                      <button onClick={() => setConfirmId(p.id)} disabled={busy} title="Remove from squad"
+                        className="text-slate-300 hover:text-red-500 transition-colors shrink-0">✕</button>
+                    </>
+                  )}
                 </>
               )}
             </div>
