@@ -6,6 +6,7 @@ import { outcomeBanner } from '../lib/fixtureResult'
 import { fetchCompetition, fetchCompetitionFixtures, toDate, fetchCompetitionByPath, fetchCompetitionBySlugSeason } from '../lib/queries'
 import { matchUrl } from '../lib/slugify'
 import CompetitionNav from '../components/CompetitionNav'
+import VenueLabel from '../components/VenueLabel'
 import { useAuth } from '../contexts/AuthContext'
 import { competitionViewableBy } from '../lib/competitionRules'
 import { MatchTeamIdentity } from '../components/TeamIdentity'
@@ -161,9 +162,8 @@ export default function CompetitionFixtures() {
                         {isLive && fmtTime(match.scheduledAt) && (
                           <div className="micro-label mt-0.5 text-slate-400">KO {fmtTime(match.scheduledAt)}</div>
                         )}
-                        {match.pitch && (
-                          <div className="micro-label mt-0.5 text-slate-400">{match.pitch}</div>
-                        )}
+                        <VenueLabel pitch={match.pitch} venueId={match.venueId} venueSlug={match.venueSlug}
+                          className="micro-label mt-0.5 text-slate-400 block" />
                       </div>
 
                       {/* Away team */}

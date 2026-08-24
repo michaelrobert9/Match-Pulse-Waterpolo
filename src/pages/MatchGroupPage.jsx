@@ -9,6 +9,7 @@ import {
 import { updateMatchGroup, deleteMatchGroup } from '../lib/adminQueries'
 import { configured } from '../firebase'
 import ResultsSpine from '../components/ResultsSpine'
+import VenuePicker from '../components/VenuePicker'
 import { computeTally, scoreNoun } from '../lib/matchTally'
 import { ageLabel } from '../lib/matchPaths'
 import { matchUrl } from '../lib/slugify'
@@ -141,6 +142,8 @@ function Modal({ title, subtitle, onClose, children }) {
 function EditGroupDialog({ group, children, onClose }) {
   const [matchDate, setMatchDate] = useState(group.matchDate ?? '')
   const [venue,     setVenue]     = useState(group.venue ?? '')
+  const [venueId,   setVenueId]   = useState(group.venueId ?? null)
+  const [venueSlug, setVenueSlug] = useState(group.venueSlug ?? null)
   const [saving,    setSaving]    = useState(false)
   const [error,     setError]     = useState('')
 
@@ -160,7 +163,7 @@ function EditGroupDialog({ group, children, onClose }) {
     try {
       const patch = {}
       if (dateChanged)  patch.matchDate = matchDate
-      if (venueChanged) patch.venue = venue.trim()
+      if (venueChanged) { patch.venue = venue.trim(); patch.venueId = venueId; patch.venueSlug = venueSlug }
       await updateMatchGroup(group.id, patch)
       onClose()   // page is live-subscribed — it refreshes itself
     } catch (e) {
@@ -184,9 +187,12 @@ function EditGroupDialog({ group, children, onClose }) {
           <label className="text-[10px] font-bold uppercase tracking-widest text-slate-500 block mb-1">
             Venue <span className="text-slate-400 normal-case tracking-normal font-normal">day-wide</span>
           </label>
-          <input type="text" value={venue} placeholder="e.g. St Mary's College"
-            onChange={ev => setVenue(ev.target.value)}
-            className="w-full bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 text-slate-900 text-sm placeholder-slate-400 focus:outline-none focus:border-emerald-500 transition-colors" />
+          <VenuePicker
+            pitch={venue} venueId={venueId} venueSlug={venueSlug}
+            hostOrgId={group.ownerOrgId ?? group.homeOrgId ?? null}
+            placeholder="e.g. St Mary's College"
+            inputClassName="w-full bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 text-slate-900 text-sm placeholder-slate-400 focus:outline-none focus:border-emerald-500 transition-colors"
+            onChange={v => { setVenue(v.pitch); setVenueId(v.venueId); setVenueSlug(v.venueSlug) }} />
         </div>
 
         {/* Live preview — only what will actually change. */}

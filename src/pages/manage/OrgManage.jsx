@@ -31,6 +31,7 @@ import StatusBadge from '../../components/StatusBadge'
 import CompetitionStatusBadge from '../../components/CompetitionStatusBadge'
 import OpponentSelector from '../../components/OpponentSelector'
 import FormatSelector from '../../components/FormatSelector'
+import VenuePicker from '../../components/VenuePicker'
 import { MatchTeamIdentity, MatchVersus } from '../../components/TeamIdentity'
 import { prefetchMatchTeams } from '../../lib/teamIdentity'
 import TeamListCrest from '../../components/TeamListCrest'
@@ -105,7 +106,7 @@ function UpcomingFixturesSection({ orgId, org, competitions, teams, matches, set
     yourTeamId:    '',
     side:          'home',
     opponent:      null,
-    scheduledAt:   '', pitch: '',
+    scheduledAt:   '', pitch: '', venueId: null, venueSlug: null,
     periods:       DEFAULT_PERIODS, periodMinutes: DEFAULT_PERIOD_MINUTES,
     breakMinutes:  DEFAULT_BREAK_MINUTES, indoor: false,
     competitionId: '',
@@ -155,6 +156,8 @@ function UpcomingFixturesSection({ orgId, org, competitions, teams, matches, set
       const ref = await createMatch(form.competitionId || null, homeTeam, awayTeam, {
         scheduledAt:   new Date(form.scheduledAt),
         pitch:         form.pitch,
+        venueId:       form.venueId,
+        venueSlug:     form.venueSlug,
         season:        comp?.season ?? null,
         periods:       Number(form.periods),
         periodMinutes: Number(form.periodMinutes),
@@ -182,14 +185,15 @@ function UpcomingFixturesSection({ orgId, org, competitions, teams, matches, set
         homeOrgId:     homeTeam.organizationId || null,
         awayOrgId:     awayTeam.organizationId || null,
         homeScore: 0, awayScore: 0,
-        scheduledAt: new Date(form.scheduledAt), pitch: form.pitch, status: 'scheduled', tracked: false,
+        scheduledAt: new Date(form.scheduledAt), pitch: form.pitch,
+        venueId: form.venueId, venueSlug: form.venueSlug, status: 'scheduled', tracked: false,
       }
       setMatches(prev => [...prev, newMatch])
       setShowAdd(false)
       setForm(f => ({
         ...f,
         yourSide: 'club', yourTeamId: '',
-        opponent: null, scheduledAt: '', pitch: '', side: 'home',
+        opponent: null, scheduledAt: '', pitch: '', venueId: null, venueSlug: null, side: 'home',
       }))
     } finally { setSaving(false) }
   }
@@ -295,8 +299,16 @@ function UpcomingFixturesSection({ orgId, org, competitions, teams, matches, set
 
           <Input label="Date & time" type="datetime-local" required
             value={form.scheduledAt} onChange={e => setForm(f => ({ ...f, scheduledAt: e.target.value }))} />
-          <Input label="Venue / pool (optional)" value={form.pitch} placeholder="e.g. Main pool"
-            onChange={e => setForm(f => ({ ...f, pitch: e.target.value }))} />
+          <div>
+            <label className="text-[10px] font-bold uppercase tracking-widest text-slate-400 block mb-1.5">
+              Venue / pool <span className="normal-case tracking-normal font-normal text-slate-400">(optional)</span>
+            </label>
+            <VenuePicker
+              pitch={form.pitch} venueId={form.venueId} venueSlug={form.venueSlug}
+              hostOrgId={orgId}
+              placeholder="e.g. Main pool"
+              onChange={v => setForm(f => ({ ...f, ...v }))} />
+          </div>
 
           <div>
             <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-3">Match format</p>

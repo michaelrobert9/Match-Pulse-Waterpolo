@@ -1182,7 +1182,8 @@ async function computeMatchRestamp(m, { homeDisplay, awayDisplay, matchDate } = 
 }
 
 export async function createMatch(competitionId, homeTeam, awayTeam, {
-  matchDate, scheduledAt = null, pitch = '', season, competitionSlug = null,
+  matchDate, scheduledAt = null, pitch = '', venueId = null, venueSlug = null,
+  season, competitionSlug = null,
   periods = DEFAULT_PERIODS, periodMinutes = DEFAULT_PERIOD_MINUTES,
   breakMinutes = DEFAULT_BREAK_MINUTES,
   indoor = false,
@@ -1245,7 +1246,12 @@ export async function createMatch(competitionId, homeTeam, awayTeam, {
     goals: [], cards: [], controlLog: [],
     startedAt: null, pausedAt: null, totalPausedMs: 0,
     nextPeriodIndex: 1,
-    scheduledAt, pitch, indoor: !!indoor, status: 'scheduled', tracked: false,
+    scheduledAt, pitch,
+    // Central venue link: id + slug snapshot travel WITH the display string so a
+    // public page renders (and links) the venue with no cross-database read.
+    // Both null when the venue was typed rather than picked from the registry.
+    venueId: venueId || null, venueSlug: venueSlug || null,
+    indoor: !!indoor, status: 'scheduled', tracked: false,
     ...(matchDateField ? { matchDate: matchDateField } : {}),
     matchSlug,
     path,
@@ -1334,7 +1340,8 @@ export async function deleteMatch(id) {
 //     scheduledAt?: Date|null, venue?: string }
 // where teamLike is a registered team (has .id) or a manual opponent.
 export async function createMatchGroup({
-  home, away, matchDate, venue = '', sport = null, ownerOrgId = null,
+  home, away, matchDate, venue = '', venueId = null, venueSlug = null,
+  sport = null, ownerOrgId = null,
   periods = DEFAULT_PERIODS, periodMinutes = DEFAULT_PERIOD_MINUTES,
   breakMinutes = DEFAULT_BREAK_MINUTES, indoor = false,
   rows = [],
@@ -1355,6 +1362,9 @@ export async function createMatchGroup({
     homeOrgId: home.id ?? null,   // a group's "sides" are ORGS (schools/clubs), not
     awayOrgId: away.id ?? null,   // single teams — named like /matches for by-school queries
     venue: venue || '',
+    // Group default venue link — cascades to non-overridden children as a unit
+    // with `venue` (see the child block below and updateMatchGroup).
+    venueId: venueId || null, venueSlug: venueSlug || null,
     sport: sport ?? null,
     ownerOrgId: ownerOrgId ?? null,
     createdBy: uid(), createdAt: serverTimestamp(),
@@ -1404,7 +1414,13 @@ export async function createMatchGroup({
       goals: [], cards: [], controlLog: [],
       startedAt: null, pausedAt: null, totalPausedMs: 0, nextPeriodIndex: 1,
       scheduledAt: r.scheduledAt ?? null,   // blank is expected and valid
-      pitch:       r.venue || venue || '',
+      // Venue as a COHERENT TRIO — display string + id + slug always come from
+      // the SAME source. An explicit row venue overrides the group default; the
+      // three fields are never mixed across venues (own row wins as a set, else
+      // the group default flows as a set).
+      ...(r.venue
+        ? { pitch: r.venue, venueId: r.venueId || null, venueSlug: r.venueSlug || null }
+        : { pitch: venue || '', venueId: venueId || null, venueSlug: venueSlug || null }),
       // Whether THIS child's venue was set explicitly (its own row venue) rather
       // than inherited from the group default. A later group-venue cascade must
       // not overwrite an explicit one (P4).
@@ -1429,7 +1445,11 @@ export async function setMatchTimes(patches = []) {
   for (const p of list) {
     const patch = { scheduledAt: p.scheduledAt ?? null, updatedBy: uid(), updatedAt: serverTimestamp() }
     if (p.venue !== undefined) {
+      // Venue trio moves together — never leave a child with an id from one
+      // venue and a display string from another.
       patch.pitch = p.venue || ''
+      patch.venueId = p.venueId || null
+      patch.venueSlug = p.venueSlug || null
       // Setting a venue here is an explicit choice → it now wins over a later
       // group-venue cascade; clearing it lets the group default flow back in.
       patch.venueOverride = !!(p.venue && String(p.venue).trim())
@@ -1479,7 +1499,7 @@ async function writePathRedirects(pairs, ownerOrgId, competitionId = null) {
 //             venue (venueOverride); an explicit child venue is never overwritten.
 // Returns a summary for the UI. The confirm dialog computes its preview from the
 // children directly (see fetchMatchGroupChildren) — this performs the write.
-export async function updateMatchGroup(groupId, { matchDate, venue } = {}) {
+export async function updateMatchGroup(groupId, { matchDate, venue, venueId = null, venueSlug = null } = {}) {
   const gRef  = doc(db, 'matchGroups', groupId)
   const gSnap = await getDoc(gRef)
   if (!gSnap.exists()) throw new Error('Match day not found.')
@@ -1496,7 +1516,7 @@ export async function updateMatchGroup(groupId, { matchDate, venue } = {}) {
 
   const gPatch = { updatedBy: uid(), updatedAt: serverTimestamp() }
   if (dateChanged)  gPatch.matchDate = newDate
-  if (venueChanged) gPatch.venue = venue
+  if (venueChanged) { gPatch.venue = venue; gPatch.venueId = venueId || null; gPatch.venueSlug = venueSlug || null }
   batch.update(gRef, gPatch)
   if (dateChanged) redirects.push({ from: matchPath(g.matchDate, g.slug), to: matchPath(newDate, g.slug) })
 
@@ -1514,7 +1534,14 @@ export async function updateMatchGroup(groupId, { matchDate, venue } = {}) {
     }
     if (venueChanged) {
       if (c.venueOverride) kept++
-      else { patch.pitch = venue || ''; cascaded++ }
+      else {
+        // Cascade the venue as a TRIO so a child never ends up with a venueId
+        // from one venue and a pitch from another.
+        patch.pitch = venue || ''
+        patch.venueId = venueId || null
+        patch.venueSlug = venueSlug || null
+        cascaded++
+      }
     }
     if (Object.keys(patch).length) {
       patch.updatedBy = uid(); patch.updatedAt = serverTimestamp()
@@ -3675,10 +3702,11 @@ export async function resetPlayoffHoldingFixtureToPlaceholders(competitionId, fi
 }
 
 // Set the date/time (and optional venue) of a playoff holding fixture.
-export async function schedulePlayoffFixture(competitionId, fixtureId, { scheduledAt = null, pitch = null } = {}) {
+export async function schedulePlayoffFixture(competitionId, fixtureId, { scheduledAt = null, pitch = null, venueId = null, venueSlug = null } = {}) {
   await assertCompetitionAdmin(competitionId)
   const patch = { scheduledAt: scheduledAt ?? null, status: 'scheduled', tracked: false, updatedBy: uid(), updatedAt: serverTimestamp() }
-  if (pitch != null) patch.pitch = pitch
+  // Venue trio moves together so a link is never split from its display string.
+  if (pitch != null) { patch.pitch = pitch; patch.venueId = venueId || null; patch.venueSlug = venueSlug || null }
   await updateDoc(doc(db, 'matches', fixtureId), patch)
 }
 

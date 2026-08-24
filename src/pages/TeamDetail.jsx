@@ -14,6 +14,7 @@ import { monogram } from '../lib/names'
 import { useSeoMeta } from '../lib/useSeoMeta'
 import { MatchTeamIdentity } from '../components/TeamIdentity'
 import StatusBadge from '../components/StatusBadge'
+import VenueLabel from '../components/VenueLabel'
 import SquadManager from '../components/SquadManager'
 
 // Win/loss/draw + goals for a team across a (optionally season-filtered) set of
@@ -111,7 +112,8 @@ function UpcomingCard({ match }) {
         <MatchTeamIdentity match={match} side="away" hideIdentifier className="min-w-0"
           nameClass="text-slate-900 font-semibold text-sm truncate" />
       </div>
-      {match.pitch && <div className="text-slate-500 text-xs mt-1.5">{match.pitch}</div>}
+      <VenueLabel pitch={match.pitch} venueId={match.venueId} venueSlug={match.venueSlug}
+        className="block text-slate-500 text-xs mt-1.5" />
     </Link>
   )
 }

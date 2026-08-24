@@ -16,6 +16,14 @@ export const PLANS_URL = `${MAIN_SITE}/products`
 // Account settings (name, email, password) live on the main site.
 export const MAIN_ACCOUNT_URL = `${MAIN_SITE}/account`
 
+// A venue's public page lives on the main site (venues are authored and owned
+// centrally; the sport apps only read them). Built from the venue slug snapshot
+// stored on the match, so rendering a venue link never needs a cross-database
+// read. Returns null when there is no slug (a typed, unlinked venue).
+export function venueUrl(slug) {
+  return slug ? `${MAIN_SITE}/venues/${slug}` : null
+}
+
 // Build the outbound plans URL, tagging on who is asking and from where. These
 // params are informational only — /products ignores them today — but they let a
 // manual sale be attributed to a sport, an org and a user before the buyer emails
