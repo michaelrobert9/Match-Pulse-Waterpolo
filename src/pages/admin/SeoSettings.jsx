@@ -6,7 +6,7 @@ import { fetchSeoSettings, saveSeoSettings, DEFAULT_SEO } from '../../lib/seoSet
 import { slugify, matchSlug as buildMatchSlug } from '../../lib/slugify'
 import { composeTeamDisplay } from '../../lib/teamNaming'
 import { matchPath, competitionMatchPath } from '../../lib/matchPaths'
-import { writeMatchRedirect, seedFixturesFromTeamSheet, backfillTeamSearchNames } from '../../lib/adminQueries'
+import { writeMatchRedirect, seedFixturesFromTeamSheet, backfillTeamSearchNames, backfillRepresentativeOrgsFromSlices } from '../../lib/adminQueries'
 import { useAuth } from '../../contexts/AuthContext'
 
 function Field({ label, hint, children }) {
@@ -694,6 +694,50 @@ function BackfillTeamSlugs() {
   )
 }
 
+// Recomputes each player's representative organisations from their actual stat
+// records, removing orgs they were linked to but never fielded for (e.g. a test
+// fixture later deleted). Fixes players showing as "representing" a school with
+// no team/matches, and their appearing in that org's player rollup.
+function BackfillRepresentativeOrgs() {
+  const [state, setState] = useState('idle')
+  const [log,   setLog]   = useState('')
+
+  async function run() {
+    setState('running'); setLog('')
+    try {
+      const res = await backfillRepresentativeOrgsFromSlices()
+      setLog(`Done — cleaned ${res.updated} of ${res.total} player profile(s).`)
+      setState('done')
+    } catch (err) {
+      setLog(`Error: ${err.message}`)
+      setState('error')
+    }
+  }
+
+  return (
+    <Section icon={Wrench} title="Player → org link cleanup">
+      <p className="text-sm text-slate-600">
+        Rebuilds each player’s “Represents” organisations from their actual match /
+        team-sheet records, dropping any org they were linked to but never played
+        or were listed for. Safe to run more than once.
+      </p>
+      {log && (
+        <div className="bg-slate-900 text-slate-100 rounded-xl px-4 py-3 font-mono text-xs leading-relaxed whitespace-pre-wrap">
+          {log}
+        </div>
+      )}
+      <button
+        type="button"
+        onClick={run}
+        disabled={state === 'running'}
+        className="bg-slate-700 hover:bg-slate-600 disabled:opacity-50 text-white font-bold text-sm uppercase tracking-wider rounded-xl px-5 py-2.5 transition-colors"
+      >
+        {state === 'running' ? 'Running…' : state === 'done' ? 'Run again' : 'Clean player → org links'}
+      </button>
+    </Section>
+  )
+}
+
 // Rebuilds every user's orgRoles mirror from the authoritative staff records on
 // each organisation. Repairs memberships dropped by the historical orgRoles
 // overwrite bug (a school/club no longer appearing on a user's Manage page).
@@ -1059,6 +1103,7 @@ export default function SeoSettings() {
         <BackfillLineupPersonIds />
         <BackfillTeamSheetFixtures />
         <BackfillTeamSearchNames />
+        <BackfillRepresentativeOrgs />
 
         {/* Save bar */}
         <div className="flex items-center justify-between gap-4 pt-2">

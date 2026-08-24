@@ -910,6 +910,44 @@ export async function updateTeam(id, data) {
   return updateDoc(doc(db, 'teams', id), { ...patch, updatedAt: serverTimestamp() })
 }
 
+// Recompute every person's representativeOrgs/representativeOrgIds from their
+// ACTUAL stat slices (the `players` collection), dropping any org they have no
+// slice for. representativeOrgs was append-only, so a link made for a fixture
+// that was later deleted (or an erroneous link) lingered forever — showing a
+// player as "representing" a school they never fielded for, and listing them in
+// that org's player rollup. This filters each person's stored orgs down to the
+// ones backed by a real record. Idempotent; safe to run repeatedly.
+export async function backfillRepresentativeOrgsFromSlices() {
+  const [peopleSnap, slicesSnap] = await Promise.all([
+    getDocs(collection(db, 'people')),
+    getDocs(collection(db, 'players')),
+  ])
+  const orgsByPerson = {}   // personId -> Set(organizationId that has a slice)
+  for (const d of slicesSnap.docs) {
+    const s = d.data()
+    if (s.personId && s.organizationId) (orgsByPerson[s.personId] ??= new Set()).add(s.organizationId)
+  }
+  const docs = peopleSnap.docs
+  let updated = 0
+  for (let i = 0; i < docs.length; i += 400) {
+    const batch = writeBatch(db)
+    let inBatch = 0
+    for (const d of docs.slice(i, i + 400)) {
+      const p = d.data()
+      const current = Array.isArray(p.representativeOrgs) ? p.representativeOrgs : []
+      if (current.length === 0) continue
+      const have = orgsByPerson[d.id] ?? new Set()
+      const next = current.filter(o => o?.orgId && have.has(o.orgId))
+      if (next.length !== current.length) {
+        batch.update(d.ref, { representativeOrgs: next, representativeOrgIds: next.map(o => o.orgId) })
+        updated++; inBatch++
+      }
+    }
+    if (inBatch) await batch.commit()
+  }
+  return { total: docs.length, updated }
+}
+
 // Rebuild every team's searchName to the org-led form ("<org> <team>"), so
 // existing teams — created before searchName included the org name — become
 // findable by their school/club name in opponent search. Idempotent: only
