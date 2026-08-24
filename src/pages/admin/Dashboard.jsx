@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { Plus, Building2, AlertTriangle, Inbox, RefreshCw, Check } from 'lucide-react'
+import { Plus, Building2, AlertTriangle, Inbox, RefreshCw, Check, GraduationCap, Landmark, Trophy, CalendarDays, User, ChevronRight } from 'lucide-react'
 import { collection, getDocs, query, where } from 'firebase/firestore'
 import { db } from '../../firebase'
 import { useAuth } from '../../contexts/AuthContext'
@@ -85,11 +85,29 @@ function CareerRebuildCard() {
   )
 }
 
-function StatTile({ value, label, to }) {
+// A navigation card mirroring one sidebar destination: icon, label and a live
+// count, linking straight to that section. These make the dashboard the visual
+// index of the new nav.
+function NavCard({ Icon, label, count, to, accent = false }) {
   return (
-    <Link to={to} className="bg-white rounded-xl p-4 border border-slate-200 hover:border-slate-300 transition-colors shadow-sm">
-      <div className="font-mono font-black text-3xl text-emerald-600 tabular-nums">{value ?? '—'}</div>
-      <div className="micro-label mt-1">{label}</div>
+    <Link to={to}
+      className={`group flex items-center gap-3 rounded-xl border px-4 py-3.5 transition-colors shadow-sm ${
+        accent
+          ? 'bg-emerald-50 border-emerald-200 hover:border-emerald-300'
+          : 'bg-white border-slate-200 hover:border-slate-300'
+      }`}>
+      <span className={`w-9 h-9 rounded-lg flex items-center justify-center shrink-0 ${
+        accent ? 'bg-emerald-100 border border-emerald-200' : 'bg-slate-100 border border-slate-200'
+      }`}>
+        <Icon className={`w-4.5 h-4.5 ${accent ? 'text-emerald-600' : 'text-slate-500'}`} />
+      </span>
+      <div className="flex-1 min-w-0">
+        <div className="text-sm font-semibold text-slate-900 truncate">{label}</div>
+        {count != null && (
+          <div className="font-mono tabular-nums text-[11px] text-slate-500 mt-0.5">{count}</div>
+        )}
+      </div>
+      <ChevronRight className="w-4 h-4 text-slate-400 group-hover:text-slate-600 shrink-0 transition-colors" />
     </Link>
   )
 }
@@ -113,11 +131,19 @@ export default function AdminDashboard() {
           getDocs(query(collection(db, 'matches'), where('status', '==', 'awaiting_result'))),
         ])
         const liveDocs = [...live.docs, ...paused.docs].map(d => ({ id: d.id, ...d.data() }))
+        const orgTypes = orgs.docs.reduce((acc, d) => {
+          const t = d.data().type
+          if (t === 'school') acc.schools++
+          else if (t === 'association') acc.associations++
+          else acc.clubs++
+          return acc
+        }, { schools: 0, clubs: 0, associations: 0 })
         setCounts({
           competitions: comps.size,
           organizations: orgs.size,
           people: people.size,
           live: liveDocs.length,
+          ...orgTypes,
         })
         // §7: a tracked match still live well past its expected end may have been
         // abandoned by the scorer. Surface it — the admin can end it on the
@@ -185,49 +211,42 @@ export default function AdminDashboard() {
         </div>
       )}
 
+      {/* Jump to — the dashboard as a visual index of the nav. */}
       <div>
-        <div className="micro-label text-slate-500 mb-3">Overview</div>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-          <StatTile value={counts.organizations} label="Schools & Clubs"  to="/admin/organizations" />
-          <StatTile value={counts.people}        label="People"           to="/admin/people" />
-          <StatTile value={counts.competitions}  label="Competitions"     to="/manage/competitions" />
-          <StatTile value={counts.live}          label="Live Now"         to="/manage/competitions" />
+        <div className="micro-label text-slate-500 mb-3">Jump to</div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+          <NavCard Icon={Trophy}       label="Competitions"     count={counts.competitions != null ? `${counts.competitions} total` : null}       to="/manage/competitions" />
+          <NavCard Icon={CalendarDays} label="My matches"       count={counts.live ? `${counts.live} live now` : 'View all'}                        to="/admin/matches" accent={counts.live > 0} />
+          <NavCard Icon={Inbox}        label="Awaiting results" count={awaitingCount ? `${awaitingCount} to confirm` : 'All clear'}                  to="/admin/result-queue" accent={awaitingCount > 0} />
+          <NavCard Icon={User}         label="People"           count={counts.people != null ? `${counts.people} total` : null}                     to="/admin/people" />
+          <NavCard Icon={GraduationCap} label="My schools"      count={counts.schools != null ? `${counts.schools} total` : null}                   to="/admin/schools" />
+          <NavCard Icon={Building2}    label="My clubs"         count={counts.clubs != null ? `${counts.clubs} total` : null}                       to="/admin/clubs" />
+          <NavCard Icon={Landmark}     label="My associations"  count={counts.associations != null ? `${counts.associations} total` : null}         to="/admin/associations" />
         </div>
       </div>
 
+      {/* Quick create actions. */}
       <div>
-        <div className="micro-label text-slate-500 mb-3">Quick actions</div>
-        <div className="space-y-2">
-          <Link to="/match/new" className="flex items-center gap-3 bg-white rounded-xl border border-emerald-200 px-4 py-3 hover:border-emerald-300 transition-colors shadow-sm">
-            <span className="w-7 h-7 rounded-lg bg-emerald-50 border border-emerald-200 flex items-center justify-center shrink-0">
-              <Plus className="w-4 h-4 text-emerald-600" />
-            </span>
-            <span className="text-sm font-semibold text-emerald-700">Create match</span>
-          </Link>
-          <Link to="/manage" className="flex items-center gap-3 bg-white rounded-xl border border-slate-200 px-4 py-3 hover:border-slate-300 transition-colors shadow-sm">
-            <span className="w-7 h-7 rounded-lg bg-slate-100 border border-slate-200 flex items-center justify-center shrink-0">
-              <Building2 className="w-4 h-4 text-slate-500" />
-            </span>
-            <span className="text-sm font-medium text-slate-900">Manage schools &amp; clubs</span>
-          </Link>
-          <Link to="/admin/organizations/new" className="flex items-center gap-3 bg-white rounded-xl border border-slate-200 px-4 py-3 hover:border-slate-300 transition-colors shadow-sm">
-            <span className="w-7 h-7 rounded-lg bg-slate-100 border border-slate-200 flex items-center justify-center shrink-0">
-              <Plus className="w-4 h-4 text-slate-500" />
-            </span>
-            <span className="text-sm font-medium text-slate-900">New school or club</span>
-          </Link>
-          <Link to="/admin/people/new" className="flex items-center gap-3 bg-white rounded-xl border border-slate-200 px-4 py-3 hover:border-slate-300 transition-colors shadow-sm">
-            <span className="w-7 h-7 rounded-lg bg-slate-100 border border-slate-200 flex items-center justify-center shrink-0">
-              <Plus className="w-4 h-4 text-slate-500" />
-            </span>
-            <span className="text-sm font-medium text-slate-900">New person</span>
-          </Link>
-          <Link to="/manage/competitions/new" className="flex items-center gap-3 bg-white rounded-xl border border-slate-200 px-4 py-3 hover:border-slate-300 transition-colors shadow-sm">
-            <span className="w-7 h-7 rounded-lg bg-slate-100 border border-slate-200 flex items-center justify-center shrink-0">
-              <Plus className="w-4 h-4 text-slate-500" />
-            </span>
-            <span className="text-sm font-medium text-slate-900">New competition</span>
-          </Link>
+        <div className="micro-label text-slate-500 mb-3">Create</div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+          {[
+            { to: '/match/new',                label: 'Create match',       accent: true },
+            { to: '/manage/competitions/new',  label: 'New competition' },
+            { to: '/admin/organizations/new',  label: 'New school, club or association' },
+            { to: '/admin/people/new',         label: 'New person' },
+          ].map(a => (
+            <Link key={a.to} to={a.to}
+              className={`flex items-center gap-3 rounded-xl border px-4 py-3 transition-colors shadow-sm ${
+                a.accent ? 'bg-white border-emerald-200 hover:border-emerald-300' : 'bg-white border-slate-200 hover:border-slate-300'
+              }`}>
+              <span className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 ${
+                a.accent ? 'bg-emerald-50 border border-emerald-200' : 'bg-slate-100 border border-slate-200'
+              }`}>
+                <Plus className={`w-4 h-4 ${a.accent ? 'text-emerald-600' : 'text-slate-500'}`} />
+              </span>
+              <span className={`text-sm font-semibold ${a.accent ? 'text-emerald-700' : 'text-slate-900'}`}>{a.label}</span>
+            </Link>
+          ))}
         </div>
       </div>
 

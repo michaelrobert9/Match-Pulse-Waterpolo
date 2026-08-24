@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react'
 import { NavLink, Link, Outlet, useLocation } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
+import { useMyOrgs, orgTypesOf } from '../lib/useMyOrgs'
 import LazyBoundary from './LazyBoundary'
-import { Home, Trophy, Shield, User, KeyRound, Search, ArrowLeft, Menu, X, Link2, CalendarDays, Inbox, Radio } from 'lucide-react'
+import { Home, Trophy, Shield, User, KeyRound, Search, ArrowLeft, Menu, X, Link2, CalendarDays, Inbox, Radio, GraduationCap, Building2, Landmark } from 'lucide-react'
 
 // The single management shell. One chrome for BOTH platform admins and non-admin
 // organisers — the left-nav is filtered by role, not a separate component. Every
@@ -12,28 +13,48 @@ import { Home, Trophy, Shield, User, KeyRound, Search, ArrowLeft, Menu, X, Link2
 //
 // Nav is derived from useAuth():
 //   • platformAdmin claim  → the platform sections (People, SEO, Permissions, …)
-//   • orgRoles             → "Create match" (needs an org)
+//   • orgRoles / myTypes   → the "My schools / clubs / associations" items and
+//                            "Create match" (both need an org)
 //   • canScore             → the organiser competitions/score surfaces
-// Everyone keeps a populated rail (Home, My players) so a claimed-profile-only
-// spectator sees a thin-but-real nav, never an empty one.
-function navFor({ isPlatformAdmin, orgRoles, canScore }) {
+// Everyone keeps a populated rail (Dashboard, My players) so a
+// claimed-profile-only spectator sees a thin-but-real nav, never an empty one.
+//
+// Organisations are split into three per-type items (My schools / My clubs / My
+// associations) instead of one "Organizations" list — most people only touch
+// one type, and the flat directory got long. Empty categories are hidden. The
+// master admin manages everything, so it always shows all three (each lists
+// every org of that type); an organiser sees only the types they belong to.
+function navFor({ isPlatformAdmin, orgRoles, canScore, myTypes }) {
+  const ORG_ITEMS_ADMIN = [
+    { to: '/admin/schools',      label: 'My schools',      Icon: GraduationCap },
+    { to: '/admin/clubs',        label: 'My clubs',        Icon: Building2     },
+    { to: '/admin/associations', label: 'My associations', Icon: Landmark      },
+  ]
+  const ORG_ITEMS_ORGANISER = [
+    { to: '/manage/schools',      label: 'My schools',      Icon: GraduationCap, show: myTypes.school },
+    { to: '/manage/clubs',        label: 'My clubs',        Icon: Building2,     show: myTypes.club },
+    { to: '/manage/associations', label: 'My associations', Icon: Landmark,      show: myTypes.association },
+  ]
+
   if (isPlatformAdmin) {
     return [
-      { to: '/admin',               label: 'Dashboard',       Icon: Home,        end: true },
-      { to: '/manage/competitions', label: 'Competitions',    Icon: Trophy             },
-      { to: '/admin/matches',       label: 'Matches',         Icon: CalendarDays       },
-      { to: '/admin/result-queue',  label: 'Awaiting result', Icon: Inbox              },
-      { to: '/admin/organizations', label: 'Organizations',   Icon: Shield             },
-      { to: '/admin/people',        label: 'People',          Icon: User               },
-      { to: '/admin/permissions',   label: 'Administrators',  Icon: KeyRound           },
-      { to: '/admin/user-access',   label: 'User Access',     Icon: Link2              },
-      { to: '/admin/seo',           label: 'SEO',             Icon: Search             },
+      { to: '/admin',               label: 'Dashboard',        Icon: Home,        end: true },
+      { to: '/manage/competitions', label: 'Competitions',     Icon: Trophy             },
+      { to: '/admin/matches',       label: 'My matches',       Icon: CalendarDays       },
+      { to: '/admin/result-queue',  label: 'Awaiting results', Icon: Inbox              },
+      ...ORG_ITEMS_ADMIN,
+      // Master-admin-only platform sections — left as-is.
+      { to: '/admin/people',        label: 'People',           Icon: User               },
+      { to: '/admin/permissions',   label: 'Administrators',   Icon: KeyRound           },
+      { to: '/admin/user-access',   label: 'User Access',      Icon: Link2              },
+      { to: '/admin/seo',           label: 'SEO',              Icon: Search             },
+      { to: '/profile',             label: 'My profile',       Icon: User               },
     ]
   }
 
   // Organiser / any signed-in user. Always-present items keep the rail populated.
   const items = [
-    { to: '/manage', label: 'Home', Icon: Home, end: true },
+    { to: '/manage', label: 'Dashboard', Icon: Home, end: true },
   ]
   if (canScore) {
     items.push({ to: '/manage/competitions', label: 'Competitions', Icon: Trophy })
@@ -41,10 +62,13 @@ function navFor({ isPlatformAdmin, orgRoles, canScore }) {
   if (Object.keys(orgRoles ?? {}).length > 0) {
     items.push({ to: '/match/new', label: 'Create match', Icon: CalendarDays })
   }
-  items.push({ to: '/my-players', label: 'My players', Icon: User })
   if (canScore) {
     items.push({ to: '/score', label: 'Score matches', Icon: Radio })
   }
+  // Per-type org items — only the categories this organiser belongs to.
+  ORG_ITEMS_ORGANISER.filter(i => i.show).forEach(({ show, ...i }) => items.push(i))
+  items.push({ to: '/my-players', label: 'My players', Icon: User })
+  items.push({ to: '/profile',    label: 'My profile', Icon: User })
   return items
 }
 
@@ -55,7 +79,12 @@ export default function AppShell() {
 
   useEffect(() => { setOpen(false) }, [pathname])
 
-  const navItems = navFor({ isPlatformAdmin, orgRoles, canScore })
+  // Which org categories the organiser belongs to, so empty ones stay hidden.
+  // (The master admin shows all three regardless — it manages every org.)
+  const { orgs: myOrgs } = useMyOrgs()
+  const myTypes = orgTypesOf(myOrgs)
+
+  const navItems = navFor({ isPlatformAdmin, orgRoles, canScore, myTypes })
   // Wordmark badge reads "Admin" for platform admins, "Manage" for organisers —
   // an organiser is not an admin and shouldn't be told they're in an admin area.
   const badge = isPlatformAdmin ? 'Admin' : 'Manage'
