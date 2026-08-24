@@ -113,6 +113,7 @@ export function buildMeta({ type, entity = null, path = null } = {}) {
       description = 'South African school water polo on MatchPulse: fixtures, results, log tables and squad records for every school competition.'
       h1          = 'Schools'
       canonical   = '/schools'
+      robots      = 'noindex,follow'
       break
 
     case 'clubs':
@@ -120,6 +121,7 @@ export function buildMeta({ type, entity = null, path = null } = {}) {
       description = 'South African club water polo on MatchPulse: fixtures, results, log tables and squad records for every club competition.'
       h1          = 'Clubs'
       canonical   = '/clubs'
+      robots      = 'noindex,follow'
       break
 
     case 'competition': {
@@ -163,6 +165,7 @@ export function buildMeta({ type, entity = null, path = null } = {}) {
       description = `${name} water polo on MatchPulse: fixtures, results, log tables and teams for this ${kind}.`
       h1          = name
       canonical   = orgUrl(entity)
+      robots      = 'noindex,follow'
       ogImage     = entity?.logoUrl || ogImage
       break
     }

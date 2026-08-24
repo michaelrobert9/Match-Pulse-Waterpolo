@@ -20,12 +20,12 @@ The match now appears in the match list, ready to be played and scored.
 
 ## Adding several matches
 
-If you're setting up a full round-robin where everyone plays everyone, generating the matches is faster than adding them one by one. See [Generate a full match list](generate-fixtures.md).
+If you're setting up a full round-robin where everyone plays everyone, generating the matches is faster than adding them one by one. See [Generate a full match list](generate-matches.md).
 
 ## What happens next
 
-A new match starts at the beginning of its lifecycle, waiting to be played. When the day comes, you [start it live](../06-live-scoring/start-a-live-match.md) and score it. To understand the stages a match moves through, see [The match lifecycle](fixture-lifecycle.md).
+A new match starts at the beginning of its lifecycle, waiting to be played. When the day comes, you [start it live](../06-live-scoring/start-a-live-match.md) and score it. To understand the stages a match moves through, see [The match lifecycle](match-lifecycle.md).
 
 ## Changing a match later
 
-Dates move and venues change. You can edit any of this after the fact. See [Edit a match](edit-a-fixture.md), or [Postpone or reschedule](postpone-or-reschedule.md).
+Dates move and venues change. You can edit any of this after the fact. See [Edit a match](edit-a-match.md), or [Postpone or reschedule](postpone-or-reschedule.md).

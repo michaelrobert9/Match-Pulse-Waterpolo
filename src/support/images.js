@@ -29,13 +29,13 @@ export const IMAGE_SLOTS = {
   'competitions/competition-formats': [
     { src: null, alt: 'The competition type chooser comparing league, tournament and festival formats.', caption: 'Choosing a format' },
   ],
-  'fixtures/add-a-fixture': [
+  'matches/add-a-match': [
     { src: null, alt: 'The “Add match” form with home team, away team, date, time and venue fields.', caption: 'Adding a match' },
   ],
-  'fixtures/generate-fixtures': [
+  'matches/generate-matches': [
     { src: null, alt: 'The generate-matches panel for a round-robin, showing the match-format options.', caption: 'Generating a match list' },
   ],
-  'fixtures/fixture-lifecycle': [
+  'matches/match-lifecycle': [
     { src: null, alt: 'A match list showing the lifecycle status badges: scheduled, live, awaiting result and final.', caption: 'Match lifecycle states' },
   ],
   'live-scoring/start-a-live-match': [

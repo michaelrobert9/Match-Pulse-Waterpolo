@@ -19,13 +19,13 @@ It links a smaller organisation to a wider one, so an association can run compet
 Yes, that's a hybrid: a league phase that feeds into a knockout. See [Competition formats](../03-competitions/competition-formats.md).
 
 **Do I have to add every match by hand?**
-No. For a league you can generate the whole match list at once. See [Generate a full match list](../04-fixtures/generate-fixtures.md).
+No. For a league you can generate the whole match list at once. See [Generate a full match list](../04-matches/generate-matches.md).
 
 **A team didn't show up. What do I record?**
-A walkover, not an invented score. See [Walkovers, withdrawals and abandonments](../04-fixtures/non-standard-outcomes.md).
+A walkover, not an invented score. See [Walkovers, withdrawals and abandonments](../04-matches/non-standard-outcomes.md).
 
 **A team pulled out mid-season. What now?**
-Handle it as a withdrawal so their remaining matches resolve properly. Don't just delete the team. See [Walkovers, withdrawals and abandonments](../04-fixtures/non-standard-outcomes.md).
+Handle it as a withdrawal so their remaining matches resolve properly. Don't just delete the team. See [Walkovers, withdrawals and abandonments](../04-matches/non-standard-outcomes.md).
 
 ## Scoring and stats
 

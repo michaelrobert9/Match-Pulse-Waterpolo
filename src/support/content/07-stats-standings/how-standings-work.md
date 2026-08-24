@@ -11,7 +11,7 @@ This is why the table is reliable. There's no separate score being maintained th
 ## What feeds the table
 
 - **Finalised matches.** Only settled results count. A match that's scheduled or still live doesn't affect the table yet.
-- **Non-standard outcomes.** Walkovers, withdrawals and abandonments are factored in according to how they're recorded. See [Walkovers, withdrawals and abandonments](../04-fixtures/non-standard-outcomes.md).
+- **Non-standard outcomes.** Walkovers, withdrawals and abandonments are factored in according to how they're recorded. See [Walkovers, withdrawals and abandonments](../04-matches/non-standard-outcomes.md).
 
 ## How teams are ranked
 

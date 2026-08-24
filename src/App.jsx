@@ -85,6 +85,22 @@ function RedirectToCompetitionManager() {
   return <Navigate to={`/manage/competitions/${id}`} replace />
 }
 
+// The Support Centre "fixtures" section was renamed to "matches" (we use
+// "match" everywhere now). Redirect any old /support/fixtures/:slug link to its
+// new /support/matches/:slug home so external/bookmarked links never 404.
+const SUPPORT_FIXTURE_SLUGS = {
+  'add-a-fixture':      'add-a-match',
+  'generate-fixtures':  'generate-matches',
+  'edit-a-fixture':     'edit-a-match',
+  'delete-a-fixture':   'delete-a-match',
+  'fixture-lifecycle':  'match-lifecycle',
+}
+function RedirectSupportFixture() {
+  const { slug } = useParams()
+  const next = SUPPORT_FIXTURE_SLUGS[slug] ?? slug
+  return <Navigate to={`/support/matches/${next}`} replace />
+}
+
 // /match/:date/:slug is ONE namespace resolving to EITHER a match day (group) or
 // a standalone match — the dispatcher asks which by looking up a group at that
 // (date, slug), then renders the right page.
@@ -115,6 +131,7 @@ export default function App() {
           <Route path="/"                               element={<Home />} />
           <Route path="/install"                        element={<InstallHelp />} />
           <Route path="/support"                        element={<LazyBoundary><SupportIndex /></LazyBoundary>} />
+          <Route path="/support/fixtures/:slug"         element={<RedirectSupportFixture />} />
           <Route path="/support/:category/:slug"        element={<LazyBoundary><SupportArticle /></LazyBoundary>} />
           <Route path="/legal/:doc"                     element={<LegalPage />} />
           <Route path="/contact"                        element={<Contact />} />

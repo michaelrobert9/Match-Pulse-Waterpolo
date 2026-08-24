@@ -92,9 +92,8 @@ const STATIC_ROUTES = [
   { path: '/',               changefreq: 'daily',   priority: 1.0 },
   { path: '/competitions',   changefreq: 'daily',   priority: 0.9 },
   { path: '/browse',         changefreq: 'daily',   priority: 0.9 },
-  { path: '/schools',        changefreq: 'weekly',  priority: 0.8 },
-  { path: '/clubs',          changefreq: 'weekly',  priority: 0.8 },
-  { path: '/associations',   changefreq: 'weekly',  priority: 0.8 },
+  // Organisation directories (/schools, /clubs, /associations) are intentionally
+  // omitted — orgs are indexed on the MAIN site only, not the sport sites.
   { path: '/players',        changefreq: 'weekly',  priority: 0.8 },
   { path: '/support',        changefreq: 'monthly', priority: 0.6 },
   { path: '/contact',        changefreq: 'yearly',  priority: 0.4 },
@@ -177,18 +176,11 @@ async function buildSitemap(db, logger) {
     })
   } catch (e) { logger?.warn?.('sitemap: people failed', e) }
 
-  // Organisations (schools / clubs / associations). Only those publicly visible
-  // (not awaiting review or rejected) AND with at least one team in this sport —
-  // an empty/unactivated profile renders nothing useful, so it is not indexed.
-  try {
-    const orgs = await db.collection('organizations').get()
-    orgs.forEach(d => {
-      const o = { id: d.id, ...d.data() }
-      if (o.approvalState && o.approvalState !== 'active') return
-      if (!orgIdsWithTeams.has(o.id)) return
-      push({ path: orgPath(o), lastmod: lastmod(o.updatedAt), changefreq: 'weekly', priority: 0.7 })
-    })
-  } catch (e) { logger?.warn?.('sitemap: organizations failed', e) }
+  // Organisations (schools / clubs / associations) are deliberately NOT included
+  // in the sport sitemap. Across every sport there would be thousands of
+  // near-duplicate org pages, diluting crawl budget and rankings; orgs are
+  // listed and indexed on the MAIN site only. Their pages stay reachable but
+  // carry a noindex robots tag (see src/lib/seo.js).
 
   // Final matches → result pages (high long-tail SEO value). Matches without a
   // resolvable public URL are skipped rather than emitted at a dead shape.

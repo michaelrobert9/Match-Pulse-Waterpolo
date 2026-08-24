@@ -33,13 +33,13 @@ If you're new, start with **Getting Started**. If you're looking for something s
 - [Finalise a competition](03-competitions/finalise-a-competition.md)
 
 ## 4. Matches
-- [Add a match](04-fixtures/add-a-fixture.md)
-- [Generate a full match list](04-fixtures/generate-fixtures.md)
-- [Edit a match](04-fixtures/edit-a-fixture.md)
-- [The match lifecycle explained](04-fixtures/fixture-lifecycle.md)
-- [Walkovers, withdrawals and abandonments](04-fixtures/non-standard-outcomes.md)
-- [Postpone or reschedule a match](04-fixtures/postpone-or-reschedule.md)
-- [Delete a match](04-fixtures/delete-a-fixture.md)
+- [Add a match](04-matches/add-a-match.md)
+- [Generate a full match list](04-matches/generate-matches.md)
+- [Edit a match](04-matches/edit-a-match.md)
+- [The match lifecycle explained](04-matches/match-lifecycle.md)
+- [Walkovers, withdrawals and abandonments](04-matches/non-standard-outcomes.md)
+- [Postpone or reschedule a match](04-matches/postpone-or-reschedule.md)
+- [Delete a match](04-matches/delete-a-match.md)
 
 ## 5. Playoffs & Knockout Stages
 - [Build a knockout stage](05-playoffs/build-a-knockout-stage.md)
