@@ -777,7 +777,11 @@ export async function createTeam(orgData, displayName, options = {}) {
     organizationId: orgData.id,
     orgName:        orgData.name,
     displayName:    name,
-    searchName:     name.toLowerCase(),
+    // searchName drives opponent search. It leads with the ORG/school name so a
+    // registered team is findable by its school or club name (the natural query
+    // when adding a match) — the team's structural label ("U14A") alone is not
+    // enough, since the org name was moved out of displayName by the naming model.
+    searchName:     [orgData.name, name].filter(Boolean).join(' ').toLowerCase(),
     // Firestore rejects `undefined`; orgs need not carry a shortCode/primary
     // colour, so coalesce every optional org-derived field to null (or a
     // sensible default) rather than passing undefined straight through.
@@ -870,13 +874,43 @@ export async function updateTeam(id, data) {
     const name = generatedTeamName(fields)
     if (name) {
       patch.displayName = name
-      patch.searchName  = name.toLowerCase()
+      // Keep searchName org-led (see createTeam) so a rename never regresses the
+      // team to being unsearchable by its school/club name. orgName is stripped
+      // from the patch, so recover it from the passed data or the stored doc.
+      let on = orgName
+      if (!on) {
+        const cur = await getDoc(doc(db, 'teams', id)).catch(() => null)
+        on = cur && cur.exists() ? (cur.data().orgName ?? null) : null
+      }
+      patch.searchName = [on, name].filter(Boolean).join(' ').toLowerCase()
     }
     patch.teamLabel     = levelLabel(fields) || null
     patch.structuralKey = teamStructuralKey(fields) || null
     delete patch.orgGenderProfile   // derivation input only, not a stored field
   }
   return updateDoc(doc(db, 'teams', id), { ...patch, updatedAt: serverTimestamp() })
+}
+
+// Rebuild every team's searchName to the org-led form ("<org> <team>"), so
+// existing teams — created before searchName included the org name — become
+// findable by their school/club name in opponent search. Idempotent: only
+// writes a team whose searchName actually differs. Run once from admin
+// maintenance after deploying; new/edited teams get the right value on write.
+export async function backfillTeamSearchNames() {
+  const snap = await getDocs(collection(db, 'teams'))
+  const docs = snap.docs
+  let updated = 0
+  for (let i = 0; i < docs.length; i += 400) {
+    const batch = writeBatch(db)
+    let inBatch = 0
+    for (const d of docs.slice(i, i + 400)) {
+      const t = d.data()
+      const want = [t.orgName, t.displayName].filter(Boolean).join(' ').toLowerCase()
+      if (want && want !== t.searchName) { batch.update(d.ref, { searchName: want }); updated++; inBatch++ }
+    }
+    if (inBatch) await batch.commit()
+  }
+  return { total: docs.length, updated }
 }
 
 // Teams the governance migration could not map automatically (Masters/Open/
