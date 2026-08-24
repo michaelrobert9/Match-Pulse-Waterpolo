@@ -1,9 +1,8 @@
 import { useMemo } from 'react'
 import { Link, Navigate, useNavigate, useParams } from 'react-router-dom'
 import { ChevronLeft } from 'lucide-react'
-import { getArticle, getSection, imageSlots, ORIGIN } from '../../support'
+import { getArticle, getSection, ORIGIN } from '../../support'
 import { useSupportHead } from '../../support/head'
-import SupportImage from './SupportImage'
 import './Support.css'
 
 export default function SupportArticle() {
@@ -12,7 +11,6 @@ export default function SupportArticle() {
 
   const article = getArticle(category, slug)
   const section = article ? getSection(article.sectionSlug) : null
-  const slots   = article ? imageSlots(category, slug) : []
   const path    = `/support/${category}/${slug}`
 
   const { prev, next } = useMemo(() => {
@@ -87,7 +85,6 @@ export default function SupportArticle() {
             <article className="prose">
               <h1>{article.title}</h1>
               <div className="meta">{article.sectionTitle}</div>
-              {slots.map((img, i) => <SupportImage key={i} {...img} />)}
               <div onClick={onBodyClick} dangerouslySetInnerHTML={{ __html: article.html }} />
             </article>
 

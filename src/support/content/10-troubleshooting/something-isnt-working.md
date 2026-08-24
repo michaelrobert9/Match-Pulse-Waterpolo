@@ -22,10 +22,6 @@ These are calculated from finalised results, so a wrong-looking number nearly al
 
 Check that the score and any required details are filled in. If goals need scorers attributed and the squad is missing a player, add them to the squad first, then finalise. See [Manage your squad](../02-organisations-teams/manage-your-squad.md).
 
-## I paid but my plan hasn't unlocked
-
-Give PayFast a few minutes to confirm, then refresh. Check your billing settings to see whether the payment registered. See [Manage your subscription](../09-billing/manage-subscription.md).
-
 ## A team advanced wrong in a knockout
 
 That means the feeder result was scored wrong. Don't drag the bracket around by hand. Correct the original result, and the advance updates. See [How teams advance](../05-playoffs/how-teams-advance.md).

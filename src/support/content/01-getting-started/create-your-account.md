@@ -9,7 +9,7 @@ You'll need an account before you can set anything up. It takes a minute.
 3. Enter your email address and choose a password.
 4. Confirm your email if prompted.
 
-That's it. You're in on the Free plan, which is enough to set up an organisation and start building.
+That's it. You're in, and ready to set up an organisation and start building.
 
 ## Sign in
 

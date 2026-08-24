@@ -10,7 +10,6 @@ If you're new, start with **Getting Started**. If you're looking for something s
 - [What is MatchPulse](01-getting-started/what-is-matchpulse.md)
 - [Create your account](01-getting-started/create-your-account.md)
 - [The dashboard explained](01-getting-started/the-dashboard.md)
-- [Choosing a plan: Free, Plus, Pro](01-getting-started/choosing-a-plan.md)
 - [Set up your organisation](01-getting-started/set-up-your-organisation.md)
 
 ## 2. Organisations & Teams
@@ -65,11 +64,6 @@ If you're new, start with **Getting Started**. If you're looking for something s
 - [Invite people and assign roles](08-permissions/invite-people.md)
 - [Remove someone's access](08-permissions/remove-access.md)
 
-## 9. Billing & Plans
-- [Upgrade to Plus or Pro](09-billing/upgrade.md)
-- [How payment works](09-billing/how-payment-works.md)
-- [Manage your subscription](09-billing/manage-subscription.md)
-
-## 10. Troubleshooting & FAQ
+## 9. Troubleshooting & FAQ
 - [Common questions](10-troubleshooting/faq.md)
 - [Something isn't working](10-troubleshooting/something-isnt-working.md)

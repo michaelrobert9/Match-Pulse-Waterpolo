@@ -43,12 +43,4 @@ It's computed from finalised results, so a wrong-looking table traces back to a 
 **How do I let a coach score their team's matches only?**
 Give them a Scorer role scoped to that team. See [Team-scoped vs competition-scoped roles](../08-permissions/scoped-roles.md).
 
-## Billing
-
-**Is Plus a subscription?**
-No, it's a once-off payment. Pro is the annual one. See [Choosing a plan](../01-getting-started/choosing-a-plan.md).
-
-**I paid but my plan hasn't unlocked.**
-Give it a few minutes and refresh; PayFast confirmation can take a moment. See [Manage your subscription](../09-billing/manage-subscription.md).
-
 Still stuck? See [Something isn't working](something-isnt-working.md).
