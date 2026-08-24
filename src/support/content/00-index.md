@@ -10,7 +10,6 @@ If you're new, start with **Getting Started**. If you're looking for something s
 - [What is MatchPulse](01-getting-started/what-is-matchpulse.md)
 - [Create your account](01-getting-started/create-your-account.md)
 - [The dashboard explained](01-getting-started/the-dashboard.md)
-- [Choosing a plan: Free, Plus, Pro](01-getting-started/choosing-a-plan.md)
 - [Set up your organisation](01-getting-started/set-up-your-organisation.md)
 
 ## 2. Organisations & Teams
@@ -33,13 +32,13 @@ If you're new, start with **Getting Started**. If you're looking for something s
 - [Finalise a competition](03-competitions/finalise-a-competition.md)
 
 ## 4. Matches
-- [Add a match](04-fixtures/add-a-fixture.md)
-- [Generate a full match list](04-fixtures/generate-fixtures.md)
-- [Edit a match](04-fixtures/edit-a-fixture.md)
-- [The match lifecycle explained](04-fixtures/fixture-lifecycle.md)
-- [Walkovers, withdrawals and abandonments](04-fixtures/non-standard-outcomes.md)
-- [Postpone or reschedule a match](04-fixtures/postpone-or-reschedule.md)
-- [Delete a match](04-fixtures/delete-a-fixture.md)
+- [Add a match](04-matches/add-a-match.md)
+- [Generate a full match list](04-matches/generate-matches.md)
+- [Edit a match](04-matches/edit-a-match.md)
+- [The match lifecycle explained](04-matches/match-lifecycle.md)
+- [Walkovers, withdrawals and abandonments](04-matches/non-standard-outcomes.md)
+- [Postpone or reschedule a match](04-matches/postpone-or-reschedule.md)
+- [Delete a match](04-matches/delete-a-match.md)
 
 ## 5. Playoffs & Knockout Stages
 - [Build a knockout stage](05-playoffs/build-a-knockout-stage.md)
@@ -65,11 +64,6 @@ If you're new, start with **Getting Started**. If you're looking for something s
 - [Invite people and assign roles](08-permissions/invite-people.md)
 - [Remove someone's access](08-permissions/remove-access.md)
 
-## 9. Billing & Plans
-- [Upgrade to Plus or Pro](09-billing/upgrade.md)
-- [How payment works](09-billing/how-payment-works.md)
-- [Manage your subscription](09-billing/manage-subscription.md)
-
-## 10. Troubleshooting & FAQ
+## 9. Troubleshooting & FAQ
 - [Common questions](10-troubleshooting/faq.md)
 - [Something isn't working](10-troubleshooting/something-isnt-working.md)

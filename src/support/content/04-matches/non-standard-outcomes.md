@@ -30,4 +30,4 @@ Each of these outcomes affects the standings differently from a normal win or lo
 
 Forcing a fake result through the normal flow can quietly throw off the table and the records. Use the right outcome type and let MatchPulse do the rest.
 
-For where these sit in a match's life, see [The match lifecycle](fixture-lifecycle.md).
+For where these sit in a match's life, see [The match lifecycle](match-lifecycle.md).

@@ -4,7 +4,7 @@ When it's time to play, you start the match live and score it as the match unfol
 
 ## Before kick-off
 
-- The match should already exist with the right teams, date and venue. If not, [add it](../04-fixtures/add-a-fixture.md).
+- The match should already exist with the right teams, date and venue. If not, [add it](../04-matches/add-a-match.md).
 - Both squads should be set up, so you can attribute goals to players. See [Manage your squad](../02-organisations-teams/manage-your-squad.md).
 - Make sure you have permission to score this match. A Scorer role on the team or competition is enough. See [Roles explained](../08-permissions/roles-explained.md).
 

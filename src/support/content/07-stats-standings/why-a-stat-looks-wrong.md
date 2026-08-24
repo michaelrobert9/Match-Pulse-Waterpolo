@@ -19,7 +19,7 @@ That's the key idea: the table and the records aren't the source of truth. The f
 - **A goal credited to the wrong player.** The team score is right, so the table looks fine, but one player's tally is high and another's is low. Fix the goal's scorer on that match.
 - **A wrong score.** Affects the standings directly. Correct the result.
 - **A match not finalised.** A played match that was never finalised won't count yet. Finalise it. See [Finalise a result](../06-live-scoring/finalise-a-result.md).
-- **A non-standard outcome recorded as a normal score.** A walkover or abandonment forced through as an invented scoreline can skew the table. Record it as the proper outcome instead. See [Walkovers, withdrawals and abandonments](../04-fixtures/non-standard-outcomes.md).
+- **A non-standard outcome recorded as a normal score.** A walkover or abandonment forced through as an invented scoreline can skew the table. Record it as the proper outcome instead. See [Walkovers, withdrawals and abandonments](../04-matches/non-standard-outcomes.md).
 
 ## The one habit that prevents most of this
 

@@ -6,7 +6,7 @@ When every match has been played and scored, you finalise the competition. This 
 
 Make sure:
 
-- All matches have a result, or have been resolved as a non-standard outcome (walkover, withdrawal, abandonment). See [Walkovers, withdrawals and abandonments](../04-fixtures/non-standard-outcomes.md).
+- All matches have a result, or have been resolved as a non-standard outcome (walkover, withdrawal, abandonment). See [Walkovers, withdrawals and abandonments](../04-matches/non-standard-outcomes.md).
 - The standings look right. They recompute from the results, so if every match is finalised, the table should be settled.
 - Any corrections are done. It's cleaner to fix a wrong result before finalising than after.
 

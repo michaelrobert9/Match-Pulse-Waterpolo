@@ -164,12 +164,18 @@ function OrgForm({ initial = {}, onSave, onDelete, saving }) {
 
 // ── List ───────────────────────────────────────────────────────────────────
 
-export function OrganizationsList() {
+// `type` locks the list to one org type (school|club|association) and hides the
+// tab bar — used by the per-type nav items (/admin/schools, /clubs,
+// /associations). Without it the list keeps its old tabbed all-types behaviour.
+export function OrganizationsList({ type = null }) {
   const [orgs,         setOrgs]         = useState([])
   const [loading,      setLoading]      = useState(true)
   const [deleteTarget, setDeleteTarget] = useState(null)
-  const [tab,          setTab]          = useState('school')
+  const [tab,          setTab]          = useState(type ?? 'school')
   const [search,       setSearch]       = useState('')
+
+  // Follow the route when navigating between the per-type pages.
+  useEffect(() => { if (type) { setTab(type); setSearch('') } }, [type])
 
   useEffect(() => {
     getDocs(query(collection(db, 'organizations'), orderBy('name')))
@@ -178,11 +184,13 @@ export function OrganizationsList() {
       .finally(() => setLoading(false))
   }, [])
 
+  const locked = !!type
   const tabs = [
     { key: 'school',      label: 'Schools'      },
     { key: 'club',        label: 'Clubs'        },
     { key: 'association', label: 'Associations' },
   ]
+  const activeLabel = tabs.find(t => t.key === tab)?.label ?? 'Organizations'
 
   const tabOrgs = orgs.filter(o => o.type === tab)
 
@@ -201,14 +209,15 @@ export function OrganizationsList() {
   return (
     <div className="px-4 py-5 max-w-3xl">
       <div className="flex items-center justify-between mb-4">
-        <h1 className="font-display font-bold text-slate-900 text-lg">Organizations</h1>
+        <h1 className="font-display font-bold text-slate-900 text-lg">{locked ? activeLabel : 'Organizations'}</h1>
         <Link to="/admin/organizations/new"
           className="text-[10px] font-bold uppercase tracking-widest text-emerald-600 hover:text-emerald-700 transition-colors">
           + New
         </Link>
       </div>
 
-      {/* Type tabs */}
+      {/* Type tabs — hidden when the list is locked to a single type. */}
+      {!locked && (
       <div className="flex gap-1 mb-4 bg-slate-100 rounded-xl p-1">
         {tabs.map(t => {
           const count = orgs.filter(o => o.type === t.key).length
@@ -232,6 +241,7 @@ export function OrganizationsList() {
           )
         })}
       </div>
+      )}
 
       {/* Search */}
       <div className="relative mb-4">

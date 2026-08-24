@@ -28,4 +28,4 @@ The team moves out of your active teams but stays on record.
 
 Think twice if the team has played matches. Its results feed standings and stats in any competition it took part in. Removing an active team can leave gaps. If you just want it out of sight, archive it instead.
 
-If a team is still entered in a live competition, take it out of that competition properly rather than deleting it outright. For non-standard exits like a mid-season withdrawal, see [Walkovers, withdrawals and abandonments](../04-fixtures/non-standard-outcomes.md).
+If a team is still entered in a live competition, take it out of that competition properly rather than deleting it outright. For non-standard exits like a mid-season withdrawal, see [Walkovers, withdrawals and abandonments](../04-matches/non-standard-outcomes.md).

@@ -21,7 +21,7 @@ You're now the Owner of this competition, with full authority over it.
 ## What's next
 
 1. [Add teams to the competition](add-teams-to-a-competition.md).
-2. [Add matches](../04-fixtures/add-a-fixture.md), or [generate a full match list](../04-fixtures/generate-fixtures.md).
+2. [Add matches](../04-matches/add-a-match.md), or [generate a full match list](../04-matches/generate-matches.md).
 3. Score the matches as they're played.
 4. [Finalise the competition](finalise-a-competition.md) when the season's done.
 

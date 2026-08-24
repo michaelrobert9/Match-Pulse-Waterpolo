@@ -21,7 +21,7 @@ You can change a match's details, including its date, time, venue and teams. Wha
 
 A match that hasn't been played is freely editable. One that's live or finished behaves differently, because changing it affects the result and the standings. If you need to change the score of a match that's already finished, that's a result correction, not a simple edit. See [Correct a finalised result](../06-live-scoring/correct-a-finalised-result.md).
 
-To understand which stage a match is in and what that allows, see [The match lifecycle](fixture-lifecycle.md).
+To understand which stage a match is in and what that allows, see [The match lifecycle](match-lifecycle.md).
 
 ## For non-standard outcomes
 

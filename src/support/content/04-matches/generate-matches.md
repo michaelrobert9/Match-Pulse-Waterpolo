@@ -21,7 +21,7 @@ MatchPulse creates a match for each required pairing and adds them all to the li
 
 You'll usually want to:
 
-- **Set dates and times.** Generated matches may need their dates filled in or spread across the season. Edit each one, or work through them in order. See [Edit a match](edit-a-fixture.md).
+- **Set dates and times.** Generated matches may need their dates filled in or spread across the season. Edit each one, or work through them in order. See [Edit a match](edit-a-match.md).
 - **Add venues** where you know them.
 - **Check the pairings** look right before the season starts.
 

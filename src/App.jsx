@@ -50,6 +50,7 @@ const CompetitionsManageList = lazy(() => import('./pages/manage/competitions/Co
 const CreateCompetition = lazy(() => import('./pages/manage/competitions/CreateCompetition'))
 const OrgManage  = lazy(() => import('./pages/manage/OrgManage'))
 const CreateOrg  = lazy(() => import('./pages/manage/CreateOrg'))
+const MyOrgTypeList = lazy(() => import('./pages/manage/MyOrgTypeList'))
 const NewFixture = lazy(() => import('./pages/fixtures/NewFixture'))
 const MyPlayers  = lazy(() => import('./pages/MyPlayers'))
 
@@ -85,6 +86,22 @@ function RedirectToCompetitionManager() {
   return <Navigate to={`/manage/competitions/${id}`} replace />
 }
 
+// The Support Centre "fixtures" section was renamed to "matches" (we use
+// "match" everywhere now). Redirect any old /support/fixtures/:slug link to its
+// new /support/matches/:slug home so external/bookmarked links never 404.
+const SUPPORT_FIXTURE_SLUGS = {
+  'add-a-fixture':      'add-a-match',
+  'generate-fixtures':  'generate-matches',
+  'edit-a-fixture':     'edit-a-match',
+  'delete-a-fixture':   'delete-a-match',
+  'fixture-lifecycle':  'match-lifecycle',
+}
+function RedirectSupportFixture() {
+  const { slug } = useParams()
+  const next = SUPPORT_FIXTURE_SLUGS[slug] ?? slug
+  return <Navigate to={`/support/matches/${next}`} replace />
+}
+
 // /match/:date/:slug is ONE namespace resolving to EITHER a match day (group) or
 // a standalone match — the dispatcher asks which by looking up a group at that
 // (date, slug), then renders the right page.
@@ -115,6 +132,7 @@ export default function App() {
           <Route path="/"                               element={<Home />} />
           <Route path="/install"                        element={<InstallHelp />} />
           <Route path="/support"                        element={<LazyBoundary><SupportIndex /></LazyBoundary>} />
+          <Route path="/support/fixtures/:slug"         element={<RedirectSupportFixture />} />
           <Route path="/support/:category/:slug"        element={<LazyBoundary><SupportArticle /></LazyBoundary>} />
           <Route path="/legal/:doc"                     element={<LegalPage />} />
           <Route path="/contact"                        element={<Contact />} />
@@ -204,6 +222,10 @@ export default function App() {
           <Route path="/manage"              element={<ProtectedRoute require="any"><ManageHub /></ProtectedRoute>} />
           <Route path="/manage/new-org"      element={<ProtectedRoute require="any"><CreateOrg /></ProtectedRoute>} />
           <Route path="/manage/orgs/:id"     element={<ProtectedRoute require="any"><OrgManage /></ProtectedRoute>} />
+          {/* Per-type org lists (the "My schools / clubs / associations" nav). */}
+          <Route path="/manage/schools"      element={<ProtectedRoute require="any"><MyOrgTypeList type="school" /></ProtectedRoute>} />
+          <Route path="/manage/clubs"        element={<ProtectedRoute require="any"><MyOrgTypeList type="club" /></ProtectedRoute>} />
+          <Route path="/manage/associations" element={<ProtectedRoute require="any"><MyOrgTypeList type="association" /></ProtectedRoute>} />
           <Route path="/manage/competitions"     element={<ProtectedRoute require="any"><CompetitionsManageList /></ProtectedRoute>} />
           <Route path="/manage/competitions/new" element={<ProtectedRoute require="any"><CreateCompetition /></ProtectedRoute>} />
           <Route path="/manage/competitions/:id" element={<ProtectedRoute require="any"><CompetitionManage /></ProtectedRoute>} />
@@ -216,7 +238,13 @@ export default function App() {
               renders the matched admin child into AppShell's Outlet. */}
           <Route path="/admin" element={<ProtectedRoute require="admin"><Outlet /></ProtectedRoute>}>
             <Route index                              element={<AdminDashboard />} />
-            <Route path="organizations"               element={<OrganizationsList />} />
+            {/* Orgs are split into per-type lists (My schools / clubs /
+                associations). The old combined /admin/organizations list
+                redirects to the schools view. */}
+            <Route path="organizations"               element={<Navigate to="/admin/schools" replace />} />
+            <Route path="schools"                     element={<OrganizationsList type="school" />} />
+            <Route path="clubs"                       element={<OrganizationsList type="club" />} />
+            <Route path="associations"                element={<OrganizationsList type="association" />} />
             <Route path="organizations/new"           element={<NewOrganization />} />
             <Route path="organizations/:id"           element={<EditOrganization />} />
             <Route path="people"                      element={<PeopleList />} />

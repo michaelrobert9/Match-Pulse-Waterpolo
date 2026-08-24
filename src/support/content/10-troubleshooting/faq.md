@@ -19,13 +19,13 @@ It links a smaller organisation to a wider one, so an association can run compet
 Yes, that's a hybrid: a league phase that feeds into a knockout. See [Competition formats](../03-competitions/competition-formats.md).
 
 **Do I have to add every match by hand?**
-No. For a league you can generate the whole match list at once. See [Generate a full match list](../04-fixtures/generate-fixtures.md).
+No. For a league you can generate the whole match list at once. See [Generate a full match list](../04-matches/generate-matches.md).
 
 **A team didn't show up. What do I record?**
-A walkover, not an invented score. See [Walkovers, withdrawals and abandonments](../04-fixtures/non-standard-outcomes.md).
+A walkover, not an invented score. See [Walkovers, withdrawals and abandonments](../04-matches/non-standard-outcomes.md).
 
 **A team pulled out mid-season. What now?**
-Handle it as a withdrawal so their remaining matches resolve properly. Don't just delete the team. See [Walkovers, withdrawals and abandonments](../04-fixtures/non-standard-outcomes.md).
+Handle it as a withdrawal so their remaining matches resolve properly. Don't just delete the team. See [Walkovers, withdrawals and abandonments](../04-matches/non-standard-outcomes.md).
 
 ## Scoring and stats
 
@@ -42,13 +42,5 @@ It's computed from finalised results, so a wrong-looking table traces back to a 
 
 **How do I let a coach score their team's matches only?**
 Give them a Scorer role scoped to that team. See [Team-scoped vs competition-scoped roles](../08-permissions/scoped-roles.md).
-
-## Billing
-
-**Is Plus a subscription?**
-No, it's a once-off payment. Pro is the annual one. See [Choosing a plan](../01-getting-started/choosing-a-plan.md).
-
-**I paid but my plan hasn't unlocked.**
-Give it a few minutes and refresh; PayFast confirmation can take a moment. See [Manage your subscription](../09-billing/manage-subscription.md).
 
 Still stuck? See [Something isn't working](something-isnt-working.md).

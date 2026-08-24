@@ -23,9 +23,9 @@ If your competition is run by an association or a wider body, you can enter team
 
 ## After teams are in
 
-- [Add matches](../04-fixtures/add-a-fixture.md) one by one, or
-- [Generate a full match list](../04-fixtures/generate-fixtures.md) automatically from the teams you've entered.
+- [Add matches](../04-matches/add-a-match.md) one by one, or
+- [Generate a full match list](../04-matches/generate-matches.md) automatically from the teams you've entered.
 
 ## Removing a team from a competition
 
-If a team needs to come out, remove it from the competition's Teams section. Be careful doing this once matches have been played, since it affects standings. For a team that withdraws partway through, handle it as a withdrawal so the results stay correct. See [Walkovers, withdrawals and abandonments](../04-fixtures/non-standard-outcomes.md).
+If a team needs to come out, remove it from the competition's Teams section. Be careful doing this once matches have been played, since it affects standings. For a team that withdraws partway through, handle it as a withdrawal so the results stay correct. See [Walkovers, withdrawals and abandonments](../04-matches/non-standard-outcomes.md).

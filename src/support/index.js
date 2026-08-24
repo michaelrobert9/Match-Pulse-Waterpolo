@@ -4,7 +4,6 @@
 // ships in the bundle and is fully crawlable.
 
 import data from './content.generated.json'
-import { IMAGE_SLOTS } from './images'
 
 export const indexMeta = data.index
 export const sections  = data.sections
@@ -20,11 +19,6 @@ export function getArticle(category, slug) {
 // Sibling articles in the same section (for the section nav), in order.
 export function siblings(sectionSlug) {
   return getSection(sectionSlug)?.articles ?? []
-}
-
-// Image slots (reference screenshots / placeholders) for an article, if any.
-export function imageSlots(category, slug) {
-  return IMAGE_SLOTS[`${category}/${slug}`] ?? []
 }
 
 export const ORIGIN = 'https://matchpulse.co.za'
