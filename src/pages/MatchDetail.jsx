@@ -12,6 +12,7 @@ import { fetchCompetitionTeamSheet, deleteMatch, removeFixtureFromCompetition } 
 import { resolveSideLineup, isInheritedLineup } from '../lib/lineupResolve'
 import { configured } from '../firebase'
 import ShareButton from '../components/ShareButton'
+import VenueLabel from '../components/VenueLabel'
 import StatusBadge from '../components/StatusBadge'
 import FixtureBanner from '../components/FixtureBanner'
 import { MatchTeamIdentity, MatchTeamCrest } from '../components/TeamIdentity'
@@ -424,6 +425,10 @@ export default function MatchDetail() {
           // team sheet writes it. The roster is a legacy fallback only; a
           // pasted captain would not appear if this joined the roster first.
           isCaptain:   e.isCaptain ?? r?.isCaptain ?? false,
+          // Goalkeeper is read from the player's PROFILE position (people doc),
+          // not the match — a keeper is tagged (GK) after their name wherever
+          // they are sheeted. 'GK' or 'goalkeeper' both count.
+          isGoalkeeper: /^(gk|goal)/i.test(String(live?.position ?? r?.position ?? '').trim()),
           isStarter:   !!e.isStarter,
         }
       })
@@ -670,7 +675,8 @@ export default function MatchDetail() {
         {/* Meta — date, venue, share */}
         <div className="border-t border-slate-200 px-5 py-5 flex flex-col items-center gap-2 text-center">
           <div className="text-[15px] text-slate-600 leading-snug">{fmtMatchDate(match.scheduledAt)}</div>
-          {match.pitch && <div className="text-[15px] text-slate-400 leading-snug">{match.pitch}</div>}
+          <VenueLabel pitch={match.pitch} venueId={match.venueId} venueSlug={match.venueSlug}
+            className="block text-[15px] text-slate-400 leading-snug" />
           <ShareButton shareData={shareData}
             className="mt-1 min-h-[44px] px-6 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 active:bg-slate-100 text-slate-500 hover:text-slate-900 transition-colors shadow-sm" />
         </div>
@@ -761,85 +767,76 @@ export default function MatchDetail() {
         )
       })()}
 
-      {/* Lineups — POTM rows highlight in the competition's configured POM
-          colour, else the awarded player's TEAM colour, else legacy amber
-          (line-up display brief §4). The captain © is team-coloured and lives
-          in the column the avatar vacated (§2); slate fallback for a team
-          with no colour set. */}
+      {/* Lineups — the two teams are laid out as PAIRED ROWS (home[i] beside
+          away[i]) in a two-column grid, so a name that wraps to two lines on one
+          side reserves the same row height on the other and the lists stay in
+          step. Within a row: the cap-number badge sits under the crest (outer
+          edge), the name lines up under the org name, and the captain © is packed
+          tight against the name on the inner side. Content packs to the outer edge
+          of each half, leaving white space down the middle. POTM rows highlight in
+          the competition's POM colour (else the team colour, else amber); the cap
+          badge renders EMPTY when there is no cap (not a dash, not a zero). */}
       {(homeSelection.length > 0 || awaySelection.length > 0) && (() => {
         const homePOTM = pomForSide(match, 'home')
         const awayPOTM = pomForSide(match, 'away')
         // teamAccent clamps unsafe colours (contrast / live-red) to slate.
         const homeCol  = teamAccent(match.homeTeamColor)
         const awayCol  = teamAccent(match.awayTeamColor)
+        const rowCount = Math.max(homeSelection.length, awaySelection.length)
         return (
         <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm">
           <div className="text-[10px] font-bold uppercase tracking-widest text-slate-500 mb-4">Lineups</div>
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <div className="flex items-start gap-1.5 mb-3">
-                <MatchTeamCrest match={match} side="home" size={20} />
-                <MatchTeamIdentity match={match} side="home" hideIdentifier className="flex-1 min-w-0"
-                  nameClass="text-[10px] font-bold uppercase tracking-widest text-slate-500 break-words leading-tight" />
-              </div>
-              <div className="space-y-2">
-                {homeSelection.map(p => {
-                  const isPOTM = isLineupEntryPOM(homePOTM, p)
-                  const rowStyle  = isPOTM ? { backgroundColor: pomBgTint(homePOTM, homeCol) } : undefined
-                  const nameStyle = isPOTM ? { color: pomColor(homePOTM, homeCol) } : undefined
-                  const nameCls   = `text-xs break-words leading-tight flex-1 min-w-0 ${isPOTM ? 'font-semibold' : 'text-slate-700'} ${p.personId ? 'hover:text-emerald-600 transition-colors' : ''}`
-                  return (
-                    // Row order: number slot → captain slot → name → POTM
-                    // badge. The cap slot renders EMPTY when there is no cap
-                    // (water polo call-out: not a dash, not a zero); the
-                    // captain slot is reserved on every row so names stay
-                    // aligned, © in the team's colour at 14px. No avatar.
-                    <div key={p.id} className={`flex items-center gap-2 ${isPOTM ? '-mx-2 px-2 py-1 rounded' : ''}`} style={rowStyle}>
-                      <span className="w-7 h-5 flex items-center justify-center rounded bg-slate-100 border border-slate-200 font-mono tabular-nums text-[10px] font-bold text-slate-500 shrink-0">{p.shirtNumber ?? ''}</span>
-                      <span className="w-5 text-center text-sm font-bold leading-none shrink-0" style={{ color: homeCol }}>{p.isCaptain ? '©' : ''}</span>
-                      {p.personId
-                        ? <Link to={playerUrl({ id: p.personId, slug: p.personSlug })} className={nameCls} style={nameStyle}>{p.personName}</Link>
-                        : <span className={nameCls} style={nameStyle}>{p.personName}</span>}
-                      {isPOTM && (
-                        <span className="text-[9px] font-bold uppercase tracking-widest shrink-0"
-                          style={{ color: pomColor(homePOTM, homeCol) }}>POTM</span>
-                      )}
-                    </div>
-                  )
-                })}
-              </div>
+          {/* Team headers */}
+          <div className="grid grid-cols-2 gap-x-8 mb-5">
+            <div className="flex items-start gap-1.5">
+              <MatchTeamCrest match={match} side="home" size={20} />
+              <MatchTeamIdentity match={match} side="home" hideIdentifier className="flex-1 min-w-0"
+                nameClass="text-xs font-extrabold uppercase tracking-wide text-slate-600 break-words leading-snug" />
             </div>
-
-            <div>
-              <div className="flex items-start gap-1.5 mb-3 justify-end">
-                <MatchTeamIdentity match={match} side="away" hideIdentifier align="right" className="flex-1 min-w-0"
-                  nameClass="text-[10px] font-bold uppercase tracking-widest text-slate-500 break-words leading-tight" />
-                <MatchTeamCrest match={match} side="away" size={20} />
-              </div>
-              <div className="space-y-2">
-                {awaySelection.map(p => {
-                  const isPOTM = isLineupEntryPOM(awayPOTM, p)
-                  const rowStyle  = isPOTM ? { backgroundColor: pomBgTint(awayPOTM, awayCol) } : undefined
-                  const nameStyle = isPOTM ? { color: pomColor(awayPOTM, awayCol) } : undefined
-                  const nameCls   = `text-xs break-words leading-tight flex-1 min-w-0 text-right ${isPOTM ? 'font-semibold' : 'text-slate-700'} ${p.personId ? 'hover:text-emerald-600 transition-colors' : ''}`
-                  return (
-                    // Mirrored right column: POTM badge ← name ← captain slot
-                    // ← number slot. Same reserved slots, no avatar.
-                    <div key={p.id} className={`flex items-center gap-2 justify-end ${isPOTM ? '-mx-2 px-2 py-1 rounded' : ''}`} style={rowStyle}>
-                      {isPOTM && (
-                        <span className="text-[9px] font-bold uppercase tracking-widest shrink-0"
-                          style={{ color: pomColor(awayPOTM, awayCol) }}>POTM</span>
-                      )}
-                      {p.personId
-                        ? <Link to={playerUrl({ id: p.personId, slug: p.personSlug })} className={nameCls} style={nameStyle}>{p.personName}</Link>
-                        : <span className={nameCls} style={nameStyle}>{p.personName}</span>}
-                      <span className="w-5 text-center text-sm font-bold leading-none shrink-0" style={{ color: awayCol }}>{p.isCaptain ? '©' : ''}</span>
-                      <span className="w-7 h-5 flex items-center justify-center rounded bg-slate-100 border border-slate-200 font-mono tabular-nums text-[10px] font-bold text-slate-500 shrink-0">{p.shirtNumber ?? ''}</span>
-                    </div>
-                  )
-                })}
-              </div>
+            <div className="flex items-start gap-1.5 justify-end">
+              <MatchTeamIdentity match={match} side="away" hideIdentifier align="right" className="flex-1 min-w-0"
+                nameClass="text-xs font-extrabold uppercase tracking-wide text-slate-600 break-words leading-snug" />
+              <MatchTeamCrest match={match} side="away" size={20} />
             </div>
+          </div>
+          {/* Paired player rows */}
+          <div className="space-y-2">
+            {Array.from({ length: rowCount }).map((_, i) => {
+              const h = homeSelection[i]
+              const a = awaySelection[i]
+              const hPOTM = h ? isLineupEntryPOM(homePOTM, h) : false
+              const aPOTM = a ? isLineupEntryPOM(awayPOTM, a) : false
+              // (GK) then (C) read as an extension of the name — same styling,
+              // so a goalkeeper-captain shows "Name (GK) (C)".
+              const hSuffix = h ? `${h.isGoalkeeper ? ' (GK)' : ''}${h.isCaptain ? ' (C)' : ''}` : ''
+              const aSuffix = a ? `${a.isGoalkeeper ? ' (GK)' : ''}${a.isCaptain ? ' (C)' : ''}` : ''
+              return (
+                <div key={i} className="grid grid-cols-2 gap-x-8">
+                  {/* Home cell */}
+                  {h ? (
+                    <div className={`flex items-center gap-1.5 ${hPOTM ? '-mx-2 px-2 py-0.5 rounded' : ''}`}
+                      style={hPOTM ? { backgroundColor: pomBgTint(homePOTM, homeCol) } : undefined}>
+                      <span className="w-7 h-5 flex items-center justify-center rounded bg-slate-100 border border-slate-200 font-mono tabular-nums text-[10px] font-bold text-slate-500 shrink-0">{h.shirtNumber ?? ''}</span>
+                      {h.personId
+                        ? <Link to={playerUrl({ id: h.personId, slug: h.personSlug })} className={`text-xs break-words leading-tight min-w-0 hover:text-emerald-600 transition-colors ${hPOTM ? 'font-semibold' : 'text-slate-700'}`} style={hPOTM ? { color: pomColor(homePOTM, homeCol) } : undefined}>{h.personName}{hSuffix}</Link>
+                        : <span className={`text-xs break-words leading-tight min-w-0 ${hPOTM ? 'font-semibold' : 'text-slate-700'}`} style={hPOTM ? { color: pomColor(homePOTM, homeCol) } : undefined}>{h.personName}{hSuffix}</span>}
+                      {hPOTM && <span className="text-[9px] font-bold uppercase tracking-widest shrink-0" style={{ color: pomColor(homePOTM, homeCol) }}>POTM</span>}
+                    </div>
+                  ) : <div />}
+                  {/* Away cell */}
+                  {a ? (
+                    <div className={`flex items-center justify-end gap-1.5 ${aPOTM ? '-mx-2 px-2 py-0.5 rounded' : ''}`}
+                      style={aPOTM ? { backgroundColor: pomBgTint(awayPOTM, awayCol) } : undefined}>
+                      {aPOTM && <span className="text-[9px] font-bold uppercase tracking-widest shrink-0" style={{ color: pomColor(awayPOTM, awayCol) }}>POTM</span>}
+                      {a.personId
+                        ? <Link to={playerUrl({ id: a.personId, slug: a.personSlug })} className={`text-xs break-words leading-tight min-w-0 text-right hover:text-emerald-600 transition-colors ${aPOTM ? 'font-semibold' : 'text-slate-700'}`} style={aPOTM ? { color: pomColor(awayPOTM, awayCol) } : undefined}>{a.personName}{aSuffix}</Link>
+                        : <span className={`text-xs break-words leading-tight min-w-0 text-right ${aPOTM ? 'font-semibold' : 'text-slate-700'}`} style={aPOTM ? { color: pomColor(awayPOTM, awayCol) } : undefined}>{a.personName}{aSuffix}</span>}
+                      <span className="w-7 h-5 flex items-center justify-center rounded bg-slate-100 border border-slate-200 font-mono tabular-nums text-[10px] font-bold text-slate-500 shrink-0">{a.shirtNumber ?? ''}</span>
+                    </div>
+                  ) : <div />}
+                </div>
+              )
+            })}
           </div>
         </div>
         )

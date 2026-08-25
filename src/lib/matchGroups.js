@@ -85,7 +85,9 @@ function assignRows(pairs, homeOrg, awayOrg) {
       ageSlug, ageLabel: ageLabel(ageSlug), gender,
       seniority: seniorityDescriptor({ ...band, gender: teamGender(band, band === p.home ? homeOrg : awayOrg) }),
       home: p.home, away: p.away,
-      scheduledAt: p.scheduledAt ?? null, venue: p.venue,
+      scheduledAt: p.scheduledAt ?? null,
+      // Venue trio kept together through pairing so a per-row link survives.
+      venue: p.venue, venueId: p.venueId ?? null, venueSlug: p.venueSlug ?? null,
     }
   })
   rows.sort((a, b) => compareSeniority(a.seniority, b.seniority))
@@ -125,7 +127,7 @@ export function autoPairTeams(homeTeams = [], awayTeams = [], { homeOrg, awayOrg
 // row's chosen scheduledAt / venue, and re-derives ageSlug, gender and groupOrder.
 export function finalizeRows(selected = [], { homeOrg, awayOrg } = {}) {
   return assignRows(
-    selected.map(r => ({ home: r.home, away: r.away, scheduledAt: r.scheduledAt ?? null, venue: r.venue })),
+    selected.map(r => ({ home: r.home, away: r.away, scheduledAt: r.scheduledAt ?? null, venue: r.venue, venueId: r.venueId ?? null, venueSlug: r.venueSlug ?? null })),
     homeOrg, awayOrg,
   ).rows
 }

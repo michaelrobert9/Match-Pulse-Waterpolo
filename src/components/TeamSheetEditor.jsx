@@ -104,16 +104,18 @@ export default function TeamSheetEditor({ competitionId, team, matchId = null, s
   }
 
   function matchRow(row, peopleList) {
-    const m = matchRowToPeople(row, peopleList)
+    const m = matchRowToPeople(row, peopleList, { competitionId })
     return {
       ...row,
       matchStatus: m.status,
       personId: m.status === 'linked' ? m.personId : null,
       candidates: m.candidates,
-      // Bias towards linking: an ambiguous row pre-selects its first
-      // candidate — a wrong link is visible and fixable, a duplicate silent.
+      // A confident match links by default (person id); a genuinely new name
+      // creates a profile ('new'); an ambiguous row is left UNRESOLVED ('') so
+      // the user must pick — the confirm gate blocks until they do, which is
+      // what stops a silent duplicate.
       chosen: m.status === 'linked' ? m.personId
-        : m.status === 'ambiguous' ? (m.candidates[0]?.id ?? 'new')
+        : m.status === 'ambiguous' ? ''
         : 'new',
     }
   }
@@ -182,6 +184,9 @@ export default function TeamSheetEditor({ competitionId, team, matchId = null, s
     return caps.length ? Math.max(...caps) : null
   }, [rows])
   const newCount = rows.filter(r => r.chosen === 'new' && `${r.firstName}${r.surname}`.trim()).length
+  // An ambiguous row with no choice made yet blocks the save (§6): the user
+  // must say who it is (or "Create new player") before we write anything.
+  const unresolved = rows.filter(r => r.matchStatus === 'ambiguous' && !r.chosen).length
 
   async function handleConfirm() {
     setSaving(true)
@@ -229,7 +234,7 @@ export default function TeamSheetEditor({ competitionId, team, matchId = null, s
     }
   }
 
-  const confirmDisabled = saving || rows.length === 0
+  const confirmDisabled = saving || rows.length === 0 || unresolved > 0
 
   return (
     <div className="fixed inset-0 z-50 bg-slate-900/60 flex items-stretch sm:items-center justify-center">
@@ -355,7 +360,9 @@ export default function TeamSheetEditor({ competitionId, team, matchId = null, s
                             }`}>
                             <span className="text-sm font-bold leading-none align-middle normal-case">©</span> Captain
                           </button>
-                          <StatusChip row={row} />
+                          {/* A row with candidates shows the chooser (below);
+                              only a row with none shows a status chip here. */}
+                          {!(row.candidates?.length > 0) && <StatusChip row={row} />}
                           {warnDupCap && (
                             <span className="text-[10px] font-bold uppercase tracking-widest text-amber-700 bg-amber-50 border border-amber-200 rounded-full px-2 py-0.5">
                               Duplicate cap
@@ -371,11 +378,15 @@ export default function TeamSheetEditor({ competitionId, team, matchId = null, s
                             <X className="w-4 h-4" />
                           </button>
                         </div>
-                        {/* Ambiguous rows are the only case that asks a question (§6). */}
-                        {row.matchStatus === 'ambiguous' && (
+                        {/* Any row with plausible candidates gets the chooser
+                            (link to one, or create new) — not just exact-name
+                            clashes (§6). A confident match arrives pre-selected;
+                            an ambiguous one starts blank and blocks the save. */}
+                        {row.candidates?.length > 0 && (
                           <select value={row.chosen} aria-label="Match to an existing player"
                             onChange={e => patchRow(row.key, { chosen: e.target.value })}
                             className="w-full h-10 bg-amber-50/50 border border-amber-200 rounded-lg px-2.5 text-sm text-slate-900 focus:outline-none focus:border-amber-400">
+                            <option value="">Which player is this?</option>
                             {row.candidates.map(c => (
                               <option key={c.id} value={c.id}>Link to {c.fullName}</option>
                             ))}
@@ -445,6 +456,9 @@ export default function TeamSheetEditor({ competitionId, team, matchId = null, s
               className="flex-1 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white font-bold text-sm rounded-lg py-3 transition-colors">
               {saving ? 'Saving…' : hadExisting ? 'Save' : 'Add'}
             </button>
+            {unresolved > 0 && (
+              <span className="text-[11px] font-medium text-amber-700">{unresolved} to resolve</span>
+            )}
             <button onClick={onClose}
               className="text-sm font-medium text-emerald-700 hover:text-emerald-600 transition-colors px-2 min-h-[44px]">
               Cancel

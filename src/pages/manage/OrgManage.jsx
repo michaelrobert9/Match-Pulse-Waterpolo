@@ -31,6 +31,7 @@ import StatusBadge from '../../components/StatusBadge'
 import CompetitionStatusBadge from '../../components/CompetitionStatusBadge'
 import OpponentSelector from '../../components/OpponentSelector'
 import FormatSelector from '../../components/FormatSelector'
+import VenuePicker from '../../components/VenuePicker'
 import { MatchTeamIdentity, MatchVersus } from '../../components/TeamIdentity'
 import { prefetchMatchTeams } from '../../lib/teamIdentity'
 import TeamListCrest from '../../components/TeamListCrest'
@@ -98,101 +99,11 @@ function fmtDate(val) {
 // ── Upcoming fixtures section ─────────────────────────────────────────────────
 
 function UpcomingFixturesSection({ orgId, org, competitions, teams, matches, setMatches, loading, defaultOpen }) {
-  const [showAdd, setShowAdd] = useState(false)
-  const [saving,  setSaving]  = useState(false)
-  const [form,    setForm]    = useState({
-    yourSide:      'club',
-    yourTeamId:    '',
-    side:          'home',
-    opponent:      null,
-    scheduledAt:   '', pitch: '',
-    periods:       DEFAULT_PERIODS, periodMinutes: DEFAULT_PERIOD_MINUTES,
-    breakMinutes:  DEFAULT_BREAK_MINUTES, indoor: false,
-    competitionId: '',
-  })
-
-  useEffect(() => { if (defaultOpen) setShowAdd(true) }, [defaultOpen])
-
   const upcoming = matches
     .filter(m => m.status !== 'final')
     .sort((a, b) => toDate(a.scheduledAt) - toDate(b.scheduledAt))
 
-  const [showCompetition, setShowCompetition] = useState(false)
-
   const isSchool = org?.type === 'school'
-  const color    = org?.primaryColor || '#555'
-
-  const clubAsSide = {
-    id:             null,
-    displayName:    org?.name,
-    orgName:        null,
-    primaryColor:   org?.primaryColor || null,
-    organizationId: orgId,
-  }
-
-  const yourTeamObj = isSchool
-    ? (teams.find(t => t.id === form.yourTeamId) ?? null)
-    : form.yourSide === 'club'
-      ? clubAsSide
-      : (teams.find(t => t.id === form.yourSide) ?? null)
-
-  const excludeTeamId = isSchool
-    ? form.yourTeamId
-    : form.yourSide !== 'club' ? form.yourSide : null
-
-  const canSubmit = !!yourTeamObj && !!form.opponent && !!form.scheduledAt
-    && Number(form.periods) > 0 && Number(form.periodMinutes) > 0
-
-  async function handleCreate(e) {
-    e.preventDefault()
-    if (!canSubmit) return
-    setSaving(true)
-    try {
-      const homeTeam = form.side === 'home' ? yourTeamObj : form.opponent
-      const awayTeam = form.side === 'home' ? form.opponent : yourTeamObj
-      const comp = competitions.find(c => c.id === form.competitionId)
-
-      const ref = await createMatch(form.competitionId || null, homeTeam, awayTeam, {
-        scheduledAt:   new Date(form.scheduledAt),
-        pitch:         form.pitch,
-        season:        comp?.season ?? null,
-        periods:       Number(form.periods),
-        periodMinutes: Number(form.periodMinutes),
-        breakMinutes:  form.breakMinutes,
-        indoor:        form.indoor,
-      })
-      // A competition fixture is a match + membership join record, never a
-      // bare match.competitionId (dropdown lists only this org's competitions).
-      if (form.competitionId) {
-        await addFixtureToCompetition(form.competitionId, {
-          id: ref.id, homeTeamId: homeTeam.id ?? null, awayTeamId: awayTeam.id ?? null,
-        })
-      }
-      const newMatch = {
-        id: ref.id,
-        competitionId: form.competitionId || null,
-        homeTeamId:    homeTeam.id ?? null,
-        awayTeamId:    awayTeam.id ?? null,
-        homeTeamName:  homeTeam.displayName,
-        homeOrgName:   homeTeam.orgName   || null,
-        awayTeamName:  awayTeam.displayName,
-        awayOrgName:   awayTeam.orgName   || null,
-        homeTeamColor: homeTeam.primaryColor || null,
-        awayTeamColor: awayTeam.primaryColor || null,
-        homeOrgId:     homeTeam.organizationId || null,
-        awayOrgId:     awayTeam.organizationId || null,
-        homeScore: 0, awayScore: 0,
-        scheduledAt: new Date(form.scheduledAt), pitch: form.pitch, status: 'scheduled', tracked: false,
-      }
-      setMatches(prev => [...prev, newMatch])
-      setShowAdd(false)
-      setForm(f => ({
-        ...f,
-        yourSide: 'club', yourTeamId: '',
-        opponent: null, scheduledAt: '', pitch: '', side: 'home',
-      }))
-    } finally { setSaving(false) }
-  }
 
   if (loading) return <Section id="fixtures" title="Upcoming Matches"><Spinner /></Section>
 
@@ -204,144 +115,26 @@ function UpcomingFixturesSection({ orgId, org, competitions, teams, matches, set
       title={`Upcoming Matches (${upcoming.length})`}
       action={
         canAddNew && (
-          <button onClick={() => setShowAdd(v => !v)}
+          <Link to={`/match/new?org=${orgId}`}
             className="text-[10px] font-bold uppercase tracking-widest text-emerald-600 hover:text-emerald-500 transition-colors">
-            {showAdd ? 'Cancel' : '+ New'}
-          </button>
+            + New
+          </Link>
         )
       }
     >
-      {showAdd && (
-        <form onSubmit={handleCreate} className="px-4 py-4 border-b border-slate-200 space-y-4">
-
-          {isSchool ? (
-            <Select label="Your team" value={form.yourTeamId} required
-              onChange={e => setForm(f => ({ ...f, yourTeamId: e.target.value, opponent: null }))}>
-              <option value="">Select your team…</option>
-              {teams.map(t => <option key={t.id} value={t.id}>{t.displayName}</option>)}
-            </Select>
-          ) : (
-            <div>
-              <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-2">Your side</p>
-              <div className="space-y-1.5">
-                <button type="button"
-                  onClick={() => setForm(f => ({ ...f, yourSide: 'club' }))}
-                  className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-xl border transition-colors text-left ${
-                    form.yourSide === 'club'
-                      ? 'border-emerald-500 bg-emerald-50'
-                      : 'border-slate-200 hover:border-slate-300 bg-white'
-                  }`}>
-                  <div className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0"
-                    style={{ backgroundColor: color + '25', border: `1.5px solid ${color}` }}>
-                    <span className="text-[8px] font-bold font-mono" style={{ color }}>{monogram(org?.name)}</span>
-                  </div>
-                  <div>
-                    <span className={`text-sm font-semibold ${form.yourSide === 'club' ? 'text-slate-900' : 'text-slate-600'}`}>
-                      {org?.name}
-                    </span>
-                    <span className="text-[9px] text-slate-500 uppercase tracking-widest font-bold ml-2">Club</span>
-                  </div>
-                </button>
-                {teams.length > 0 && (
-                  <>
-                    <p className="text-[9px] font-bold uppercase tracking-widest text-slate-600 px-1 pt-1">or select a team</p>
-                    {teams.map(team => (
-                      <button type="button" key={team.id}
-                        onClick={() => setForm(f => ({ ...f, yourSide: team.id }))}
-                        className={`w-full flex items-center gap-3 px-4 py-2 rounded-xl border transition-colors text-left ${
-                          form.yourSide === team.id
-                            ? 'border-emerald-500 bg-emerald-50'
-                            : 'border-slate-200 hover:border-slate-300 bg-white'
-                        }`}>
-                        <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: team.primaryColor || '#555' }} />
-                        <span className={`text-sm font-semibold ${form.yourSide === team.id ? 'text-slate-900' : 'text-slate-600'}`}>
-                          {team.displayName}
-                        </span>
-                      </button>
-                    ))}
-                  </>
-                )}
-              </div>
-            </div>
-          )}
-
-          <div>
-            <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-2">Playing at</p>
-            <div className="flex gap-2">
-              {[{ v: 'home', label: 'Home (we host)' }, { v: 'away', label: 'Away (we travel)' }].map(o => (
-                <button type="button" key={o.v} onClick={() => setForm(f => ({ ...f, side: o.v }))}
-                  className={`flex-1 text-[10px] font-bold uppercase tracking-widest px-3 py-2 rounded-lg border transition-colors ${
-                    form.side === o.v ? 'bg-emerald-500 border-emerald-500 text-white' : 'border-slate-200 text-slate-600 hover:border-slate-400'
-                  }`}>
-                  {o.label}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          <div>
-            <label className="text-[10px] font-bold uppercase tracking-widest text-slate-400 block mb-1.5">
-              Opponent
-            </label>
-            <OpponentSelector
-              orgTeams={teams}
-              excludeTeamId={excludeTeamId}
-              orgId={orgId}
-              excludeOrgId={orgId}
-              value={form.opponent}
-              onChange={opp => setForm(f => ({ ...f, opponent: opp }))}
-            />
-          </div>
-
-          <Input label="Date & time" type="datetime-local" required
-            value={form.scheduledAt} onChange={e => setForm(f => ({ ...f, scheduledAt: e.target.value }))} />
-          <Input label="Venue / pool (optional)" value={form.pitch} placeholder="e.g. Main pool"
-            onChange={e => setForm(f => ({ ...f, pitch: e.target.value }))} />
-
-          <div>
-            <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-3">Match format</p>
-            <FormatSelector
-              periods={form.periods}
-              periodMinutes={form.periodMinutes}
-              breakMinutes={form.breakMinutes}
-              indoor={form.indoor}
-              onChange={({ periods, periodMinutes, breakMinutes, indoor }) => setForm(f => ({ ...f, periods, periodMinutes, breakMinutes, indoor }))}
-            />
-          </div>
-
-          {competitions.length > 0 && (
-            <div>
-              <button type="button" onClick={() => setShowCompetition(v => !v)}
-                className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest text-slate-600 hover:text-slate-400 transition-colors">
-                <ChevronRight className={`w-3 h-3 transition-transform ${showCompetition ? 'rotate-90' : ''}`} />
-                Competition (optional)
-              </button>
-              {showCompetition && (
-                <Select className="mt-2" value={form.competitionId}
-                  onChange={e => setForm(f => ({ ...f, competitionId: e.target.value }))}>
-                  <option value="">No competition</option>
-                  {competitions.map(c => <option key={c.id} value={c.id}>{c.name}{c.season ? ` (${c.season})` : ''}</option>)}
-                </Select>
-              )}
-            </div>
-          )}
-
-          <button type="submit" disabled={saving || !canSubmit}
-            className="w-full bg-emerald-500 hover:bg-emerald-400 disabled:opacity-50 text-white font-bold text-sm uppercase tracking-wider rounded-lg py-2.5 transition-colors">
-            {saving ? 'Creating…' : 'Create match'}
-          </button>
-        </form>
-      )}
-
       {isSchool && teams.length === 0 && (
         <div className="px-4 py-8 text-center">
           <p className="text-slate-500 text-sm">Add a team first, then create matches.</p>
         </div>
       )}
-      {canAddNew && upcoming.length === 0 && !showAdd && (
+      {canAddNew && upcoming.length === 0 && (
         <div className="px-4 py-8 text-center">
           <p className="text-slate-400 text-sm font-medium mb-1">No upcoming matches</p>
-          <p className="text-slate-600 text-xs">Create your first match to start scoring matches.</p>
+          <p className="text-slate-600 text-xs mb-4">Create your first match to start scoring matches.</p>
+          <Link to={`/match/new?org=${orgId}`}
+            className="inline-flex items-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-sm uppercase tracking-wider rounded-xl px-5 py-2.5 transition-colors">
+            Create match
+          </Link>
         </div>
       )}
       {upcoming.length > 0 && (
@@ -1545,7 +1338,7 @@ export default function OrgManage() {
         <QuickActions
           teams={teams}
           org={org}
-          onFixture={() => scrollAndOpen(fixtureRef, setOpenFixture)}
+          onFixture={() => navigate(`/match/new?org=${id}`)}
           onTeam={() => scrollAndOpen(teamRef, setOpenTeam)}
           onCompetition={() => scrollAndOpen(competitionRef, setOpenCompetition)}
           canManage={canManage}

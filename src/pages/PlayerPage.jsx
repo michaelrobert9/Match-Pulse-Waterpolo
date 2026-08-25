@@ -129,10 +129,12 @@ export default function PlayerPage() {
         if (!p) { setNotFound(true); return }
         setPerson(p)
         document.title = `${p.fullName} · MatchPulse`
-        const [c, orgDocs] = await Promise.all([
-          fetchCareerForPerson(p.id),
-          Promise.all((p.representativeOrgs ?? []).map(o => fetchOrganization(o.orgId))),
-        ])
+        // "Represents" is derived from actual participation (career slices), not
+        // the append-only representativeOrgs — an org the player never fielded
+        // for (e.g. a deleted test fixture) must not appear.
+        const c = await fetchCareerForPerson(p.id)
+        const orgIds  = [...new Set(c.map(r => r.organizationId).filter(Boolean))]
+        const orgDocs = await Promise.all(orgIds.map(oid => fetchOrganization(oid)))
         if (alive) {
           setCareer(c)
           setOrgs(orgDocs.filter(Boolean))

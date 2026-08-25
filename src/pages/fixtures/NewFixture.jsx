@@ -9,6 +9,7 @@ import { fetchCompetitionsForOrg, createMatch, addFixtureToCompetition } from '.
 import { DEFAULT_PERIODS, DEFAULT_PERIOD_MINUTES, DEFAULT_BREAK_MINUTES } from '../../lib/matchClock'
 import OpponentSelector from '../../components/OpponentSelector'
 import FormatSelector from '../../components/FormatSelector'
+import VenuePicker from '../../components/VenuePicker'
 import { monogram } from '../../lib/names'
 import { composeTeamDisplay } from '../../lib/teamNaming'
 
@@ -153,6 +154,8 @@ function SchoolFixtureForm({ org, canChange, onChangeOrg }) {
     opponent:      null,
     scheduledAt:   '',
     pitch:         '',
+    venueId:       null,
+    venueSlug:     null,
     periods:       DEFAULT_PERIODS,
     periodMinutes: DEFAULT_PERIOD_MINUTES,
     breakMinutes:  DEFAULT_BREAK_MINUTES,
@@ -188,6 +191,8 @@ function SchoolFixtureForm({ org, canChange, onChangeOrg }) {
       const ref = await createMatch(form.competitionId || null, homeTeam, awayTeam, {
         scheduledAt:   new Date(form.scheduledAt),
         pitch:         form.pitch.trim(),
+        venueId:       form.venueId,
+        venueSlug:     form.venueSlug,
         season:        comp?.season ?? null,
         competitionSlug: comp?.slug ?? null,
         periods:       Number(form.periods),
@@ -206,7 +211,7 @@ function SchoolFixtureForm({ org, canChange, onChangeOrg }) {
       const homeLabel = composeTeamDisplay(homeTeam.teamName || homeTeam.orgName, homeTeam.displayName)
       const awayLabel = composeTeamDisplay(awayTeam.teamName || awayTeam.orgName, awayTeam.displayName)
       setDone({ matchId: ref.id, matchName: `${homeLabel} vs ${awayLabel}` })
-      setForm(f => ({ ...f, yourTeamId: '', opponent: null, scheduledAt: '', pitch: '', side: 'home' }))
+      setForm(f => ({ ...f, yourTeamId: '', opponent: null, scheduledAt: '', pitch: '', venueId: null, venueSlug: null, side: 'home' }))
     } catch (err) {
       setError(err.message ?? 'Something went wrong. Please try again.')
     } finally { setSaving(false) }
@@ -291,11 +296,12 @@ function SchoolFixtureForm({ org, canChange, onChangeOrg }) {
             <label className="text-[10px] font-bold uppercase tracking-widest text-slate-500 block mb-1.5">
               Venue <span className="text-slate-400 normal-case tracking-normal font-normal">optional</span>
             </label>
-            <input type="text"
-              className="w-full bg-white border border-slate-200 rounded-lg px-3 py-2.5 text-slate-900 text-sm placeholder-slate-400 focus:outline-none focus:border-emerald-500 transition-colors"
+            <VenuePicker
+              pitch={form.pitch} venueId={form.venueId} venueSlug={form.venueSlug}
+              hostOrgId={org.id}
               placeholder="e.g. Main pool"
-              value={form.pitch}
-              onChange={e => setForm(f => ({ ...f, pitch: e.target.value }))} />
+              inputClassName="w-full bg-white border border-slate-200 rounded-lg px-3 py-2.5 text-slate-900 text-sm placeholder-slate-400 focus:outline-none focus:border-emerald-500 transition-colors"
+              onChange={v => setForm(f => ({ ...f, ...v }))} />
           </div>
 
           {/* Format */}
@@ -348,6 +354,8 @@ function ClubFixtureForm({ org, canChange, onChangeOrg }) {
     opponent:      null,
     scheduledAt:   '',
     pitch:         '',
+    venueId:       null,
+    venueSlug:     null,
     periods:       DEFAULT_PERIODS,
     periodMinutes: DEFAULT_PERIOD_MINUTES,
     breakMinutes:  DEFAULT_BREAK_MINUTES,
@@ -398,6 +406,8 @@ function ClubFixtureForm({ org, canChange, onChangeOrg }) {
       const ref = await createMatch(form.competitionId || null, homeTeam, awayTeam, {
         scheduledAt:   new Date(form.scheduledAt),
         pitch:         form.pitch.trim(),
+        venueId:       form.venueId,
+        venueSlug:     form.venueSlug,
         season:        comp?.season ?? null,
         competitionSlug: comp?.slug ?? null,
         periods:       Number(form.periods),
@@ -413,7 +423,7 @@ function ClubFixtureForm({ org, canChange, onChangeOrg }) {
       const homeLabel = composeTeamDisplay(homeTeam.teamName || homeTeam.orgName, homeTeam.displayName)
       const awayLabel = composeTeamDisplay(awayTeam.teamName || awayTeam.orgName, awayTeam.displayName)
       setDone({ matchId: ref.id, matchName: `${homeLabel} vs ${awayLabel}` })
-      setForm(f => ({ ...f, yourSide: 'club', opponent: null, scheduledAt: '', pitch: '', side: 'home' }))
+      setForm(f => ({ ...f, yourSide: 'club', opponent: null, scheduledAt: '', pitch: '', venueId: null, venueSlug: null, side: 'home' }))
     } catch (err) {
       setError(err.message ?? 'Something went wrong. Please try again.')
     } finally { setSaving(false) }
@@ -518,11 +528,12 @@ function ClubFixtureForm({ org, canChange, onChangeOrg }) {
           <label className="text-[10px] font-bold uppercase tracking-widest text-slate-500 block mb-1.5">
             Venue <span className="text-slate-400 normal-case tracking-normal font-normal">optional</span>
           </label>
-          <input type="text"
-            className="w-full bg-white border border-slate-200 rounded-lg px-3 py-2.5 text-slate-900 text-sm placeholder-slate-400 focus:outline-none focus:border-emerald-500 transition-colors"
+          <VenuePicker
+            pitch={form.pitch} venueId={form.venueId} venueSlug={form.venueSlug}
+            hostOrgId={org.id}
             placeholder="e.g. Main pool, Club pool"
-            value={form.pitch}
-            onChange={e => setForm(f => ({ ...f, pitch: e.target.value }))} />
+            inputClassName="w-full bg-white border border-slate-200 rounded-lg px-3 py-2.5 text-slate-900 text-sm placeholder-slate-400 focus:outline-none focus:border-emerald-500 transition-colors"
+            onChange={v => setForm(f => ({ ...f, ...v }))} />
         </div>
 
         {/* Format */}

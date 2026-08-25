@@ -31,6 +31,7 @@ import {
 import { competitionTeamLabel } from '../../../lib/teamNaming'
 import { competitionMatchFormat } from '../../../lib/matchClock'
 import StandingsTable from '../../../components/StandingsTable'
+import VenuePicker from '../../../components/VenuePicker'
 
 const CONFIRMED = new Set(['accepted', 'admin_approved'])
 const POOL_LETTERS = 'ABCDEFGH'
@@ -1418,12 +1419,14 @@ function PlayoffScheduleRow({ fixture, competitionId, run, busy }) {
   const [open, setOpen]   = useState(false)
   const [when, setWhen]   = useState(() => toLocalInput(fixture.scheduledAt))
   const [pitch, setPitch] = useState(fixture.pitch ?? '')
+  const [venueId,   setVenueId]   = useState(fixture.venueId ?? null)
+  const [venueSlug, setVenueSlug] = useState(fixture.venueSlug ?? null)
   const scheduled = fmtMatchTime(fixture.scheduledAt)
 
   function save() {
     run(() => schedulePlayoffFixture(competitionId, fixture.id, {
       scheduledAt: when ? new Date(when) : null,
-      pitch: pitch.trim(),
+      pitch: pitch.trim(), venueId, venueSlug,
     }), 'Match scheduled.')
     setOpen(false)
   }
@@ -1442,8 +1445,12 @@ function PlayoffScheduleRow({ fixture, competitionId, run, busy }) {
         <div className="space-y-1.5">
           <input type="datetime-local" value={when} onChange={e => setWhen(e.target.value)}
             className="w-full bg-white border border-slate-200 rounded-lg px-2 py-1 text-[12px]" />
-          <input value={pitch} onChange={e => setPitch(e.target.value)} placeholder="Venue / pool (optional)"
-            className="w-full bg-white border border-slate-200 rounded-lg px-2 py-1 text-[12px] placeholder-slate-400" />
+          <VenuePicker
+            pitch={pitch} venueId={venueId} venueSlug={venueSlug}
+            hostOrgId={fixture.homeOrgId ?? null}
+            placeholder="Venue / pool (optional)"
+            inputClassName="w-full bg-white border border-slate-200 rounded-lg px-2 py-1 text-[12px] placeholder-slate-400"
+            onChange={v => { setPitch(v.pitch); setVenueId(v.venueId); setVenueSlug(v.venueSlug) }} />
           <div className="flex gap-1.5">
             <button onClick={save} disabled={busy}
               className="flex-1 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-40 text-white text-[11px] font-bold rounded-lg py-1">Save</button>

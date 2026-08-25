@@ -4,6 +4,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom'
 import { fetchMatchGroup, fetchMatchGroupChildren } from '../../lib/queries'
 import { setMatchTimes } from '../../lib/adminQueries'
 import { matchPath, ageLabel } from '../../lib/matchPaths'
+import VenuePicker from '../../components/VenuePicker'
 
 function Spinner() {
   return (
@@ -57,6 +58,8 @@ export default function MatchTimesGrid() {
           away:    c.awayTeamName ?? '',
           when:    toLocalInputValue(toDateSafe(c.scheduledAt)),
           venue:   c.pitch ?? '',
+          venueId: c.venueId ?? null,
+          venueSlug: c.venueSlug ?? null,
         })))
       })
       .catch(() => { if (alive) setGroup(null) })
@@ -78,6 +81,8 @@ export default function MatchTimesGrid() {
         // Blank datetime is valid — it clears the scheduled time to null.
         scheduledAt: r.when ? new Date(r.when) : null,
         venue:       r.venue || '',
+        venueId:     r.venueId || null,
+        venueSlug:   r.venueSlug || null,
       }))
       await setMatchTimes(patches)
       navigate(matchPath(date, slug))
@@ -157,11 +162,12 @@ export default function MatchTimesGrid() {
                       <label className="text-[10px] font-bold uppercase tracking-widest text-slate-500 block mb-1">
                         Venue <span className="text-slate-400 normal-case tracking-normal font-normal">optional</span>
                       </label>
-                      <input type="text"
-                        className="w-full bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 text-slate-900 text-sm placeholder-slate-400 focus:outline-none focus:border-emerald-500 transition-colors"
+                      <VenuePicker
+                        pitch={r.venue} venueId={r.venueId} venueSlug={r.venueSlug}
+                        hostOrgId={group?.ownerOrgId ?? group?.homeOrgId ?? null}
                         placeholder="e.g. Court 1"
-                        value={r.venue}
-                        onChange={ev => updateRow(r.id, { venue: ev.target.value })} />
+                        inputClassName="w-full bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 text-slate-900 text-sm placeholder-slate-400 focus:outline-none focus:border-emerald-500 transition-colors"
+                        onChange={v => updateRow(r.id, { venue: v.pitch, venueId: v.venueId, venueSlug: v.venueSlug })} />
                     </div>
                   </div>
                 </div>

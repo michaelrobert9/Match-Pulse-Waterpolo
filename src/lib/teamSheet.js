@@ -248,29 +248,70 @@ export function nextUnusedCap(rows) {
 
 // ── §6 profile matching ──────────────────────────────────────────────────────
 // Match a parsed row against existing player profiles. Biased towards
-// linking: a duplicate profile is worse than a wrong link, because a wrong
-// link is visible and fixable and a duplicate is silent.
-//   • exactly one exact full-name match       → 'linked' (no prompt)
-//   • several exact matches, or fuzzy matches → 'ambiguous' (chooser)
-//   • nothing plausible                       → 'new'
-// Fuzzy = same surname + same first initial (catches "J Smith" vs "John
-// Smith" and minor first-name variants).
-export function matchRowToPeople(row, people) {
-  const fullName = `${row.firstName} ${row.surname}`.trim().toLowerCase()
-  if (!fullName || row.unreadable) return { status: 'new', personId: null, candidates: [] }
-  const exact = people.filter(p => (p.fullName ?? '').trim().toLowerCase() === fullName)
-  if (exact.length === 1) return { status: 'linked', personId: exact[0].id, candidates: exact }
-  if (exact.length > 1) return { status: 'ambiguous', personId: null, candidates: exact }
-  const surname = row.surname.trim().toLowerCase()
-  const initial = row.firstName.trim().toLowerCase()[0] ?? ''
-  const fuzzy = surname
-    ? people.filter(p => {
-        const parts = (p.fullName ?? '').trim().toLowerCase().split(/\s+/)
-        const pSurname = parts[parts.length - 1] ?? ''
-        const pInitial = parts[0]?.[0] ?? ''
-        return pSurname === surname && pInitial === initial && parts.length > 1
-      })
-    : []
-  if (fuzzy.length > 0) return { status: 'ambiguous', personId: null, candidates: fuzzy }
-  return { status: 'new', personId: null, candidates: [] }
+// SURFACING a match: a silent duplicate is worse than showing the user a
+// candidate they can dismiss, so anything sharing a surname (or an exact first
+// name) is offered as a candidate to link. The user is never forced to link,
+// but they are never left creating a duplicate blind either.
+//   • exactly one exact full-name match  → 'linked'    (linked by default)
+//   • several exact / any plausible ones → 'ambiguous' (chooser)
+//   • nothing plausible                  → 'new'
+// Candidates are collected by ranked name similarity (exact → first+surname →
+// surname+initial → surname → shared first name) and capped, best first.
+
+// Normalise a name for MATCHING only (distinct from normaliseName, which is for
+// display): lower-case, strip accents and punctuation, collapse whitespace.
+function normaliseForMatch(name) {
+  return String(name ?? '')
+    .toLowerCase()
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '')  // strip accents
+    .replace(/[^a-z\s]/g, '')                           // strip punctuation
+    .replace(/\s+/g, ' ')
+    .trim()
+}
+
+// competitionId (optional) sharpens confidence when several profiles share an
+// exact name — a profile already in this competition wins the tie.
+export function matchRowToPeople(row, people, { competitionId = null } = {}) {
+  if (row.unreadable) return { status: 'new', personId: null, candidates: [] }
+  const target = normaliseForMatch(`${row.firstName ?? ''} ${row.surname ?? ''}`)
+  if (!target) return { status: 'new', personId: null, candidates: [] }
+
+  const tParts   = target.split(' ').filter(Boolean)
+  const tFirst   = tParts[0]
+  const tLast    = tParts[tParts.length - 1]
+  const tInitial = tFirst?.[0]
+
+  // Score every profile; keep anything plausible as a candidate.
+  const scored = []
+  for (const p of (people ?? [])) {
+    if (!p || p.claimStatus === 'merged') continue      // skip tombstones
+    const n = normaliseForMatch(p.fullName)
+    if (!n) continue
+    const parts = n.split(' ').filter(Boolean)
+    const first = parts[0]
+    const last  = parts[parts.length - 1]
+
+    let score = 0
+    if (n === target)                                              score = 100  // exact
+    else if (tLast && last === tLast && tFirst && first === tFirst) score = 90  // same first+last (extra middle name)
+    else if (tLast && last === tLast && tInitial && first?.[0] === tInitial) score = 70 // surname + first initial
+    else if (tLast && last === tLast)                            score = 45    // same surname
+    else if (tFirst && first === tFirst && tParts.length > 1)    score = 25    // same first name
+    if (score > 0) scored.push({ p, score, n })
+  }
+  scored.sort((a, b) => b.score - a.score || a.n.localeCompare(b.n))
+  const candidates = scored.slice(0, 8).map(s => s.p)
+  if (candidates.length === 0) return { status: 'new', personId: null, candidates: [] }
+
+  // A single exact-name match is linked by default. If several share the exact
+  // name, competition membership breaks the tie; otherwise ask.
+  const exact = scored.filter(s => s.score === 100).map(s => s.p)
+  if (exact.length === 1) return { status: 'linked', personId: exact[0].id, candidates }
+  if (exact.length > 1 && competitionId) {
+    const inComp = exact.filter(p => (p.competitionIds ?? []).includes(competitionId))
+    if (inComp.length === 1) return { status: 'linked', personId: inComp[0].id, candidates }
+  }
+
+  // Plausible matches but nothing certain → let the user choose.
+  return { status: 'ambiguous', personId: null, candidates }
 }
