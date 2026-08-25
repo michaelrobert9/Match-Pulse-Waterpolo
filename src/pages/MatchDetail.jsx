@@ -425,6 +425,10 @@ export default function MatchDetail() {
           // team sheet writes it. The roster is a legacy fallback only; a
           // pasted captain would not appear if this joined the roster first.
           isCaptain:   e.isCaptain ?? r?.isCaptain ?? false,
+          // Goalkeeper is read from the player's PROFILE position (people doc),
+          // not the match — a keeper is tagged (GK) after their name wherever
+          // they are sheeted. 'GK' or 'goalkeeper' both count.
+          isGoalkeeper: /^(gk|goal)/i.test(String(live?.position ?? r?.position ?? '').trim()),
           isStarter:   !!e.isStarter,
         }
       })
@@ -802,6 +806,10 @@ export default function MatchDetail() {
               const a = awaySelection[i]
               const hPOTM = h ? isLineupEntryPOM(homePOTM, h) : false
               const aPOTM = a ? isLineupEntryPOM(awayPOTM, a) : false
+              // (GK) then (C) read as an extension of the name — same styling,
+              // so a goalkeeper-captain shows "Name (GK) (C)".
+              const hSuffix = h ? `${h.isGoalkeeper ? ' (GK)' : ''}${h.isCaptain ? ' (C)' : ''}` : ''
+              const aSuffix = a ? `${a.isGoalkeeper ? ' (GK)' : ''}${a.isCaptain ? ' (C)' : ''}` : ''
               return (
                 <div key={i} className="grid grid-cols-2 gap-x-8">
                   {/* Home cell */}
@@ -810,9 +818,8 @@ export default function MatchDetail() {
                       style={hPOTM ? { backgroundColor: pomBgTint(homePOTM, homeCol) } : undefined}>
                       <span className="w-7 h-5 flex items-center justify-center rounded bg-slate-100 border border-slate-200 font-mono tabular-nums text-[10px] font-bold text-slate-500 shrink-0">{h.shirtNumber ?? ''}</span>
                       {h.personId
-                        ? <Link to={playerUrl({ id: h.personId, slug: h.personSlug })} className={`text-xs break-words leading-tight min-w-0 hover:text-emerald-600 transition-colors ${hPOTM ? 'font-semibold' : 'text-slate-700'}`} style={hPOTM ? { color: pomColor(homePOTM, homeCol) } : undefined}>{h.personName}</Link>
-                        : <span className={`text-xs break-words leading-tight min-w-0 ${hPOTM ? 'font-semibold' : 'text-slate-700'}`} style={hPOTM ? { color: pomColor(homePOTM, homeCol) } : undefined}>{h.personName}</span>}
-                      {h.isCaptain && <span className="text-sm font-bold leading-none shrink-0" style={{ color: homeCol }}>©</span>}
+                        ? <Link to={playerUrl({ id: h.personId, slug: h.personSlug })} className={`text-xs break-words leading-tight min-w-0 hover:text-emerald-600 transition-colors ${hPOTM ? 'font-semibold' : 'text-slate-700'}`} style={hPOTM ? { color: pomColor(homePOTM, homeCol) } : undefined}>{h.personName}{hSuffix}</Link>
+                        : <span className={`text-xs break-words leading-tight min-w-0 ${hPOTM ? 'font-semibold' : 'text-slate-700'}`} style={hPOTM ? { color: pomColor(homePOTM, homeCol) } : undefined}>{h.personName}{hSuffix}</span>}
                       {hPOTM && <span className="text-[9px] font-bold uppercase tracking-widest shrink-0" style={{ color: pomColor(homePOTM, homeCol) }}>POTM</span>}
                     </div>
                   ) : <div />}
@@ -822,9 +829,8 @@ export default function MatchDetail() {
                       style={aPOTM ? { backgroundColor: pomBgTint(awayPOTM, awayCol) } : undefined}>
                       {aPOTM && <span className="text-[9px] font-bold uppercase tracking-widest shrink-0" style={{ color: pomColor(awayPOTM, awayCol) }}>POTM</span>}
                       {a.personId
-                        ? <Link to={playerUrl({ id: a.personId, slug: a.personSlug })} className={`text-xs break-words leading-tight min-w-0 text-right hover:text-emerald-600 transition-colors ${aPOTM ? 'font-semibold' : 'text-slate-700'}`} style={aPOTM ? { color: pomColor(awayPOTM, awayCol) } : undefined}>{a.personName}</Link>
-                        : <span className={`text-xs break-words leading-tight min-w-0 text-right ${aPOTM ? 'font-semibold' : 'text-slate-700'}`} style={aPOTM ? { color: pomColor(awayPOTM, awayCol) } : undefined}>{a.personName}</span>}
-                      {a.isCaptain && <span className="text-sm font-bold leading-none shrink-0" style={{ color: awayCol }}>©</span>}
+                        ? <Link to={playerUrl({ id: a.personId, slug: a.personSlug })} className={`text-xs break-words leading-tight min-w-0 text-right hover:text-emerald-600 transition-colors ${aPOTM ? 'font-semibold' : 'text-slate-700'}`} style={aPOTM ? { color: pomColor(awayPOTM, awayCol) } : undefined}>{a.personName}{aSuffix}</Link>
+                        : <span className={`text-xs break-words leading-tight min-w-0 text-right ${aPOTM ? 'font-semibold' : 'text-slate-700'}`} style={aPOTM ? { color: pomColor(awayPOTM, awayCol) } : undefined}>{a.personName}{aSuffix}</span>}
                       <span className="w-7 h-5 flex items-center justify-center rounded bg-slate-100 border border-slate-200 font-mono tabular-nums text-[10px] font-bold text-slate-500 shrink-0">{a.shirtNumber ?? ''}</span>
                     </div>
                   ) : <div />}
