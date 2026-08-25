@@ -821,10 +821,10 @@ export default function MatchDetail() {
                     <div className={`flex items-center justify-end gap-1.5 ${aPOTM ? '-mx-2 px-2 py-0.5 rounded' : ''}`}
                       style={aPOTM ? { backgroundColor: pomBgTint(awayPOTM, awayCol) } : undefined}>
                       {aPOTM && <span className="text-[9px] font-bold uppercase tracking-widest shrink-0" style={{ color: pomColor(awayPOTM, awayCol) }}>POTM</span>}
-                      {a.isCaptain && <span className="text-sm font-bold leading-none shrink-0" style={{ color: awayCol }}>©</span>}
                       {a.personId
                         ? <Link to={playerUrl({ id: a.personId, slug: a.personSlug })} className={`text-xs break-words leading-tight min-w-0 text-right hover:text-emerald-600 transition-colors ${aPOTM ? 'font-semibold' : 'text-slate-700'}`} style={aPOTM ? { color: pomColor(awayPOTM, awayCol) } : undefined}>{a.personName}</Link>
                         : <span className={`text-xs break-words leading-tight min-w-0 text-right ${aPOTM ? 'font-semibold' : 'text-slate-700'}`} style={aPOTM ? { color: pomColor(awayPOTM, awayCol) } : undefined}>{a.personName}</span>}
+                      {a.isCaptain && <span className="text-sm font-bold leading-none shrink-0" style={{ color: awayCol }}>©</span>}
                       <span className="w-7 h-5 flex items-center justify-center rounded bg-slate-100 border border-slate-200 font-mono tabular-nums text-[10px] font-bold text-slate-500 shrink-0">{a.shirtNumber ?? ''}</span>
                     </div>
                   ) : <div />}
