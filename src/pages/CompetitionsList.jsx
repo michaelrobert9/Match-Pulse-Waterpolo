@@ -4,7 +4,7 @@ import { ChevronRight, Plus } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
 import { fetchAllCompetitions } from '../lib/queries'
 import { competitionUrl } from '../lib/slugify'
-import { competitionLifecycle, isPubliclyVisible } from '../lib/competitionRules'
+import { competitionLifecycle, isPubliclyVisible, toMs } from '../lib/competitionRules'
 import CompetitionStatusBadge from '../components/CompetitionStatusBadge'
 import CompetitionCrest from '../components/CompetitionCrest'
 
@@ -103,6 +103,21 @@ export default function CompetitionsList() {
     return true
   })
 
+  // Recency for sorting: most recent start first, falling back to end date,
+  // then created-at. Missing dates sink to the bottom of their group.
+  const recency = c => toMs(c.startDate) ?? toMs(c.endDate) ?? toMs(c.createdAt) ?? -Infinity
+  const byNewest = (a, b) => recency(b) - recency(a)
+
+  // Grouped into Live → Upcoming → Completed rows; each row newest-to-oldest.
+  const GROUPS = [
+    { key: 'live',      label: 'Live now' },
+    { key: 'upcoming',  label: 'Upcoming' },
+    { key: 'completed', label: 'Completed' },
+  ]
+  const grouped = GROUPS
+    .map(g => ({ ...g, items: filtered.filter(c => competitionLifecycle(c) === g.key).sort(byNewest) }))
+    .filter(g => g.items.length > 0)
+
   const canCreate = isPlatformAdmin
 
   if (error) {
@@ -192,8 +207,19 @@ export default function CompetitionsList() {
           )}
         </div>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
-          {filtered.map(c => <CompetitionCard key={c.id} comp={c} />)}
+        <div className="space-y-8">
+          {grouped.map(group => (
+            <section key={group.key}>
+              <div className="flex items-center gap-2 mb-3">
+                {group.key === 'live' && <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse shrink-0" />}
+                <h2 className="text-[11px] font-bold uppercase tracking-widest text-slate-500">{group.label}</h2>
+                <span className="text-[11px] font-bold text-slate-300 tabular-nums">{group.items.length}</span>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
+                {group.items.map(c => <CompetitionCard key={c.id} comp={c} />)}
+              </div>
+            </section>
+          ))}
         </div>
       )}
     </div>

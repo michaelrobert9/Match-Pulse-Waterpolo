@@ -69,11 +69,24 @@ function PlayerCard({ person }) {
   )
 }
 
+const ALPHABET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('')
+
+// The words of a person's name (first name, surname, any middle names), used by
+// the A–Z index so a player can be found by EITHER their name or surname.
+function nameWords(fullName) {
+  return (fullName || '').split(/\s+/).filter(Boolean)
+}
+// True when any name word starts with the given (upper-case) letter.
+function nameStartsWith(fullName, letter) {
+  return nameWords(fullName).some(w => w[0]?.toUpperCase() === letter)
+}
+
 export default function PlayersList() {
   const [all,     setAll]     = useState([])
   const [loading, setLoading] = useState(true)
   const [error,   setError]   = useState(false)
   const [search,  setSearch]  = useState('')
+  const [letter,  setLetter]  = useState('')   // active A–Z filter, '' = all
 
   function load() {
     setLoading(true); setError(false)
@@ -85,9 +98,19 @@ export default function PlayersList() {
 
   useEffect(() => { document.title = 'Players · MatchPulse'; load() }, [])
 
-  const visible = search.trim()
-    ? all.filter(p => p.fullName?.toLowerCase().includes(search.toLowerCase()))
-    : all
+  // Letters that actually have at least one player, so empty letters render
+  // disabled rather than leading to a dead end.
+  const availableLetters = new Set()
+  all.forEach(p => nameWords(p.fullName).forEach(w => {
+    const c = w[0]?.toUpperCase()
+    if (c >= 'A' && c <= 'Z') availableLetters.add(c)
+  }))
+
+  const q = search.trim().toLowerCase()
+  const visible = all.filter(p =>
+    (!q || p.fullName?.toLowerCase().includes(q)) &&
+    (!letter || nameStartsWith(p.fullName, letter))
+  )
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 pb-12 space-y-5">
@@ -110,6 +133,36 @@ export default function PlayersList() {
         </div>
       )}
 
+      {/* A–Z index — jump to players whose name OR surname starts with a letter. */}
+      {!loading && all.length > 0 && (
+        <div className="flex flex-wrap gap-1">
+          <button
+            onClick={() => setLetter('')}
+            className={`min-w-[28px] h-7 px-2 rounded-md text-xs font-bold transition-colors ${
+              letter === '' ? 'bg-emerald-600 text-white' : 'bg-white border border-slate-200 text-slate-600 hover:border-slate-300'
+            }`}>
+            All
+          </button>
+          {ALPHABET.map(L => {
+            const has = availableLetters.has(L)
+            const active = letter === L
+            return (
+              <button
+                key={L}
+                disabled={!has}
+                onClick={() => setLetter(active ? '' : L)}
+                className={`w-7 h-7 rounded-md text-xs font-bold transition-colors ${
+                  active ? 'bg-emerald-600 text-white'
+                  : has ? 'bg-white border border-slate-200 text-slate-600 hover:border-slate-300'
+                  : 'bg-transparent text-slate-300 cursor-default'
+                }`}>
+                {L}
+              </button>
+            )
+          })}
+        </div>
+      )}
+
       {error ? (
         <div className="px-4 py-16 flex flex-col items-center gap-4">
           <p className="text-slate-500 text-sm">Failed to load players.</p>
@@ -125,9 +178,13 @@ export default function PlayersList() {
       ) : visible.length === 0 ? (
         <div className="text-center py-16">
           <p className="text-slate-500 text-sm mb-1">
-            {search ? `No players matching "${search}".` : 'No players yet.'}
+            {search ? `No players matching "${search}".`
+              : letter ? `No players with a name starting with “${letter}”.`
+              : 'No players yet.'}
           </p>
-          {!search && <p className="text-slate-400 text-xs">Player profiles will appear here once they are added.</p>}
+          {(search || letter)
+            ? <button onClick={() => { setSearch(''); setLetter('') }} className="text-emerald-600 text-sm hover:underline">Clear filters</button>
+            : <p className="text-slate-400 text-xs">Player profiles will appear here once they are added.</p>}
         </div>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">

@@ -60,7 +60,7 @@ export const COMPETITION_STATUSES = ['upcoming', 'live', 'completed']
 
 // Normalise any stored date value (Firestore Timestamp, Date, epoch ms, or an
 // ISO / datetime-local string) to epoch milliseconds, or null if absent/invalid.
-function toMs(val) {
+export function toMs(val) {
   if (val == null) return null
   if (typeof val === 'number') return val
   if (typeof val.toMillis === 'function') return val.toMillis()
