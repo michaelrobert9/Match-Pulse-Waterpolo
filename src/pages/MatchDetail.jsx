@@ -791,17 +791,19 @@ export default function MatchDetail() {
                   const nameStyle = isPOTM ? { color: pomColor(homePOTM, homeCol) } : undefined
                   const nameCls   = `text-xs break-words leading-tight flex-1 min-w-0 ${isPOTM ? 'font-semibold' : 'text-slate-700'} ${p.personId ? 'hover:text-emerald-600 transition-colors' : ''}`
                   return (
-                    // Row order: number slot → captain slot → name → POTM
-                    // badge. The cap slot renders EMPTY when there is no cap
-                    // (water polo call-out: not a dash, not a zero); the
-                    // captain slot is reserved on every row so names stay
-                    // aligned, © in the team's colour at 14px. No avatar.
-                    <div key={p.id} className={`flex items-center gap-2 ${isPOTM ? '-mx-2 px-2 py-1 rounded' : ''}`} style={rowStyle}>
+                    // Cap-number badge aligns under the crest (outer edge); name
+                    // lines up under the org name; captain © renders inline right
+                    // after the name on the inner side — not its own column —
+                    // in the team's colour. The cap badge renders EMPTY when
+                    // there is no cap (water polo call-out: not a dash, not a zero).
+                    <div key={p.id} className={`flex items-center gap-1.5 ${isPOTM ? '-mx-2 px-2 py-1 rounded' : ''}`} style={rowStyle}>
                       <span className="w-7 h-5 flex items-center justify-center rounded bg-slate-100 border border-slate-200 font-mono tabular-nums text-[10px] font-bold text-slate-500 shrink-0">{p.shirtNumber ?? ''}</span>
-                      <span className="w-5 text-center text-sm font-bold leading-none shrink-0" style={{ color: homeCol }}>{p.isCaptain ? '©' : ''}</span>
-                      {p.personId
-                        ? <Link to={playerUrl({ id: p.personId, slug: p.personSlug })} className={nameCls} style={nameStyle}>{p.personName}</Link>
-                        : <span className={nameCls} style={nameStyle}>{p.personName}</span>}
+                      <div className="flex-1 min-w-0 flex items-center gap-1">
+                        {p.personId
+                          ? <Link to={playerUrl({ id: p.personId, slug: p.personSlug })} className={nameCls} style={nameStyle}>{p.personName}</Link>
+                          : <span className={nameCls} style={nameStyle}>{p.personName}</span>}
+                        {p.isCaptain && <span className="text-sm font-bold leading-none shrink-0" style={{ color: homeCol }}>©</span>}
+                      </div>
                       {isPOTM && (
                         <span className="text-[9px] font-bold uppercase tracking-widest shrink-0"
                           style={{ color: pomColor(homePOTM, homeCol) }}>POTM</span>
@@ -825,17 +827,21 @@ export default function MatchDetail() {
                   const nameStyle = isPOTM ? { color: pomColor(awayPOTM, awayCol) } : undefined
                   const nameCls   = `text-xs break-words leading-tight flex-1 min-w-0 text-right ${isPOTM ? 'font-semibold' : 'text-slate-700'} ${p.personId ? 'hover:text-emerald-600 transition-colors' : ''}`
                   return (
-                    // Mirrored right column: POTM badge ← name ← captain slot
-                    // ← number slot. Same reserved slots, no avatar.
-                    <div key={p.id} className={`flex items-center gap-2 justify-end ${isPOTM ? '-mx-2 px-2 py-1 rounded' : ''}`} style={rowStyle}>
+                    // Mirrored right column: cap badge aligns under the crest
+                    // (outer edge); name under the org name (right-aligned);
+                    // captain © inline on the inner side, immediately before
+                    // the name.
+                    <div key={p.id} className={`flex items-center gap-1.5 justify-end ${isPOTM ? '-mx-2 px-2 py-1 rounded' : ''}`} style={rowStyle}>
                       {isPOTM && (
                         <span className="text-[9px] font-bold uppercase tracking-widest shrink-0"
                           style={{ color: pomColor(awayPOTM, awayCol) }}>POTM</span>
                       )}
-                      {p.personId
-                        ? <Link to={playerUrl({ id: p.personId, slug: p.personSlug })} className={nameCls} style={nameStyle}>{p.personName}</Link>
-                        : <span className={nameCls} style={nameStyle}>{p.personName}</span>}
-                      <span className="w-5 text-center text-sm font-bold leading-none shrink-0" style={{ color: awayCol }}>{p.isCaptain ? '©' : ''}</span>
+                      <div className="flex-1 min-w-0 flex items-center justify-end gap-1">
+                        {p.isCaptain && <span className="text-sm font-bold leading-none shrink-0" style={{ color: awayCol }}>©</span>}
+                        {p.personId
+                          ? <Link to={playerUrl({ id: p.personId, slug: p.personSlug })} className={nameCls} style={nameStyle}>{p.personName}</Link>
+                          : <span className={nameCls} style={nameStyle}>{p.personName}</span>}
+                      </div>
                       <span className="w-7 h-5 flex items-center justify-center rounded bg-slate-100 border border-slate-200 font-mono tabular-nums text-[10px] font-bold text-slate-500 shrink-0">{p.shirtNumber ?? ''}</span>
                     </div>
                   )
