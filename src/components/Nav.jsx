@@ -3,6 +3,7 @@ import { Link, NavLink, useLocation } from 'react-router-dom'
 import { ChevronDown, Menu, X } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
 import { fetchLiveMatches } from '../lib/queries'
+import { aboutUrl } from '../lib/mainSite'
 
 function useScrolled(threshold = 4) {
   const [scrolled, setScrolled] = useState(false)
@@ -133,6 +134,11 @@ export default function Nav() {
           {NAV_ITEMS.filter(i => i.to !== '/').map(item => (
             <NavLink key={item.to} to={item.to} end={item.end} className={linkClass}>{item.label}</NavLink>
           ))}
+          {/* Learn about MatchPulse / sign a school up — links out to the main site. */}
+          <a href={aboutUrl({ ref: 'nav' })} target="_blank" rel="noopener noreferrer"
+            className="px-3 py-1.5 rounded-lg text-sm font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition-colors">
+            About MatchPulse
+          </a>
           {canScore && (
             <NavLink to="/score" className={({ isActive }) =>
               `px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${isActive ? 'text-red-700 bg-red-50' : 'text-red-600 hover:text-red-700 hover:bg-red-50'}`
@@ -245,6 +251,11 @@ export default function Nav() {
           {NAV_ITEMS.filter(i => i.to !== '/').map(item => (
             <NavLink key={item.to} to={item.to} end={item.end} className={mobileLinkClass}>{item.label}</NavLink>
           ))}
+          {/* Learn about MatchPulse / sign a school up — links out to the main site. */}
+          <a href={aboutUrl({ ref: 'nav' })} target="_blank" rel="noopener noreferrer"
+            className="block px-3 py-2.5 rounded-lg text-sm font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition-colors">
+            About MatchPulse
+          </a>
           {canScore && (
             <NavLink to="/score" className={({ isActive }) =>
               `block px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${isActive ? 'text-red-700 bg-red-50' : 'text-red-600 hover:bg-red-50'}`

@@ -13,6 +13,18 @@ export { MAIN_SITE, SPORT_KEY }
 
 // The plans/products page on the main site. Every plan/purchase CTA points here.
 export const PLANS_URL = `${MAIN_SITE}/products`
+
+// The main marketing site home — where a visitor on a sport subdomain goes to
+// learn what MatchPulse is and sign their school/club/association up. Surfaced
+// as an "About MatchPulse" item in the top nav. Tagged with the sport (and an
+// optional ref) so an enquiry can be attributed back to where it started.
+export function aboutUrl({ ref } = {}) {
+  const params = new URLSearchParams()
+  if (SPORT_KEY) params.set('sport', SPORT_KEY)
+  if (ref)       params.set('ref', ref)
+  const qs = params.toString()
+  return qs ? `${MAIN_SITE}/?${qs}` : MAIN_SITE
+}
 // Account settings (name, email, password) live on the main site.
 export const MAIN_ACCOUNT_URL = `${MAIN_SITE}/account`
 
