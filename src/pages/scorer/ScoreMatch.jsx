@@ -136,6 +136,7 @@ function theme(bright) {
         score: 'text-slate-900',
         timelineText: 'text-slate-700',
         neutralBtn: 'bg-white border-slate-300 text-slate-700 hover:bg-slate-100',
+        divider: 'border-slate-100',
         sheet: 'bg-white border-slate-200',
       }
     : {
@@ -147,6 +148,7 @@ function theme(bright) {
         score: 'text-white',
         timelineText: 'text-slate-300',
         neutralBtn: 'bg-slate-800 border-slate-700 text-slate-300 hover:bg-slate-700',
+        divider: 'border-slate-800',
         sheet: 'bg-[#0F1219] border-slate-700',
       }
 }
@@ -231,6 +233,7 @@ export default function ScoreMatch() {
   const [pendingCard, setPendingCard] = useState(null)
   const [confirmEnd, setConfirmEnd]   = useState(false)
   const [menuFor, setMenuFor]         = useState(null) // timeline event id
+  const [headerMenu, setHeaderMenu]   = useState(false) // ⋯ overflow menu in the header
   // tapLock: `${side}:${kind}` of the button briefly locked after a tap (~500ms)
   // to absorb accidental double-taps during rapid sideline scoring.
   const [tapLock, setTapLock]         = useState(null)
@@ -1044,9 +1047,11 @@ export default function ScoreMatch() {
   return (
     <div className="md:flex md:justify-center md:min-h-screen md:bg-slate-950">
       <div className={`max-w-2xl mx-auto overflow-hidden ${t.root} flex flex-col transition-colors md:border-x md:border-slate-800 md:shadow-2xl`} style={{ height: '100dvh' }}>
-      {/* Header */}
-      <header className={`${t.header} border-b px-4 py-3 flex items-center gap-3 shrink-0`}>
-        <button onClick={() => navigate('/score')} className={`${t.muted} hover:opacity-70`}>
+      {/* Header — back · title · status on the left; Result on the bar; the rest
+          (Restart, Edit, Lineups, theme) collapse into a ⋯ menu so the row never
+          overflows or overlaps on a narrow phone. */}
+      <header className={`${t.header} border-b px-4 py-3 flex items-center gap-3 shrink-0 relative`}>
+        <button onClick={() => navigate('/score')} className={`${t.muted} hover:opacity-70 shrink-0`}>
           <ChevronLeft className="w-5 h-5" />
         </button>
         <div className="flex-1 min-w-0">
@@ -1062,35 +1067,44 @@ export default function ScoreMatch() {
           </div>
         </div>
         {saving && <div className="w-4 h-4 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin shrink-0" />}
-        {!isUpcoming && (
-          <button onClick={handleRestart}
-            className="shrink-0 flex items-center gap-1 text-[10px] font-bold uppercase tracking-widest border border-amber-300 text-amber-600 rounded-lg px-2.5 py-1.5 hover:bg-amber-50"
-            title="Restart match (if Start was tapped by mistake)">
-            <RotateCcw className="w-3.5 h-3.5" /> Restart
-          </button>
-        )}
         <button onClick={() => { setOutcomeError(''); setOutcomeOpen(true) }}
-          className="shrink-0 text-[10px] font-bold uppercase tracking-widest border border-slate-200 rounded-lg px-2.5 py-1.5 hover:bg-slate-50"
+          className={`shrink-0 text-[10px] font-bold uppercase tracking-widest border rounded-lg px-2.5 py-1.5 ${t.neutralBtn}`}
           title="Enter a result, or record a walkover / abandonment / not played">
           Result
         </button>
-        {canEditMatch && (
-          <button onClick={openEditMatch}
-            className={`shrink-0 text-[10px] font-bold uppercase tracking-widest border rounded-lg px-2.5 py-1.5 ${t.neutralBtn}`}
-            title="Edit match details">
-            Edit
-          </button>
+        <button onClick={() => setHeaderMenu(o => !o)}
+          className={`shrink-0 w-9 h-9 rounded-lg border flex items-center justify-center ${t.neutralBtn}`}
+          aria-label="More options" aria-expanded={headerMenu}>
+          <MoreVertical className="w-4 h-4" />
+        </button>
+        {headerMenu && (
+          <>
+            {/* click-away layer */}
+            <div className="fixed inset-0 z-30" onClick={() => setHeaderMenu(false)} />
+            <div className={`absolute right-3 top-full mt-1 w-48 ${t.sheet} border rounded-xl shadow-lg z-40 overflow-hidden py-1`}>
+              {!isUpcoming && (
+                <button onClick={() => { setHeaderMenu(false); handleRestart() }}
+                  className="w-full flex items-center gap-2.5 px-3 py-2.5 text-sm font-medium text-amber-600 hover:bg-amber-500/10 text-left">
+                  <RotateCcw className="w-4 h-4 shrink-0" /> Restart match
+                </button>
+              )}
+              {canEditMatch && (
+                <button onClick={() => { setHeaderMenu(false); openEditMatch() }}
+                  className={`w-full flex items-center gap-2.5 px-3 py-2.5 text-sm font-medium hover:bg-slate-500/10 text-left ${t.timelineText}`}>
+                  <span className="w-4 text-center shrink-0">✎</span> Edit match
+                </button>
+              )}
+              <button onClick={() => { setHeaderMenu(false); setLineupOpen(true); setLineupSide('home') }}
+                className={`w-full flex items-center gap-2.5 px-3 py-2.5 text-sm font-medium hover:bg-slate-500/10 text-left ${t.timelineText}`}>
+                <Users className="w-4 h-4 shrink-0" /> Lineups
+              </button>
+              <button onClick={() => { setHeaderMenu(false); setBright(b => !b) }}
+                className={`w-full flex items-center gap-2.5 px-3 py-2.5 text-sm font-medium hover:bg-slate-500/10 text-left ${t.timelineText}`}>
+                <span className="w-4 text-center shrink-0">{bright ? '🌙' : '☀'}</span> {bright ? 'Switch to dark' : 'Switch to bright'}
+              </button>
+            </div>
+          </>
         )}
-        <button onClick={() => { setLineupOpen(true); setLineupSide('home') }}
-          className={`shrink-0 w-9 h-9 rounded-lg border flex items-center justify-center ${t.neutralBtn}`}
-          title="Manage lineup">
-          <Users className="w-4 h-4" />
-        </button>
-        <button onClick={() => setBright(b => !b)}
-          className={`shrink-0 w-9 h-9 rounded-lg border flex items-center justify-center ${t.neutralBtn}`}
-          title={bright ? 'Switch to dark' : 'Switch to bright'}>
-          {bright ? '🌙' : '☀'}
-        </button>
       </header>
 
       {/* Offline banner */}
@@ -1126,90 +1140,101 @@ export default function ScoreMatch() {
         </div>
       )}
 
-      {/* Scoreline */}
-      <div className={`px-5 py-6 landscape:py-3 border-b ${t.header} flex items-end justify-between gap-3 shrink-0`}>
+      {/* Scoreline — compact: crest · score-in-the-middle · crest, team names
+          beneath their crests. Frees vertical space for the timeline below. */}
+      <div className={`px-4 py-3 landscape:py-2 border-b ${t.header} flex items-start justify-between gap-2 shrink-0`}>
         {/* Home */}
-        <div className="flex-1 min-w-0 flex flex-col items-center">
-          <TeamCrest identity={homeIdentity} size={32} className="mb-1.5" />
-          {/* Fixed 2-line height so both score digits sit on the same baseline */}
-          <div className="h-10 w-full flex items-start justify-center overflow-hidden mb-2 px-1">
-            <span className={`text-[16px] font-semibold ${t.score} leading-snug text-center line-clamp-2`}>
-              {homeIdentity?.primary ?? match.homeTeamName}
-            </span>
-          </div>
-          <div className={`font-mono font-black tabular-nums leading-none ${t.score}`} style={{ fontSize: 64 }}>
-            {match.homeScore ?? 0}
-          </div>
+        <div className="flex-1 min-w-0 flex flex-col items-center gap-1.5">
+          <TeamCrest identity={homeIdentity} size={44} />
+          <span className={`text-[13px] font-semibold ${t.score} leading-tight text-center line-clamp-2`}>
+            {homeIdentity?.primary ?? match.homeTeamName}
+          </span>
         </div>
-        {/* Dash — pb-5 centers it on the 64px score digits when items-end is in effect */}
-        <div className={`font-mono ${t.muted} text-2xl shrink-0 pb-5`}>—</div>
+        {/* Middle — period · combined score · status */}
+        <div className="shrink-0 flex flex-col items-center pt-1 min-w-[112px]">
+          <span className={`text-[10px] font-bold uppercase tracking-widest ${t.muted}`}>
+            {isUpcoming ? 'Upcoming' : (match.currentPeriod ?? '')}
+          </span>
+          <span className={`font-mono font-black tabular-nums leading-none ${t.score} my-1.5`} style={{ fontSize: 40 }}>
+            {match.homeScore ?? 0} <span className={t.muted}>–</span> {match.awayScore ?? 0}
+          </span>
+          <span className={`text-[10px] font-bold uppercase tracking-widest ${running ? 'text-emerald-500' : t.muted}`}>
+            {running ? 'Live' : isPaused ? 'Paused' : isBreakState ? 'Break' : isFinal ? 'Full time' : status}
+          </span>
+        </div>
         {/* Away */}
-        <div className="flex-1 min-w-0 flex flex-col items-center">
-          <TeamCrest identity={awayIdentity} size={32} className="mb-1.5" />
-          <div className="h-10 w-full flex items-start justify-center overflow-hidden mb-2 px-1">
-            <span className={`text-[16px] font-semibold ${t.score} leading-snug text-center line-clamp-2`}>
-              {awayIdentity?.primary ?? match.awayTeamName}
-            </span>
-          </div>
-          <div className={`font-mono font-black tabular-nums leading-none ${t.score}`} style={{ fontSize: 64 }}>
-            {match.awayScore ?? 0}
-          </div>
+        <div className="flex-1 min-w-0 flex flex-col items-center gap-1.5">
+          <TeamCrest identity={awayIdentity} size={44} />
+          <span className={`text-[13px] font-semibold ${t.score} leading-tight text-center line-clamp-2`}>
+            {awayIdentity?.primary ?? match.awayTeamName}
+          </span>
         </div>
       </div>
 
       {/* Timer bar */}
       {!isUpcoming && !isFinal && (
         <>
-        <div className={`${t.bar} border-b px-5 py-4 flex items-center gap-4 shrink-0`}>
-          {/* Pause/Resume — 56px tap target */}
+        <div className={`${t.bar} border-b px-5 py-3 flex items-center gap-4 shrink-0`}>
+          {/* Pause/Resume — 48px tap target */}
           {isBreakState ? (
-            <div className={`w-14 h-14 rounded-xl border flex items-center justify-center text-xl ${t.neutralBtn} opacity-40`}>⏸</div>
+            <div className={`w-12 h-12 rounded-xl border flex items-center justify-center text-lg ${t.neutralBtn} opacity-40`}>⏸</div>
           ) : running ? (
             <button onClick={handlePause} disabled={saving}
-              className={`w-14 h-14 rounded-xl border flex items-center justify-center text-xl ${t.neutralBtn}`}>⏸</button>
+              className={`w-12 h-12 rounded-xl border flex items-center justify-center text-lg ${t.neutralBtn}`}>⏸</button>
           ) : (
             <button onClick={handleResume} disabled={saving}
-              className="w-14 h-14 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white flex items-center justify-center text-xl">▶</button>
+              className="w-12 h-12 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white flex items-center justify-center text-lg">▶</button>
           )}
           <div className="flex-1">
             <div className={`font-mono font-black tabular-nums leading-none ${
               isBreakState
                 ? (breakSecsLeft <= 30 ? 'text-red-500' : t.score)
                 : (clockRed ? 'text-red-500' : t.score)
-            }`} style={{ fontSize: 36 }}>
+            }`} style={{ fontSize: 30 }}>
               {isBreakState ? formatBreak(breakSecsLeft) : formatCountdown(periodRemaining)}
             </div>
-            <div className={`text-[13px] font-bold uppercase tracking-[0.5px] ${
+            <div className={`text-[12px] font-bold uppercase tracking-[0.5px] ${
               (isBreakState ? breakSecsLeft <= 30 : clockRed) ? 'text-red-400' : t.muted
             } mt-0.5`}>
               {isBreakState ? 'Break' : match.currentPeriod}
             </div>
           </div>
           <button onClick={handleNextAction} disabled={saving}
-            className={`px-7 rounded-xl font-bold text-sm transition-colors ${
+            className={`px-6 rounded-xl font-bold text-sm transition-colors ${
               nextAction.kind === 'end_match'
                 ? 'bg-slate-200 text-slate-700 hover:bg-slate-300'
                 : 'bg-emerald-600 hover:bg-emerald-500 text-white'
-            }`} style={{ minHeight: 56 }}>
+            }`} style={{ minHeight: 48 }}>
             {nextAction.label} →
           </button>
         </div>
         {/* The alarm depends on JS running — a locked/dark screen means no
             beep, so the scorer must never rely on sound from a pocketed phone. */}
-        <div className={`${t.bar} border-b px-5 py-1.5 text-center text-[10px] font-medium ${t.muted} shrink-0`}>
-          Keep the screen on — the 00:00 alarm only sounds while this screen is awake.
+        <div className={`${t.bar} border-b px-5 py-1 text-center text-[10px] font-medium ${t.muted} shrink-0`}>
+          Keep the screen on for the 00:00 alarm.
         </div>
         </>
       )}
 
-      {/* Timeline — only scrolling region */}
-      <main className="flex-1 overflow-y-auto min-h-0 px-5 py-3">
+      {/* Timeline — only scrolling region. Reference-style rows: a sticky period
+          band with the running score, then roomy events with the minute on the
+          outer edge, an icon, and the player + event type. Home events sit on the
+          left, away events on the right (mirrored) so the side reads at a glance. */}
+      <main className="flex-1 overflow-y-auto min-h-0">
         {timeline.length === 0 ? (
           <div className={`text-center text-[18px] ${t.muted}`} style={{ paddingTop: 80 }}>
             {isUpcoming ? 'Start the match to begin scoring.' : 'No events yet.'}
           </div>
         ) : (
-          <div className="space-y-1">
+          <>
+            {!isUpcoming && (
+              <div className={`sticky top-0 z-[1] ${t.bar} border-b flex items-center justify-between px-5 py-2`}>
+                <span className={`text-[11px] font-bold uppercase tracking-widest ${t.muted}`}>
+                  {isBreakState ? 'Break' : isFinal ? 'Full time' : (match.currentPeriod ?? '')}
+                </span>
+                <span className={`text-sm font-black tabular-nums ${t.score}`}>{match.homeScore ?? 0} – {match.awayScore ?? 0}</span>
+              </div>
+            )}
             {timeline.map(ev => {
               const evKey = ev.id ?? `period-${ev.createdAt}`
               if (ev.kind === 'period') {
@@ -1219,60 +1244,65 @@ export default function ScoreMatch() {
                   ev.type === 'period_end'   ? `End of ${ev.period}` :
                   ev.type === 'match_end'    ? 'Full time' : ev.type
                 return (
-                  <div key={evKey} className={`flex items-center gap-3 py-1.5 ${t.muted}`}>
-                    <span className={`font-mono text-xs w-16 shrink-0 tabular-nums`}>{gameMinuteLabel(match, ev.matchTimestamp)}</span>
-                    <span className="text-[10px] shrink-0">
-                      {ev.type === 'period_end' || ev.type === 'match_end' ? '■' : '▶'}
-                    </span>
-                    <span className="text-xs flex-1 min-w-0 font-semibold uppercase tracking-wide">{label}</span>
-                    {ev.clockTime && (
-                      <span className="text-[10px] font-mono shrink-0">{wallTime(ev.clockTime)}</span>
-                    )}
+                  <div key={evKey} className={`flex items-center justify-center gap-2 py-2.5 border-b ${t.divider} ${t.muted}`}>
+                    <span className="text-[10px] shrink-0">{ev.type === 'period_end' || ev.type === 'match_end' ? '■' : '▶'}</span>
+                    <span className="text-[11px] font-bold uppercase tracking-widest">{label}</span>
+                    <span className={`font-mono text-[10px] ${t.muted}`}>{gameMinuteLabel(match, ev.matchTimestamp)}</span>
                   </div>
                 )
               }
-              return (
-                <div key={evKey} className={`flex items-center gap-3 py-1.5 ${t.timelineText}`}>
-                  <span className={`font-mono text-xs ${t.muted} w-16 shrink-0 tabular-nums`}>{gameMinuteLabel(match, ev.matchTimestamp)}</span>
-                  {ev.kind === 'goal' ? (
-                    <span className="w-2.5 h-3 rounded-sm shrink-0" style={{ backgroundColor: teamColor(ev.side) }} />
-                  ) : (
-                    <span className={`w-2.5 h-3 rounded-sm shrink-0 ${CARD_DOT[ev.cardType] ?? 'bg-slate-400'}`} />
-                  )}
-                  <span className="text-sm flex-1 min-w-0 truncate">
-                    <span className="font-semibold">{ev.kind === 'goal' ? 'Goal' : (CARD_LABEL[ev.cardType] ?? 'Exclusion')}</span>
-                    {' · '}{teamName(ev.side)}
-                    {ev.kind === 'goal' && ev.goalType && <span className={t.muted}> · {GOAL_TYPE_SHORT[ev.goalType] ?? ev.goalType}</span>}
-                    {ev.scorerName && <span className={t.muted}> · {ev.scorerName}</span>}
-                    {ev.kind === 'goal' && ev.assistName && <span className={t.muted}> · A: {ev.assistName}</span>}
-                    {ev.kind === 'card' && ev.playerName && <span className={t.muted}> · {ev.playerName}</span>}
-                    {ev.kind === 'card' && cardDurationLabel(ev) && <span className={t.muted}> · {cardDurationLabel(ev)}</span>}
-                  </span>
-                  {!isFinal && (
-                    menuFor === ev.id ? (
-                      <div className="flex items-center gap-1 shrink-0">
-                        {ev.kind === 'goal' && (ev.goalType ?? 'open') === 'open' && !ev.scorerName && (
-                          <button onClick={() => { setMenuFor(null); setGoalEnrich({ eventId: ev.id, side: ev.side, step: 'type' }) }}
-                            className="text-[10px] font-bold uppercase tracking-widest text-emerald-600 px-2 py-1 rounded">
-                            Enrich
-                          </button>
-                        )}
-                        <button onClick={() => handleReverse(ev)}
-                          className="text-[10px] font-bold uppercase tracking-widest text-red-500 px-2 py-1 rounded">
-                          Reverse
-                        </button>
-                      </div>
-                    ) : (
-                      <button onClick={() => setMenuFor(ev.id)}
-                        className={`${t.muted} hover:opacity-70 px-1 shrink-0`}>
-                        <MoreVertical className="w-4 h-4" />
+              const isHome = ev.side === 'home'
+              const name = (ev.kind === 'goal' ? ev.scorerName : ev.playerName) || teamName(ev.side)
+              const kindLabel = ev.kind === 'goal' ? 'Goal' : (CARD_LABEL[ev.cardType] ?? 'Exclusion')
+              const details = [
+                ev.kind === 'goal' && ev.goalType ? (GOAL_TYPE_SHORT[ev.goalType] ?? ev.goalType) : null,
+                ev.kind === 'goal' && ev.assistName ? `A: ${ev.assistName}` : null,
+                ev.kind === 'card' ? cardDurationLabel(ev) : null,
+              ].filter(Boolean)
+              const minute = <span className={`font-mono text-xs ${t.muted} tabular-nums shrink-0`}>{gameMinuteLabel(match, ev.matchTimestamp)}</span>
+              const icon = (
+                <span className={`w-8 h-8 rounded-lg border flex items-center justify-center shrink-0 ${t.neutralBtn}`}>
+                  {ev.kind === 'goal'
+                    ? <span className="w-2.5 h-3 rounded-sm" style={{ backgroundColor: teamColor(ev.side) }} />
+                    : <span className={`w-2.5 h-3 rounded-sm ${CARD_DOT[ev.cardType] ?? 'bg-slate-400'}`} />}
+                </span>
+              )
+              const body = (
+                <div className={`min-w-0 flex-1 ${isHome ? '' : 'text-right'}`}>
+                  <div className="text-[15px] font-semibold leading-tight truncate">{name}</div>
+                  <div className={`text-xs ${t.muted} truncate`}>{[kindLabel, ...details].join(' · ')}</div>
+                </div>
+              )
+              const menu = !isFinal && (
+                menuFor === ev.id ? (
+                  <div className="flex items-center gap-1 shrink-0">
+                    {ev.kind === 'goal' && (ev.goalType ?? 'open') === 'open' && !ev.scorerName && (
+                      <button onClick={() => { setMenuFor(null); setGoalEnrich({ eventId: ev.id, side: ev.side, step: 'type' }) }}
+                        className="text-[10px] font-bold uppercase tracking-widest text-emerald-600 px-2 py-1 rounded">
+                        Enrich
                       </button>
-                    )
-                  )}
+                    )}
+                    <button onClick={() => handleReverse(ev)}
+                      className="text-[10px] font-bold uppercase tracking-widest text-red-500 px-2 py-1 rounded">
+                      Reverse
+                    </button>
+                  </div>
+                ) : (
+                  <button onClick={() => setMenuFor(ev.id)}
+                    className={`${t.muted} hover:opacity-70 px-1 shrink-0`}>
+                    <MoreVertical className="w-4 h-4" />
+                  </button>
+                )
+              )
+              return (
+                <div key={evKey} className={`flex items-center gap-3 px-5 py-2.5 border-b ${t.divider} ${t.timelineText}`}>
+                  {isHome
+                    ? <>{minute}{icon}{body}{menu}</>
+                    : <>{menu}{body}{icon}{minute}</>}
                 </div>
               )
             })}
-          </div>
+          </>
         )}
       </main>
 
