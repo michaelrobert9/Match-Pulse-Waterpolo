@@ -492,10 +492,11 @@ export default function PlayerProfile() {
 function ClaimCard({ person, onClaimed }) {
   const [busy, setBusy] = useState(false)
   const [err,  setErr]  = useState('')
+  // Two-step in-UI confirm (relationship being confirmed, or null). window.confirm
+  // is suppressed in the installed PWA, so tapping a claim button there did nothing.
+  const [confirmRel, setConfirmRel] = useState(null)
 
   async function claim(relationship) {
-    const label = relationship === 'player' ? 'This is you' : `You are ${person.fullName}'s parent/guardian`
-    if (!window.confirm(`${label}? You'll be able to manage this profile.`)) return
     setBusy(true); setErr('')
     try {
       if (person.claimStatus === 'unclaimed') {
@@ -535,16 +536,36 @@ function ClaimCard({ person, onClaimed }) {
             add a photo and banner. If you're a parent you can later transfer it to the player.
           </p>
           {err && <p className="text-red-600 text-xs mb-2">{err}</p>}
-          <div className="grid grid-cols-2 gap-2">
-            <button onClick={() => claim('player')} disabled={busy}
-              className="bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white font-bold text-xs uppercase tracking-wider rounded-lg py-2.5 transition-colors">
-              {busy ? '…' : "I'm the player"}
-            </button>
-            <button onClick={() => claim('parent')} disabled={busy}
-              className="bg-white border border-emerald-300 hover:border-emerald-400 disabled:opacity-50 text-emerald-700 font-bold text-xs uppercase tracking-wider rounded-lg py-2.5 transition-colors">
-              {busy ? '…' : "I'm a parent"}
-            </button>
-          </div>
+          {confirmRel ? (
+            <div>
+              <p className="text-[12px] text-slate-700 mb-2.5">
+                {confirmRel === 'player'
+                  ? <>Confirm <span className="font-semibold">this is you</span>? You'll be able to manage this profile.</>
+                  : <>Confirm you are <span className="font-semibold">{person.fullName}'s</span> parent/guardian? You'll be able to manage this profile.</>}
+              </p>
+              <div className="grid grid-cols-2 gap-2">
+                <button onClick={() => claim(confirmRel)} disabled={busy}
+                  className="bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white font-bold text-xs uppercase tracking-wider rounded-lg py-2.5 transition-colors">
+                  {busy ? '…' : 'Confirm claim'}
+                </button>
+                <button onClick={() => setConfirmRel(null)} disabled={busy}
+                  className="bg-white border border-slate-300 hover:border-slate-400 disabled:opacity-50 text-slate-600 font-bold text-xs uppercase tracking-wider rounded-lg py-2.5 transition-colors">
+                  Cancel
+                </button>
+              </div>
+            </div>
+          ) : (
+            <div className="grid grid-cols-2 gap-2">
+              <button onClick={() => { setErr(''); setConfirmRel('player') }} disabled={busy}
+                className="bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white font-bold text-xs uppercase tracking-wider rounded-lg py-2.5 transition-colors">
+                I'm the player
+              </button>
+              <button onClick={() => { setErr(''); setConfirmRel('parent') }} disabled={busy}
+                className="bg-white border border-emerald-300 hover:border-emerald-400 disabled:opacity-50 text-emerald-700 font-bold text-xs uppercase tracking-wider rounded-lg py-2.5 transition-colors">
+                I'm a parent
+              </button>
+            </div>
+          )}
         </div>
       </div>
     </section>

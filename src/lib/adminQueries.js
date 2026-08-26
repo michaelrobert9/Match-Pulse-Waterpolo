@@ -4,7 +4,7 @@ import {
   serverTimestamp, writeBatch, increment, arrayUnion, deleteField,
 } from 'firebase/firestore'
 import { httpsCallable } from 'firebase/functions'
-import { db, identityDb, auth, functions } from '../firebase'
+import { db, identityDb, auth, functions, SPORT_KEY } from '../firebase'
 import { slugify, matchSlug as buildMatchSlug } from './slugify'
 import { matchPath, competitionMatchPath, dedupeSlug } from './matchPaths'
 import { redirectKey } from './queries'
@@ -2361,6 +2361,30 @@ export async function claimPlayerProfile(personId, relationship) {
     ? { guardianUids: [userId] }
     : { ownerUid: userId }
   await updateDoc(ref, { ...patch, updatedBy: userId, updatedAt: serverTimestamp() })
+
+  // Best-effort: mirror a PARENT (guardian) claim to the CENTRAL identity DB so
+  // the main website can see and manage the parent↔child link. This never blocks
+  // the claim — the sport-local claim above already stands; if the central rules
+  // don't yet permit this write it simply no-ops until they do. Player self-claims
+  // stay sport-local. See the main-website contract in docs/guardianship-sync.md.
+  if (relationship === 'parent') {
+    try {
+      const gid = `${SPORT_KEY}_${personId}_${userId}`
+      await setDoc(doc(identityDb, 'guardianships', gid), {
+        parentUid:   userId,
+        parentEmail: (auth?.currentUser?.email ?? '').toLowerCase() || null,
+        parentName:  auth?.currentUser?.displayName ?? null,
+        sport:       SPORT_KEY,
+        personId,
+        personName:  data.fullName ?? null,
+        personSlug:  data.slug ?? null,
+        relationship: 'parent',
+        status:      'active',
+        source:      'sport-claim',
+        createdAt:   serverTimestamp(),
+      }, { merge: true })
+    } catch { /* central rules may not permit this yet; the claim already succeeded */ }
+  }
 }
 
 // Master-admin recovery / reassignment: link a user (by their account email) to
@@ -2629,13 +2653,34 @@ export async function claimTeamSheetProfile(personId, relationship = 'player') {
   const controlPatch = relationship === 'parent'
     ? { guardianUids: [user.uid] }
     : { ownerUid: user.uid }
-  return updateDoc(ref, {
+  await updateDoc(ref, {
     ...controlPatch,
     claimStatus: 'claimed',
     preClaimSnapshot,
     claimedBy: user.uid, claimedAt: serverTimestamp(),
     updatedBy: user.uid, updatedAt: serverTimestamp(),
   })
+  // Best-effort: mirror a PARENT (guardian) claim to the CENTRAL identity DB so
+  // the main website can see and manage the parent↔child link. Never blocks the
+  // claim. See the main-website contract in docs/guardianship-sync.md.
+  if (relationship === 'parent') {
+    try {
+      const gid = `${SPORT_KEY}_${personId}_${user.uid}`
+      await setDoc(doc(identityDb, 'guardianships', gid), {
+        parentUid:   user.uid,
+        parentEmail: (user.email ?? '').toLowerCase() || null,
+        parentName:  user.displayName ?? null,
+        sport:       SPORT_KEY,
+        personId,
+        personName:  d.fullName ?? null,
+        personSlug:  d.slug ?? null,
+        relationship: 'parent',
+        status:      'active',
+        source:      'sport-claim',
+        createdAt:   serverTimestamp(),
+      }, { merge: true })
+    } catch { /* central rules may not permit this yet; the claim already succeeded */ }
+  }
 }
 
 // Master-admin revocation of a claim (addendum A4): returns the profile to
