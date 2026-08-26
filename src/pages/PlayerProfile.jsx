@@ -99,9 +99,9 @@ function CompRecord({ record }) {
   const name   = record.competitionName || (isRoster ? 'Friendlies & other matches' : 'Matches')
   const season = record.competitionSeason || record.season || null
   return (
-    <div className="flex items-center gap-2 py-1">
+    <div className="flex items-start gap-2 py-1">
       <div className="flex-1 min-w-0">
-        <span className="text-xs text-slate-600 truncate">{name}</span>
+        <span className="text-xs text-slate-600 break-words leading-tight">{name}</span>
         {season && (
           <span className="text-[10px] text-slate-400 ml-1.5">{season}</span>
         )}
