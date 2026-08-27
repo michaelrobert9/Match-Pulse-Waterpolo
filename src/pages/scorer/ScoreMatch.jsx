@@ -1592,7 +1592,7 @@ export default function ScoreMatch() {
                 <Star className="w-4 h-4" style={{ color: pomColor({ color: potmColor }) }} />
                 <span className="text-[10px] font-bold uppercase tracking-widest" style={{ color: pomColor({ color: potmColor }) }}>
                   Player of the Match
-                  {potmPerTeam && ` · ${potmSide === 'home' ? (match.homeTeamName ?? 'Home') : (match.awayTeamName ?? 'Away')}`}
+                  {potmPerTeam && ` · ${teamDisplay(potmSide)}`}
                 </span>
               </div>
               <p className={`text-sm ${t.muted}`}>Tap a player to award the honour, or skip.</p>
@@ -1601,7 +1601,7 @@ export default function ScoreMatch() {
             <div className="overflow-y-auto flex-1">
               {visibleSides.map(side => {
                 const players = side === 'home' ? (match.homeLineup ?? []) : (match.awayLineup ?? [])
-                const teamName  = side === 'home' ? match.homeTeamName  : match.awayTeamName
+                const teamName  = teamDisplay(side)
                 const teamColor = side === 'home' ? match.homeTeamColor : match.awayTeamColor
                 if (players.length === 0) return null
                 return (
@@ -1642,7 +1642,7 @@ export default function ScoreMatch() {
             <div className={`px-4 py-4 border-t shrink-0 ${bright ? 'border-slate-200' : 'border-slate-700'}`}>
               <button onClick={() => handleSelectPOTM(null)}
                 className={`w-full border font-bold text-sm rounded-xl py-3 ${t.neutralBtn}`}>
-                {potmPerTeam ? `Skip ${potmSide === 'home' ? (match.homeTeamName ?? 'home') : (match.awayTeamName ?? 'away')}` : 'Skip — no award today'}
+                {potmPerTeam ? `Skip ${teamDisplay(potmSide)}` : 'Skip — no award today'}
               </button>
             </div>
           </div>
@@ -1993,7 +1993,7 @@ export default function ScoreMatch() {
         <Sheet t={t} title="Match result" onClose={() => setOutcomeOpen(false)}>
           <ResultSheet
             match={match} t={t} busy={outcomeBusy} error={outcomeError} wkDefault={wkDefault}
-            homeName={match.homeTeamName} awayName={match.awayTeamName}
+            homeName={teamDisplay('home')} awayName={teamDisplay('away')}
             homePlayers={home} awayPlayers={away}
             onEnterResult={(payload) => runOutcome(
               () => submitFixtureResult(match.id, { ...payload, method: 'submitted' }),
