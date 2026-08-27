@@ -9,7 +9,7 @@ import CompetitionNav from '../components/CompetitionNav'
 import VenueLabel from '../components/VenueLabel'
 import { useAuth } from '../contexts/AuthContext'
 import { competitionViewableBy } from '../lib/competitionRules'
-import { MatchTeamIdentity } from '../components/TeamIdentity'
+import { MatchTeamIdentity, MatchTeamCrest } from '../components/TeamIdentity'
 import { prefetchMatchTeams } from '../lib/teamIdentity'
 
 function downloadCSV(filename, rows) {
@@ -142,7 +142,7 @@ export default function CompetitionFixtures() {
                     <div className="flex items-start">
                       {/* Home team */}
                       <div className="flex items-start gap-2 flex-1 min-w-0">
-                        <span className="w-2.5 h-2.5 rounded-sm shrink-0 mt-1" style={{ backgroundColor: match.homeTeamColor }} />
+                        <MatchTeamCrest match={match} side="home" size={20} className="shrink-0 mt-0.5" />
                         <MatchTeamIdentity match={match} side="home" hideIdentifier
                           nameClass="text-sm font-semibold text-slate-900"
                         />
@@ -171,7 +171,7 @@ export default function CompetitionFixtures() {
                         <MatchTeamIdentity match={match} side="away" hideIdentifier align="right"
                           nameClass="text-sm font-semibold text-slate-900"
                         />
-                        <span className="w-2.5 h-2.5 rounded-sm shrink-0 mt-1" style={{ backgroundColor: match.awayTeamColor }} />
+                        <MatchTeamCrest match={match} side="away" size={20} className="shrink-0 mt-0.5" />
                       </div>
                     </div>
                     {banner && (

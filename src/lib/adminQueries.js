@@ -4,7 +4,7 @@ import {
   serverTimestamp, writeBatch, increment, arrayUnion, deleteField,
 } from 'firebase/firestore'
 import { httpsCallable } from 'firebase/functions'
-import { db, identityDb, auth, functions } from '../firebase'
+import { db, identityDb, auth, functions, SPORT_KEY } from '../firebase'
 import { slugify, matchSlug as buildMatchSlug } from './slugify'
 import { matchPath, competitionMatchPath, dedupeSlug } from './matchPaths'
 import { redirectKey } from './queries'
@@ -189,6 +189,42 @@ async function generatePersonSlug(fullName, excludeId = null) {
   return `${base}-${Date.now()}`
 }
 
+// ── Player profile URLs ─────────────────────────────────────────────────────
+// Every player has a slug derived from their name — that IS their URL. When a
+// name is corrected the slug follows automatically and a redirect from the old
+// /player/<slug> is written so existing links never break. No usernames to claim.
+// Record that an old player URL should redirect to its new home. Best-effort:
+// a failed redirect write must never block the name change itself.
+async function writePersonRedirect(fromSlug, toPath) {
+  if (!fromSlug || !toPath) return
+  const from = `/player/${fromSlug}`
+  if (from === toPath) return
+  try {
+    await setDoc(doc(db, 'redirects', redirectKey(from)), {
+      fromPath: from, toPath, kind: 'person',
+      createdBy: uid(), createdAt: serverTimestamp(),
+    }, { merge: true })
+  } catch { /* redirect is a convenience; the profile still resolves by id */ }
+}
+
+// Maintenance: re-derive every player's slug from their current (corrected) name
+// and write a redirect for any that change. Run after a bulk name cleanup so the
+// URLs catch up. Idempotent — safe to run repeatedly.
+export async function backfillPlayerUrls() {
+  const snap = await getDocs(collection(db, 'people'))
+  let reslugged = 0, unchanged = 0
+  for (const d of snap.docs) {
+    const p = d.data()
+    const oldSlug = p.slug ?? null
+    const newSlug = await generatePersonSlug(p.fullName ?? '', d.id)
+    if (newSlug === oldSlug) { unchanged++; continue }
+    await updateDoc(d.ref, { slug: newSlug, updatedAt: serverTimestamp() })
+    if (oldSlug) await writePersonRedirect(oldSlug, `/player/${newSlug}`)
+    reslugged++
+  }
+  return { total: snap.size, reslugged, unchanged }
+}
+
 export async function createPerson(data) {
   const slug = await generatePersonSlug(data.fullName ?? '')
   return addDoc(collection(db, 'people'), {
@@ -200,17 +236,25 @@ export async function createPerson(data) {
   })
 }
 export async function updatePerson(id, data) {
-  // Slugs are frozen at creation: only backfill if this record has none yet.
-  let extra = {}
-  if (!data.slug) {
-    const existing = await getDoc(doc(db, 'people', id))
-    if (existing.exists() && !existing.data().slug) {
-      extra.slug = await generatePersonSlug(
-        data.fullName ?? existing.data().fullName ?? '', id
-      )
+  const ref = doc(db, 'people', id)
+  // A caller that sets the slug explicitly wins — skip the automatic URL logic.
+  if ('slug' in data) {
+    return updateDoc(ref, { ...data, updatedAt: serverTimestamp() })
+  }
+  const existing    = (await getDoc(ref)).data() ?? {}
+  const oldSlug     = existing.slug ?? null
+  const nameChanged = data.fullName != null && data.fullName !== existing.fullName
+  const extra = {}
+  // Every player's URL follows their name: re-slug when the name changes (or
+  // backfill a missing slug), and record a redirect so old links never break.
+  if (nameChanged || !oldSlug) {
+    const newSlug = await generatePersonSlug(data.fullName ?? existing.fullName ?? '', id)
+    if (newSlug !== oldSlug) {
+      extra.slug = newSlug
+      if (oldSlug) await writePersonRedirect(oldSlug, `/player/${newSlug}`)
     }
   }
-  return updateDoc(doc(db, 'people', id), { ...data, ...extra, updatedAt: serverTimestamp() })
+  return updateDoc(ref, { ...data, ...extra, updatedAt: serverTimestamp() })
 }
 
 // ── Merge duplicate player records (master admin) ───────────────────────────
@@ -2353,7 +2397,8 @@ export async function claimPlayerProfile(personId, relationship) {
   const ref = doc(db, 'people', personId)
   const snap = await getDoc(ref)
   if (!snap.exists()) throw new Error('Profile not found.')
-  if (isProfileClaimed(snap.data())) {
+  const data = snap.data()
+  if (isProfileClaimed(data)) {
     const e = new Error('This profile has already been claimed. Ask a MatchPulse admin to reassign it if this is wrong.')
     e.code = 'profile/already-claimed'; throw e
   }
@@ -2361,6 +2406,30 @@ export async function claimPlayerProfile(personId, relationship) {
     ? { guardianUids: [userId] }
     : { ownerUid: userId }
   await updateDoc(ref, { ...patch, updatedBy: userId, updatedAt: serverTimestamp() })
+
+  // Best-effort: mirror a PARENT (guardian) claim to the CENTRAL identity DB so
+  // the main website can see and manage the parent↔child link. This never blocks
+  // the claim — the sport-local claim above already stands; if the central rules
+  // don't yet permit this write it simply no-ops until they do. Player self-claims
+  // stay sport-local. See the main-website contract in docs/guardianship-sync.md.
+  if (relationship === 'parent') {
+    try {
+      const gid = `${SPORT_KEY}_${personId}_${userId}`
+      await setDoc(doc(identityDb, 'guardianships', gid), {
+        parentUid:   userId,
+        parentEmail: (auth?.currentUser?.email ?? '').toLowerCase() || null,
+        parentName:  auth?.currentUser?.displayName ?? null,
+        sport:       SPORT_KEY,
+        personId,
+        personName:  data.fullName ?? null,
+        personSlug:  data.slug ?? null,
+        relationship: 'parent',
+        status:      'active',
+        source:      'sport-claim',
+        createdAt:   serverTimestamp(),
+      }, { merge: true })
+    } catch { /* central rules may not permit this yet; the claim already succeeded */ }
+  }
 }
 
 // Master-admin recovery / reassignment: link a user (by their account email) to
@@ -2571,6 +2640,8 @@ export async function createTeamSheetPerson({ firstName, lastName, fullName }, c
   if (!userId) throw new Error('You must be signed in.')
   const name = (fullName ?? `${firstName ?? ''} ${lastName ?? ''}`).trim().replace(/\s+/g, ' ')
   if (!name) throw new Error('A player name is required.')
+  // Every player gets a slug from their name. If the name is later corrected the
+  // slug follows and a redirect is written (see updatePerson / backfillPlayerUrls).
   const slug = await generatePersonSlug(name)
   return addDoc(collection(db, 'people'), {
     // Display name stays in this repo's existing field, `fullName` (Q3). The
@@ -2629,13 +2700,34 @@ export async function claimTeamSheetProfile(personId, relationship = 'player') {
   const controlPatch = relationship === 'parent'
     ? { guardianUids: [user.uid] }
     : { ownerUid: user.uid }
-  return updateDoc(ref, {
+  await updateDoc(ref, {
     ...controlPatch,
     claimStatus: 'claimed',
     preClaimSnapshot,
     claimedBy: user.uid, claimedAt: serverTimestamp(),
     updatedBy: user.uid, updatedAt: serverTimestamp(),
   })
+  // Best-effort: mirror a PARENT (guardian) claim to the CENTRAL identity DB so
+  // the main website can see and manage the parent↔child link. Never blocks the
+  // claim. See the main-website contract in docs/guardianship-sync.md.
+  if (relationship === 'parent') {
+    try {
+      const gid = `${SPORT_KEY}_${personId}_${user.uid}`
+      await setDoc(doc(identityDb, 'guardianships', gid), {
+        parentUid:   user.uid,
+        parentEmail: (user.email ?? '').toLowerCase() || null,
+        parentName:  user.displayName ?? null,
+        sport:       SPORT_KEY,
+        personId,
+        personName:  d.fullName ?? null,
+        personSlug:  d.slug ?? null,
+        relationship: 'parent',
+        status:      'active',
+        source:      'sport-claim',
+        createdAt:   serverTimestamp(),
+      }, { merge: true })
+    } catch { /* central rules may not permit this yet; the claim already succeeded */ }
+  }
 }
 
 // Master-admin revocation of a claim (addendum A4): returns the profile to
