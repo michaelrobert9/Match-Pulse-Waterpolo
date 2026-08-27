@@ -6,7 +6,7 @@ import { fetchSeoSettings, saveSeoSettings, DEFAULT_SEO } from '../../lib/seoSet
 import { slugify, matchSlug as buildMatchSlug } from '../../lib/slugify'
 import { composeTeamDisplay } from '../../lib/teamNaming'
 import { matchPath, competitionMatchPath } from '../../lib/matchPaths'
-import { writeMatchRedirect, seedFixturesFromTeamSheet, backfillTeamSearchNames, backfillRepresentativeOrgsFromSlices } from '../../lib/adminQueries'
+import { writeMatchRedirect, seedFixturesFromTeamSheet, backfillTeamSearchNames, backfillRepresentativeOrgsFromSlices, backfillPlayerUrls } from '../../lib/adminQueries'
 import { useAuth } from '../../contexts/AuthContext'
 
 function Field({ label, hint, children }) {
@@ -738,6 +738,48 @@ function BackfillRepresentativeOrgs() {
   )
 }
 
+function BackfillPlayerUrls() {
+  const [state, setState] = useState('idle')
+  const [log,   setLog]   = useState('')
+
+  async function run() {
+    setState('running'); setLog('')
+    try {
+      const res = await backfillPlayerUrls()
+      setLog(`Done — ${res.cleared} unclaimed profile(s) switched to ID links, ${res.reslugged} claimed profile(s) re-slugged from their name, ${res.unchanged} left as-is (of ${res.total}). Old links redirect.`)
+      setState('done')
+    } catch (err) {
+      setLog(`Error: ${err.message}`)
+      setState('error')
+    }
+  }
+
+  return (
+    <Section icon={Wrench} title="Player URL cleanup">
+      <p className="text-sm text-slate-600">
+        Brings every player profile’s URL in line: unclaimed (team-sheet) profiles
+        drop their vanity link and use <span className="font-mono">/players/&lt;id&gt;</span>
+        (so a wrong pasted name is never in the URL), and claimed profiles that still
+        use an auto link get re-slugged from their current, corrected name. Chosen
+        usernames are left alone and old links redirect. Safe to run more than once.
+      </p>
+      {log && (
+        <div className="bg-slate-900 text-slate-100 rounded-xl px-4 py-3 font-mono text-xs leading-relaxed whitespace-pre-wrap">
+          {log}
+        </div>
+      )}
+      <button
+        type="button"
+        onClick={run}
+        disabled={state === 'running'}
+        className="bg-slate-700 hover:bg-slate-600 disabled:opacity-50 text-white font-bold text-sm uppercase tracking-wider rounded-xl px-5 py-2.5 transition-colors"
+      >
+        {state === 'running' ? 'Running…' : state === 'done' ? 'Run again' : 'Clean up player URLs'}
+      </button>
+    </Section>
+  )
+}
+
 // Rebuilds every user's orgRoles mirror from the authoritative staff records on
 // each organisation. Repairs memberships dropped by the historical orgRoles
 // overwrite bug (a school/club no longer appearing on a user's Manage page).
@@ -1104,6 +1146,7 @@ export default function SeoSettings() {
         <BackfillTeamSheetFixtures />
         <BackfillTeamSearchNames />
         <BackfillRepresentativeOrgs />
+        <BackfillPlayerUrls />
 
         {/* Save bar */}
         <div className="flex items-center justify-between gap-4 pt-2">

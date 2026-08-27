@@ -189,6 +189,93 @@ async function generatePersonSlug(fullName, excludeId = null) {
   return `${base}-${Date.now()}`
 }
 
+// ── Player profile URLs / usernames ─────────────────────────────────────────
+// URL model: an UNCLAIMED (team-sheet) profile has NO vanity slug — its URL is
+// /players/<id> — because a pasted name may be wrong. A CLAIMED profile gets a
+// slug derived from its (corrected) name (slugSource:'auto', which follows later
+// name edits) until the owner picks a username (slugSource:'custom', locked).
+// Whenever a slug changes, a redirect from the old /player/<slug> is written so
+// existing links never break.
+const RESERVED_USERNAMES = new Set([
+  'admin', 'support', 'api', 'players', 'player', 'teams', 'team', 'competitions',
+  'competition', 'schools', 'clubs', 'associations', 'me', 'profile', 'login',
+  'logout', 'settings', 'new', 'search', 'about', 'contact', 'score', 'manage',
+  'match', 'matches', 'org', 'organizations', 'venues', 'venue', 'help', 'legal',
+])
+
+export function usernameError(name) {
+  const s = String(name ?? '').trim().toLowerCase()
+  if (s.length < 3 || s.length > 30) return 'Username must be 3–30 characters.'
+  if (!/^[a-z0-9](?:[a-z0-9-]*[a-z0-9])$/.test(s)) return 'Use lowercase letters, numbers and hyphens (not at the start or end).'
+  if (RESERVED_USERNAMES.has(s)) return 'That username is reserved — choose another.'
+  return null
+}
+
+// Record that an old player URL should redirect to its new home. Best-effort:
+// a failed redirect write must never block the name/username change itself.
+async function writePersonRedirect(fromSlug, toPath) {
+  if (!fromSlug || !toPath) return
+  const from = `/player/${fromSlug}`
+  if (from === toPath) return
+  try {
+    await setDoc(doc(db, 'redirects', redirectKey(from)), {
+      fromPath: from, toPath, kind: 'person',
+      createdBy: uid(), createdAt: serverTimestamp(),
+    }, { merge: true })
+  } catch { /* redirect is a convenience; the profile still resolves by id */ }
+}
+
+// A claimed profile's owner/guardian (or a platform admin) chooses a permanent
+// username — their handle becomes the profile URL and no longer follows name
+// edits (slugSource:'custom'). Validates format, reservation and uniqueness.
+export async function setPlayerUsername(personId, username) {
+  const err = usernameError(username)
+  if (err) throw new Error(err)
+  const uname = String(username).trim().toLowerCase()
+  const ref = doc(db, 'people', personId)
+  const snap = await getDoc(ref)
+  if (!snap.exists()) throw new Error('Profile not found.')
+  const p = snap.data()
+  if (!(p.ownerUid || (p.guardianUids ?? []).length > 0)) {
+    throw new Error('Claim this profile before choosing a username.')
+  }
+  const taken = await getDocs(query(collection(db, 'people'), where('slug', '==', uname)))
+  if (taken.docs.some(d => d.id !== personId)) throw new Error('That username is already taken — try another.')
+  const oldSlug = p.slug ?? null
+  await updateDoc(ref, { slug: uname, slugSource: 'custom', updatedBy: uid(), updatedAt: serverTimestamp() })
+  if (oldSlug && oldSlug !== uname) await writePersonRedirect(oldSlug, `/player/${uname}`)
+  return uname
+}
+
+// Maintenance: bring every profile's URL in line with the model above.
+// Unclaimed → drop the slug (URL becomes /players/<id>); claimed with an auto
+// slug → re-derive from the current (corrected) name; custom usernames are left
+// alone. Redirects are written for every slug that changes. Idempotent.
+export async function backfillPlayerUrls() {
+  const snap = await getDocs(collection(db, 'people'))
+  let cleared = 0, reslugged = 0, unchanged = 0
+  for (const d of snap.docs) {
+    const p = d.data()
+    const claimed = !!(p.ownerUid || (p.guardianUids ?? []).length > 0)
+    const oldSlug = p.slug ?? null
+    if (claimed) {
+      if (p.slugSource === 'custom') { unchanged++; continue }
+      const newSlug = await generatePersonSlug(p.fullName ?? '', d.id)
+      if (newSlug === oldSlug) { unchanged++; continue }
+      await updateDoc(d.ref, { slug: newSlug, slugSource: 'auto', updatedAt: serverTimestamp() })
+      if (oldSlug) await writePersonRedirect(oldSlug, `/player/${newSlug}`)
+      reslugged++
+    } else if (oldSlug) {
+      await updateDoc(d.ref, { slug: null, updatedAt: serverTimestamp() })
+      await writePersonRedirect(oldSlug, `/players/${d.id}`)
+      cleared++
+    } else {
+      unchanged++
+    }
+  }
+  return { total: snap.size, cleared, reslugged, unchanged }
+}
+
 export async function createPerson(data) {
   const slug = await generatePersonSlug(data.fullName ?? '')
   return addDoc(collection(db, 'people'), {
@@ -200,17 +287,35 @@ export async function createPerson(data) {
   })
 }
 export async function updatePerson(id, data) {
-  // Slugs are frozen at creation: only backfill if this record has none yet.
-  let extra = {}
-  if (!data.slug) {
-    const existing = await getDoc(doc(db, 'people', id))
-    if (existing.exists() && !existing.data().slug) {
-      extra.slug = await generatePersonSlug(
-        data.fullName ?? existing.data().fullName ?? '', id
-      )
-    }
+  const ref = doc(db, 'people', id)
+  // A caller that sets the slug explicitly (e.g. setPlayerUsername) wins — skip
+  // the automatic URL logic entirely.
+  if ('slug' in data) {
+    return updateDoc(ref, { ...data, updatedAt: serverTimestamp() })
   }
-  return updateDoc(doc(db, 'people', id), { ...data, ...extra, updatedAt: serverTimestamp() })
+  const existing = (await getDoc(ref)).data() ?? {}
+  const claimed  = !!(existing.ownerUid || (existing.guardianUids ?? []).length > 0)
+  const oldSlug  = existing.slug ?? null
+  const nameChanged = data.fullName != null && data.fullName !== existing.fullName
+  const extra = {}
+  if (claimed) {
+    // Claimed: an auto slug follows the corrected name; a custom username is
+    // locked. Re-derive when the name changes (or when there is no slug yet).
+    if (existing.slugSource !== 'custom' && (nameChanged || !oldSlug)) {
+      const newSlug = await generatePersonSlug(data.fullName ?? existing.fullName ?? '', id)
+      if (newSlug !== oldSlug) {
+        extra.slug = newSlug
+        extra.slugSource = 'auto'
+        if (oldSlug) await writePersonRedirect(oldSlug, `/player/${newSlug}`)
+      }
+    }
+  } else if (oldSlug) {
+    // Unclaimed profiles carry no vanity slug — their URL is /players/<id>.
+    // Drop any legacy slug (e.g. a wrong pasted name) and redirect it.
+    extra.slug = null
+    await writePersonRedirect(oldSlug, `/players/${id}`)
+  }
+  return updateDoc(ref, { ...data, ...extra, updatedAt: serverTimestamp() })
 }
 
 // ── Merge duplicate player records (master admin) ───────────────────────────
@@ -2353,14 +2458,25 @@ export async function claimPlayerProfile(personId, relationship) {
   const ref = doc(db, 'people', personId)
   const snap = await getDoc(ref)
   if (!snap.exists()) throw new Error('Profile not found.')
-  if (isProfileClaimed(snap.data())) {
+  const data = snap.data()
+  if (isProfileClaimed(data)) {
     const e = new Error('This profile has already been claimed. Ask a MatchPulse admin to reassign it if this is wrong.')
     e.code = 'profile/already-claimed'; throw e
   }
   const patch = relationship === 'parent'
     ? { guardianUids: [userId] }
     : { ownerUid: userId }
-  await updateDoc(ref, { ...patch, updatedBy: userId, updatedAt: serverTimestamp() })
+  // Claiming mints the profile's first real URL: an auto slug from the (by now
+  // corrected) name, which keeps following name edits until a username is chosen.
+  // A pre-existing custom username is never overwritten.
+  const oldSlug = data.slug ?? null
+  let slugPatch = {}
+  if (data.slugSource !== 'custom') {
+    const newSlug = await generatePersonSlug(data.fullName ?? '', personId)
+    slugPatch = { slug: newSlug, slugSource: 'auto' }
+    if (oldSlug && oldSlug !== newSlug) await writePersonRedirect(oldSlug, `/player/${newSlug}`)
+  }
+  await updateDoc(ref, { ...patch, ...slugPatch, updatedBy: userId, updatedAt: serverTimestamp() })
 
   // Best-effort: mirror a PARENT (guardian) claim to the CENTRAL identity DB so
   // the main website can see and manage the parent↔child link. This never blocks
@@ -2595,7 +2711,9 @@ export async function createTeamSheetPerson({ firstName, lastName, fullName }, c
   if (!userId) throw new Error('You must be signed in.')
   const name = (fullName ?? `${firstName ?? ''} ${lastName ?? ''}`).trim().replace(/\s+/g, ' ')
   if (!name) throw new Error('A player name is required.')
-  const slug = await generatePersonSlug(name)
+  // No vanity slug for a team-sheet profile — a pasted name may be wrong (e.g.
+  // surname-first), so the URL is /players/<id> until the player claims it and a
+  // correct slug/username is set. (URL model: see setPlayerUsername above.)
   return addDoc(collection(db, 'people'), {
     // Display name stays in this repo's existing field, `fullName` (Q3). The
     // B6 rename to `name` is ON HOLD (resolution round Part 1b) — do NOT
@@ -2603,7 +2721,7 @@ export async function createTeamSheetPerson({ firstName, lastName, fullName }, c
     fullName: name,
     firstName: (firstName ?? '').trim() || null,
     lastName:  (lastName ?? '').trim() || null,
-    slug,
+    slug: null,
     roles: ['player'],
     ownerUid: null, guardianUids: [], managerUids: [],   // empty at creation, always
     claimStatus: 'unclaimed',
@@ -2653,8 +2771,19 @@ export async function claimTeamSheetProfile(personId, relationship = 'player') {
   const controlPatch = relationship === 'parent'
     ? { guardianUids: [user.uid] }
     : { ownerUid: user.uid }
+  // Claiming mints the profile's first real URL: an auto slug from the (by now
+  // corrected) name, which keeps following name edits until a username is chosen.
+  // A pre-existing custom username is never overwritten.
+  const oldSlug = d.slug ?? null
+  let slugPatch = {}
+  if (d.slugSource !== 'custom') {
+    const newSlug = await generatePersonSlug(d.fullName ?? '', personId)
+    slugPatch = { slug: newSlug, slugSource: 'auto' }
+    if (oldSlug && oldSlug !== newSlug) await writePersonRedirect(oldSlug, `/player/${newSlug}`)
+  }
   await updateDoc(ref, {
     ...controlPatch,
+    ...slugPatch,
     claimStatus: 'claimed',
     preClaimSnapshot,
     claimedBy: user.uid, claimedAt: serverTimestamp(),
