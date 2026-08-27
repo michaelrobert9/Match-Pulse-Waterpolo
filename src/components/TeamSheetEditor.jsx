@@ -281,6 +281,18 @@ export default function TeamSheetEditor({ competitionId, team, matchId = null, s
                   canonical layout). Reading into an empty grid populates it;
                   reading again appends a late addition. */}
               <div className="space-y-2">
+                {/* How the paste is interpreted — a short, always-visible guide so the
+                    coach knows exactly what the parser does with each line. */}
+                <div className="rounded-lg bg-slate-50 border border-slate-200 px-3 py-2.5 text-[12px] text-slate-600 leading-relaxed">
+                  <div className="font-bold text-slate-700 mb-1">How each line is read</div>
+                  <ul className="space-y-0.5 list-disc pl-4">
+                    <li>One player per line. Bullets, dashes and list markers are stripped.</li>
+                    <li>Names go <b>First name, then Surname</b> (“Surname, First name” is flipped automatically).</li>
+                    <li>A leading number is read as the player’s <b>cap number</b>.</li>
+                    <li>Mark the captain with <b>(c)</b> — they’re set as captain.</li>
+                    <li>A <b>GK</b> / “Goalkeeper” tag beside a name is recognised and stripped, so it never lands in the name.</li>
+                  </ul>
+                </div>
                 <textarea rows={4} value={pasteText} onChange={e => setPasteText(e.target.value)}
                   placeholder={PLACEHOLDER}
                   className="w-full bg-white border border-slate-200 rounded-lg px-3 py-2.5 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:border-emerald-500 transition-colors resize-y" />

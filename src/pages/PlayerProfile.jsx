@@ -13,7 +13,6 @@ import { managesPlayerProfile } from '../lib/capabilities'
 import {
   removeSelfFromFixture, updatePersonBanner, updatePerson, updatePersonPhoto,
   claimPlayerProfile, isProfileClaimed, claimTeamSheetProfile, revokeProfileClaim,
-  setPlayerUsername, usernameError,
 } from '../lib/adminQueries'
 import { sendEmailVerification } from 'firebase/auth'
 import { auth } from '../firebase'
@@ -363,10 +362,6 @@ export default function PlayerProfile() {
   // path; legacy roster profiles through the original one.
   const canClaim = !!uid && person.claimStatus !== 'claimed'
     && !isProfileClaimed(person) && !managesPlayerProfile(person, uid)
-  // The player who claimed a profile (owner or guardian), or a platform admin,
-  // may choose a permanent username for their URL. Managers (coaches) may not.
-  const canSetUsername = isProfileClaimed(person) &&
-    (person.ownerUid === uid || (person.guardianUids ?? []).includes(uid) || isPlatformAdmin)
 
   // A player represents an organisation ONLY where they actually have records —
   // i.e. they were put on a team sheet or played a match for it (both create a
@@ -430,12 +425,6 @@ export default function PlayerProfile() {
       {canClaim && (
         <ClaimCard person={person}
           onClaimed={patch => setPerson(p => ({ ...p, ...patch }))} />
-      )}
-
-      {/* Username: a claimed profile's owner/guardian picks a permanent URL */}
-      {canSetUsername && (
-        <UsernameCard person={person}
-          onSaved={uname => setPerson(p => ({ ...p, slug: uname, slugSource: 'custom' }))} />
       )}
 
       {/* Master-admin revocation of a wrong claim (addendum A4). Returns the
@@ -502,63 +491,6 @@ export default function PlayerProfile() {
       <ReportProfileLink person={person} />
 
     </div>
-  )
-}
-
-// Username card: a claimed profile's owner/guardian picks a permanent handle.
-// Until they do, the URL auto-follows the (corrected) name; a chosen username
-// locks the URL so later name edits never move it. Old links redirect.
-function UsernameCard({ person, onSaved }) {
-  const isCustom = person.slugSource === 'custom'
-  const [value, setValue] = useState(isCustom ? (person.slug ?? '') : '')
-  const [busy, setBusy]   = useState(false)
-  const [err,  setErr]    = useState('')
-  const [saved, setSaved] = useState(false)
-  const current = person.slug ? `/player/${person.slug}` : `/players/${person.id}`
-
-  async function save() {
-    const ve = usernameError(value)
-    if (ve) { setErr(ve); return }
-    setBusy(true); setErr(''); setSaved(false)
-    try {
-      const uname = await setPlayerUsername(person.id, value)
-      onSaved(uname)
-      setSaved(true)
-    } catch (e) {
-      setErr(e.message || 'Could not set that username.')
-    } finally { setBusy(false) }
-  }
-
-  return (
-    <section>
-      <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-5">
-        <div className="text-[10px] font-bold uppercase tracking-widest text-slate-500 mb-1">Profile link</div>
-        <div className="text-slate-900 font-bold text-sm mb-1">{isCustom ? 'Your username' : 'Choose a username'}</div>
-        <p className="text-[12px] text-slate-500 leading-relaxed mb-3">
-          Your profile link is <span className="font-mono text-slate-700 break-all">{current}</span>.
-          {isCustom
-            ? ' Change your username below — the old link keeps working.'
-            : " Pick a username for a permanent, tidy link that won't change when your name is edited."}
-        </p>
-        {err && <p className="text-red-600 text-xs mb-2">{err}</p>}
-        {saved && person.slug && (
-          <p className="text-emerald-700 text-xs mb-2">Saved — your link is now <span className="font-mono break-all">/player/{person.slug}</span>.</p>
-        )}
-        <div className="flex items-stretch gap-2">
-          <div className="flex-1 flex items-center bg-white border border-slate-200 rounded-lg px-3 focus-within:border-emerald-500 transition-colors">
-            <span className="text-slate-400 text-sm font-mono shrink-0">/player/</span>
-            <input value={value}
-              onChange={e => { setSaved(false); setErr(''); setValue(e.target.value.toLowerCase().replace(/\s+/g, '')) }}
-              placeholder="username" spellCheck={false} autoCapitalize="none" autoCorrect="off" maxLength={30}
-              className="flex-1 min-w-0 py-2.5 text-sm text-slate-900 font-mono focus:outline-none bg-transparent" />
-          </div>
-          <button onClick={save} disabled={busy || !value.trim()}
-            className="bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white font-bold text-xs uppercase tracking-wider rounded-lg px-4 transition-colors shrink-0">
-            {busy ? '…' : 'Save'}
-          </button>
-        </div>
-      </div>
-    </section>
   )
 }
 

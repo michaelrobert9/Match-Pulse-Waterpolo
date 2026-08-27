@@ -746,7 +746,7 @@ function BackfillPlayerUrls() {
     setState('running'); setLog('')
     try {
       const res = await backfillPlayerUrls()
-      setLog(`Done — ${res.cleared} unclaimed profile(s) switched to ID links, ${res.reslugged} claimed profile(s) re-slugged from their name, ${res.unchanged} left as-is (of ${res.total}). Old links redirect.`)
+      setLog(`Done — re-slugged ${res.reslugged} player profile(s) from their current name, ${res.unchanged} already correct (of ${res.total}). Old links redirect.`)
       setState('done')
     } catch (err) {
       setLog(`Error: ${err.message}`)
@@ -757,11 +757,9 @@ function BackfillPlayerUrls() {
   return (
     <Section icon={Wrench} title="Player URL cleanup">
       <p className="text-sm text-slate-600">
-        Brings every player profile’s URL in line: unclaimed (team-sheet) profiles
-        drop their vanity link and use <span className="font-mono">/players/&lt;id&gt;</span>
-        (so a wrong pasted name is never in the URL), and claimed profiles that still
-        use an auto link get re-slugged from their current, corrected name. Chosen
-        usernames are left alone and old links redirect. Safe to run more than once.
+        Re-derives every player profile’s URL from their current, corrected name and
+        writes a redirect for any that change — so after fixing wrong-way-round names
+        the links catch up and old links still resolve. Safe to run more than once.
       </p>
       {log && (
         <div className="bg-slate-900 text-slate-100 rounded-xl px-4 py-3 font-mono text-xs leading-relaxed whitespace-pre-wrap">
