@@ -662,6 +662,61 @@ async function getShell() {
   }
 }
 
+// ── Site-wide head tags (analytics & verification) ───────────────────────────
+// Google Analytics and Search Console verification are configured in the admin
+// SEO settings (Firestore settings/seo) and used to be injected ONLY on the
+// client, after React mounted and read that doc. Google's "verify your tag" and
+// site-verification checks fetch the raw served HTML and do NOT run the SPA, so
+// they never saw the tag — which is why the measurement ID read as "not
+// installed". We now read the same settings doc here (cached with a short TTL)
+// and emit the snippet into <head> server-side for EVERY request, so the tag is
+// present in the served HTML. The element IDs match the client-side injector's
+// guard (SiteSettingsProvider), so the client never double-injects.
+
+const SEO_TTL_MS = 5 * 60 * 1000
+let seoCache = null
+let seoCachedAt = 0
+
+async function getSeoSettings(db) {
+  if (seoCache && (Date.now() - seoCachedAt) < SEO_TTL_MS) return seoCache
+  try {
+    const snap = await db.collection('settings').doc('seo').get()
+    seoCache = snap.exists ? (snap.data() || {}) : {}
+    seoCachedAt = Date.now()
+    return seoCache
+  } catch (e) {
+    logger.warn('renderer: seo settings fetch failed', { err: e.message })
+    return seoCache || {}
+  }
+}
+
+// Google measurement/tag IDs are short tokens with a known prefix. Validate
+// strictly before interpolating into a <script> so nothing in the settings doc
+// can break out into markup or script.
+function safeGaId(raw) {
+  const id = String(raw ?? '').trim()
+  return /^(G|GT|AW|UA|DC)-[A-Za-z0-9-]+$/.test(id) ? id : ''
+}
+
+function siteHeadExtras(seo) {
+  const out = []
+  const gid = safeGaId(seo?.googleAnalyticsId)
+  if (gid) {
+    out.push(`<script async src="https://www.googletagmanager.com/gtag/js?id=${gid}" id="ga-async"></script>`)
+    out.push(`<script id="ga-init">window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}gtag('js',new Date());gtag('config','${gid}');</script>`)
+  }
+  const gsc = String(seo?.googleSearchConsoleVerification ?? '').trim()
+  if (gsc && /^[A-Za-z0-9_-]+$/.test(gsc)) {
+    out.push(`<meta name="google-site-verification" content="${gsc}" />`)
+  }
+  return out.length ? out.join('\n    ') : ''
+}
+
+function injectHeadExtras(html, extras) {
+  if (!extras) return html
+  return html.replace('</head>', `  ${extras}\n</head>`)
+}
+
 // ── Main handler ───────────────────────────────────────────────────────────────
 
 async function rendererHandler(req, res) {
@@ -676,24 +731,30 @@ async function rendererHandler(req, res) {
     return
   }
 
+  // Site-wide head tags (GA + Search Console verification) go into the served
+  // HTML for both humans and bots, so Google's raw-HTML checks can see them.
+  const db = getFirestore(RENDERER_DB_ID)
+  const headExtras = siteHeadExtras(await getSeoSettings(db))
+
   if (!bot) {
-    // Human: return the SPA shell unchanged. React router handles the route.
+    // Human: SPA shell with the site-wide head tags injected. React router
+    // handles the route.
     res.set('Content-Type', 'text/html; charset=utf-8')
     // SPA-shell contract: hashed chunks are purged on deploy, so the HTML must
     // never be cached — a cached shell references dead chunks -> blank page.
     res.set('Cache-Control', 'no-store')
-    res.status(200).send(shell)
+    res.status(200).send(injectHeadExtras(shell, headExtras))
     return
   }
 
   // Bot: build and inject per-route metadata.
   try {
     const route  = parseRoute(path)
-    const db     = getFirestore(RENDERER_DB_ID)
     const entity = await fetchEntity(db, route)
     const meta   = buildMeta({ kind: route.kind, entity, path })
     const ldStr  = jsonLd(route.kind, entity, path)
     let html     = injectHead(shell, meta, ldStr)
+    html         = injectHeadExtras(html, headExtras)
     // Support pages are static — render the real body for non-JS crawlers too.
     if (route.kind === 'support_article') html = injectBody(html, supportArticleBody(entity))
     else if (route.kind === 'support_index') html = injectBody(html, supportIndexBody(entity))
