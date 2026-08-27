@@ -170,6 +170,11 @@ export async function fetchCompetitionTopScorers(competitionId, limit = 5) {
   ))
   return snaps
     .flatMap(s => s.docs.map(d => ({ id: d.id, ...d.data() })))
+    // Only THIS competition's slices count. A team also has a no-competitionId
+    // roster slice that accrues its standalone (friendly) fixtures — loading by
+    // teamId alone would sweep those friendly goals into the competition's
+    // scorers. Scope to the competition so non-competition matches never appear.
+    .filter(p => p.competitionId === competitionId)
     .filter(p => p.goals > 0)
     .sort((a, b) => b.goals - a.goals)
     .slice(0, limit)
