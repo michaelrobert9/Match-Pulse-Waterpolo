@@ -239,7 +239,9 @@ export async function updatePerson(id, data) {
   const ref = doc(db, 'people', id)
   // A caller that sets the slug explicitly wins — skip the automatic URL logic.
   if ('slug' in data) {
-    return updateDoc(ref, { ...data, updatedAt: serverTimestamp() })
+    await updateDoc(ref, { ...data, updatedAt: serverTimestamp() })
+    await propagatePersonToSlices(id, data.fullName ?? null, data.slug ?? null)
+    return
   }
   const existing    = (await getDoc(ref)).data() ?? {}
   const oldSlug     = existing.slug ?? null
@@ -254,7 +256,30 @@ export async function updatePerson(id, data) {
       if (oldSlug) await writePersonRedirect(oldSlug, `/player/${newSlug}`)
     }
   }
-  return updateDoc(ref, { ...data, ...extra, updatedAt: serverTimestamp() })
+  await updateDoc(ref, { ...data, ...extra, updatedAt: serverTimestamp() })
+  // Keep the denormalised name/slug on this player's stat slices in sync. Slices
+  // store a snapshot of the name captured when the player was pasted or scored;
+  // without this, correcting a reversed name or a stray shirt number on the
+  // profile would leave the OLD name showing on the players list, team line-ups,
+  // career rows and the competition top-scorer leaderboard. Best-effort — a
+  // slice write that is denied never blocks the profile save.
+  if (nameChanged || extra.slug) {
+    await propagatePersonToSlices(id, data.fullName ?? existing.fullName ?? null, extra.slug ?? existing.slug ?? null)
+  }
+}
+
+// Push a person's current name/slug onto every stat slice that references them.
+// Best-effort and idempotent: only the fields we were given are written, and any
+// failure is swallowed so profile edits never fail on a slice permission.
+async function propagatePersonToSlices(personId, personName, personSlug) {
+  if (!personId) return
+  try {
+    const snap = await getDocs(query(collection(db, 'players'), where('personId', '==', personId)))
+    await Promise.all(snap.docs.map(d => updateDoc(d.ref, {
+      ...(personName != null ? { personName } : {}),
+      ...(personSlug != null ? { personSlug } : {}),
+    }).catch(() => {})))
+  } catch { /* best-effort — leave slices as-is */ }
 }
 
 // ── Merge duplicate player records (master admin) ───────────────────────────
