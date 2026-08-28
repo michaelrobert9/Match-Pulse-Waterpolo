@@ -168,11 +168,45 @@ export async function fetchCompetitionTopScorers(competitionId, limit = 5) {
   const snaps = await Promise.all(chunks.map(ids =>
     getDocs(query(collection(db, 'players'), where('teamId', 'in', ids)))
   ))
-  return snaps
+  const rows = snaps
     .flatMap(s => s.docs.map(d => ({ id: d.id, ...d.data() })))
+    // Only THIS competition's slices count. A team also has a no-competitionId
+    // roster slice that accrues its standalone (friendly) fixtures — loading by
+    // teamId alone would sweep those friendly goals into the competition's
+    // scorers. Scope to the competition so non-competition matches never appear.
+    .filter(p => p.competitionId === competitionId)
     .filter(p => p.goals > 0)
     .sort((a, b) => b.goals - a.goals)
     .slice(0, limit)
+  // The slice stores the name captured when the player was pasted; a later
+  // profile correction (a reversed name, a stray shirt number) must win here,
+  // so the display name and URL are taken live from the person record.
+  const current = await resolveCurrentPersonNames(rows.map(r => r.personId))
+  return rows.map(r => {
+    const cur = current.get(r.personId)
+    return cur?.fullName ? { ...r, personName: cur.fullName, personSlug: cur.slug ?? r.personSlug } : r
+  })
+}
+
+// Resolve the CURRENT name + slug for a set of personIds from the people
+// collection — the single source of truth. Denormalised name snapshots on stat
+// slices and match documents go stale when a profile is corrected; every public
+// leaderboard resolves the live name so an edited profile is reflected at once,
+// with no re-save or backfill. Best-effort: a missing or unreadable person doc
+// leaves the caller's stored snapshot untouched.
+async function resolveCurrentPersonNames(personIds) {
+  const ids = [...new Set((personIds ?? []).filter(Boolean))]
+  const out = new Map()
+  await Promise.all(ids.map(async (id) => {
+    try {
+      const s = await getDoc(doc(db, 'people', id))
+      if (s.exists()) {
+        const d = s.data()
+        out.set(id, { fullName: d.fullName ?? null, slug: d.slug ?? null })
+      }
+    } catch { /* keep the caller's snapshot */ }
+  }))
+  return out
 }
 
 export async function fetchCompetitionTopPOTM(competitionId, limit = 5) {
@@ -199,6 +233,7 @@ export async function fetchCompetitionTopPOTM(competitionId, limit = 5) {
         name:      potm.name,
         photoUrl:  potm.photoUrl ?? null,
         teamName:  potm.side === 'home' ? data.homeTeamName : data.awayTeamName,
+      orgName:   potm.side === 'home' ? (data.homeOrgName ?? null) : (data.awayOrgName ?? null),
         teamColor: potm.side === 'home' ? (data.homeTeamColor ?? null) : (data.awayTeamColor ?? null),
         count: 1,
       })
@@ -210,9 +245,16 @@ export async function fetchCompetitionTopPOTM(competitionId, limit = 5) {
     addPotm(data.playersOfMatch?.home, data)
     addPotm(data.playersOfMatch?.away, data)
   })
-  return [...counts.values()]
+  const list = [...counts.values()]
     .sort((a, b) => b.count - a.count)
     .slice(0, limit)
+  // Player-of-the-Match names are snapshotted on the match when the result is
+  // finalised; resolve the live person name so a corrected profile shows here too.
+  const current = await resolveCurrentPersonNames(list.map(e => e.personId))
+  return list.map(e => {
+    const cur = current.get(e.personId)
+    return cur?.fullName ? { ...e, name: cur.fullName } : e
+  })
 }
 
 export async function fetchTeamLineup(teamId) {

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { ChevronRight, Star, Trophy } from 'lucide-react'
+import { Star, Trophy } from 'lucide-react'
 import { Link, useParams } from 'react-router-dom'
 import {
   fetchCompetition, fetchCompetitionTeams,
@@ -39,6 +39,8 @@ export default function CompetitionOverview() {
   const [teams,       setTeams]       = useState([])
   const [scorers,     setScorers]     = useState([])
   const [potmLeaders, setPotmLeaders] = useState([])
+  const [showAllScorers, setShowAllScorers] = useState(false)
+  const [showAllPotm,    setShowAllPotm]    = useState(false)
   const [fixtures,    setFixtures]    = useState([])
   const [pools,       setPools]       = useState([])
   const [knockout,    setKnockout]    = useState([])
@@ -60,9 +62,9 @@ export default function CompetitionOverview() {
       setCompetition(comp)
       return Promise.all([
         fetchCompetitionTeams(comp.id),
-        comp.type !== 'festival' ? fetchCompetitionTopScorers(comp.id, 5) : Promise.resolve([]),
+        comp.type !== 'festival' ? fetchCompetitionTopScorers(comp.id, Infinity) : Promise.resolve([]),
         fetchCompetitionFixtures(comp.id),
-        comp.rules?.potm?.enabled ? fetchCompetitionTopPOTM(comp.id, 5) : Promise.resolve([]),
+        comp.rules?.potm?.enabled ? fetchCompetitionTopPOTM(comp.id, Infinity) : Promise.resolve([]),
         comp.type !== 'festival' ? fetchCompetitionPools(comp.id) : Promise.resolve([]),
         comp.type !== 'festival' ? fetchCompetitionKnockout(comp.id) : Promise.resolve([]),
         comp.type !== 'festival' ? fetchCompetitionMembers(comp.id) : Promise.resolve([]),
@@ -339,7 +341,7 @@ export default function CompetitionOverview() {
           <div>
             <div className="micro-label text-slate-500 mb-3">Top scorers</div>
             <div className="space-y-2">
-              {scorers.map((player, i) => (
+              {(showAllScorers ? scorers : scorers.slice(0, 5)).map((player, i) => (
                 <div key={player.id} className="flex items-center gap-3 bg-white rounded-xl border border-slate-200 px-4 py-3 shadow-sm">
                   <span className="font-mono font-bold text-slate-400 text-xs w-4 shrink-0 text-right">{i + 1}</span>
                   <span className="w-2.5 h-2.5 rounded-sm shrink-0" style={{ backgroundColor: player.teamPrimaryColor }} />
@@ -354,6 +356,13 @@ export default function CompetitionOverview() {
                 </div>
               ))}
             </div>
+            {scorers.length > 5 && (
+              <div className="flex justify-end mt-2">
+                <button type="button" onClick={() => setShowAllScorers(v => !v)} className="text-xs font-semibold text-slate-600 hover:text-slate-900">
+                  {showAllScorers ? 'Show less' : 'See more'}
+                </button>
+              </div>
+            )}
           </div>
         )}
 
@@ -365,7 +374,7 @@ export default function CompetitionOverview() {
               <div className="micro-label text-slate-500">Player of the Match</div>
             </div>
             <div className="space-y-2">
-              {potmLeaders.map((leader, i) => (
+              {(showAllPotm ? potmLeaders : potmLeaders.slice(0, 5)).map((leader, i) => (
                 <div key={leader.key} className="flex items-center gap-3 bg-white rounded-xl border border-slate-200 px-4 py-3 shadow-sm">
                   <span className="font-mono font-bold text-slate-400 text-xs w-4 shrink-0 text-right">{i + 1}</span>
                   {leader.teamColor && (
@@ -373,7 +382,7 @@ export default function CompetitionOverview() {
                   )}
                   <div className="flex-1 min-w-0">
                     <div className="text-slate-900 text-sm font-semibold truncate">{leader.name}</div>
-                    {leader.teamName && <div className="micro-label">{leader.teamName}</div>}
+                    {(leader.orgName || leader.teamName) && <div className="micro-label">{leader.orgName || leader.teamName}</div>}
                   </div>
                   <div className="text-right shrink-0">
                     <div className="font-mono font-black text-amber-500 text-xl tabular-nums">{leader.count}</div>
@@ -382,6 +391,13 @@ export default function CompetitionOverview() {
                 </div>
               ))}
             </div>
+            {potmLeaders.length > 5 && (
+              <div className="flex justify-end mt-2">
+                <button type="button" onClick={() => setShowAllPotm(v => !v)} className="text-xs font-semibold text-slate-600 hover:text-slate-900">
+                  {showAllPotm ? 'Show less' : 'See more'}
+                </button>
+              </div>
+            )}
           </div>
         )}
 
@@ -443,25 +459,6 @@ export default function CompetitionOverview() {
               ))}
             </div>
           </div>
-        )}
-
-        {/* Standings preview — provisional, shown WHILE the competition is still
-            being decided (positions not yet final). Never for festivals. */}
-        {!positionsFinal && koRows.length === 0 && previewRows.length > 0 && (
-          <Link to={competitionUrl(competition) + '/standings'}
-            className="flex items-center gap-3 bg-white rounded-xl border border-slate-200 px-4 py-4 hover:border-slate-300 transition-colors shadow-sm">
-            <div className="flex-1 space-y-1.5">
-              {previewRows.slice(0, 3).map((row, i) => (
-                <div key={row.teamId} className="flex items-center gap-2">
-                  <span className="micro-label w-3 text-right shrink-0">{i + 1}</span>
-                  <span className="w-2 h-2 rounded-sm shrink-0" style={{ backgroundColor: teamColorById[row.teamId] }} />
-                  <span className="text-slate-900 text-xs flex-1 truncate">{row.orgName ? `${row.orgName} ${row.teamName}` : row.teamName}</span>
-                  <span className="font-mono font-bold text-[color:var(--ca)] text-xs">{row.Pts ?? 0}pts</span>
-                </div>
-              ))}
-            </div>
-            <ChevronRight className="w-4 h-4 text-slate-400 shrink-0 ml-2" />
-          </Link>
         )}
 
       </div>

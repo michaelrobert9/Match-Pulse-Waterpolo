@@ -737,8 +737,8 @@ export default function MatchDetail() {
         // and live-red clamps, slate fallback.
         const anchorCol = teamAccent(anyPOTM === homePOTM ? match.homeTeamColor : match.awayTeamColor)
         const items   = [
-          homePOTM ? { potm: homePOTM, teamName: match.homeTeamName } : null,
-          awayPOTM ? { potm: awayPOTM, teamName: match.awayTeamName } : null,
+          homePOTM ? { potm: homePOTM, teamName: match.homeOrgName ?? match.homeTeamName } : null,
+          awayPOTM ? { potm: awayPOTM, teamName: match.awayOrgName ?? match.awayTeamName } : null,
         ].filter(Boolean)
         return (
           <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm">

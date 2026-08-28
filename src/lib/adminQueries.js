@@ -239,7 +239,9 @@ export async function updatePerson(id, data) {
   const ref = doc(db, 'people', id)
   // A caller that sets the slug explicitly wins — skip the automatic URL logic.
   if ('slug' in data) {
-    return updateDoc(ref, { ...data, updatedAt: serverTimestamp() })
+    await updateDoc(ref, { ...data, updatedAt: serverTimestamp() })
+    await propagatePersonToSlices(id, data.fullName ?? null, data.slug ?? null)
+    return
   }
   const existing    = (await getDoc(ref)).data() ?? {}
   const oldSlug     = existing.slug ?? null
@@ -254,7 +256,30 @@ export async function updatePerson(id, data) {
       if (oldSlug) await writePersonRedirect(oldSlug, `/player/${newSlug}`)
     }
   }
-  return updateDoc(ref, { ...data, ...extra, updatedAt: serverTimestamp() })
+  await updateDoc(ref, { ...data, ...extra, updatedAt: serverTimestamp() })
+  // Keep the denormalised name/slug on this player's stat slices in sync. Slices
+  // store a snapshot of the name captured when the player was pasted or scored;
+  // without this, correcting a reversed name or a stray shirt number on the
+  // profile would leave the OLD name showing on the players list, team line-ups,
+  // career rows and the competition top-scorer leaderboard. Best-effort — a
+  // slice write that is denied never blocks the profile save.
+  if (nameChanged || extra.slug) {
+    await propagatePersonToSlices(id, data.fullName ?? existing.fullName ?? null, extra.slug ?? existing.slug ?? null)
+  }
+}
+
+// Push a person's current name/slug onto every stat slice that references them.
+// Best-effort and idempotent: only the fields we were given are written, and any
+// failure is swallowed so profile edits never fail on a slice permission.
+async function propagatePersonToSlices(personId, personName, personSlug) {
+  if (!personId) return
+  try {
+    const snap = await getDocs(query(collection(db, 'players'), where('personId', '==', personId)))
+    await Promise.all(snap.docs.map(d => updateDoc(d.ref, {
+      ...(personName != null ? { personName } : {}),
+      ...(personSlug != null ? { personSlug } : {}),
+    }).catch(() => {})))
+  } catch { /* best-effort — leave slices as-is */ }
 }
 
 // ── Merge duplicate player records (master admin) ───────────────────────────
@@ -2477,6 +2502,37 @@ export async function fetchProfileReports(personId = null) {
 
 // People profiles controlled or managed by the current user (the parent's
 // children, the player's own profile, a manager's assigned players).
+// Resolve the user ACCOUNTS linked to a player profile, for the admin-only
+// "Linked accounts" panel on the profile page. ownerUid is the player managing
+// their own profile; guardianUids are parents/guardians; managerUids are
+// managers/coaches. Each uid is looked up in the shared identity `userProfiles`
+// for a display name + email; a uid with no profile still returns so the link is
+// never hidden. Best-effort per uid — a blocked read degrades to just the uid.
+export async function fetchProfileLinkedUsers(person) {
+  const ownerUid     = person?.ownerUid ?? null
+  const guardianUids = Array.isArray(person?.guardianUids) ? person.guardianUids : []
+  const managerUids  = Array.isArray(person?.managerUids)  ? person.managerUids  : []
+  const uids = [...new Set([ownerUid, ...guardianUids, ...managerUids].filter(Boolean))]
+  if (uids.length === 0) return { owner: null, guardians: [], managers: [] }
+
+  const byUid = {}
+  await Promise.all(uids.map(async u => {
+    try {
+      const s = await getDoc(doc(identityDb, 'userProfiles', u))
+      const d = s.exists() ? s.data() : {}
+      byUid[u] = { uid: u, displayName: d.displayName ?? d.name ?? null, email: d.email ?? null }
+    } catch {
+      byUid[u] = { uid: u, displayName: null, email: null }
+    }
+  }))
+
+  return {
+    owner:     ownerUid ? byUid[ownerUid] : null,
+    guardians: guardianUids.map(u => byUid[u]).filter(Boolean),
+    managers:  managerUids.map(u => byUid[u]).filter(Boolean),
+  }
+}
+
 export async function fetchMyPlayerProfiles() {
   const userId = uid()
   if (!userId) return []
