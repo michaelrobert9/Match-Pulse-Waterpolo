@@ -258,9 +258,61 @@ export function computeStandings(competition, members, fixtures, matchesInput, {
     const labelOf = t => `${t.orgName ? t.orgName + ' ' : ''}${t.teamName ?? ''}`.trim().toLowerCase()
     const sorted = [...teams].sort((a, b) => labelOf(a).localeCompare(labelOf(b)))
     return {
-      rows: sorted.map((team, i) => ({ pos: i + 1, ...team, manualDecisionRequired: false })),
+      rows: sorted.map((team, i) => ({ pos: i + 1, ...team, manualDecisionRequired: false, clinched: false })),
       manualDecisionRequired: [],
     }
+  }
+
+  // ── Clinched-position detection (public "Provisional" badge) ────────────────
+  // A team's final position is mathematically fixed when, for EVERY other team,
+  // their relative order is already decided: the other team is guaranteed above
+  // (its CURRENT points already exceed this team's MAXIMUM possible) or
+  // guaranteed below (its maximum possible is already below this team's current
+  // points). Strict inequalities, so no tie-breaker can flip an equal-points
+  // pair. A team's own points can only rise, so its floor is its current Pts;
+  // its ceiling is current Pts + (not-yet-final counting fixtures) × the most
+  // points one match can yield (a win plus any stacking bonus). When no counting
+  // fixture is left to play, every position is locked. Manual-decision rows are
+  // never marked clinched — that tie is unresolved until an administrator places
+  // it. The badge reads "provisional": only an owner/manager amendment (editing a
+  // recorded result) can change it thereafter.
+  const PENDING = new Set(['scheduled', 'upcoming', 'live', 'paused', 'awaiting_result'])
+  const remaining = {}
+  for (const id of confirmedIds) remaining[id] = 0
+  for (const fx of fixtures ?? []) {
+    if (!fx.countsTowardStandings) continue
+    const match = matchesMap[fx.matchId]
+    const hId = fx.homeTeamId ?? match?.homeTeamId
+    const aId = fx.awayTeamId ?? match?.awayTeamId
+    if (!confirmedIds.has(hId) || !confirmedIds.has(aId)) continue
+    // Missing match = not scheduled yet; a pending status = still to be decided.
+    // Terminal states (final, not-played, cancelled, abandoned) add no future
+    // points, so they never count as remaining.
+    if (!match || PENDING.has(match.status)) { remaining[hId]++; remaining[aId]++ }
+  }
+  const poolRemaining = Object.values(remaining).reduce((s, n) => s + n, 0)
+  const maxBonusPerMatch = (bonus && bonus.enabled === true)
+    ? ((bonus.rules?.scoreThreshold?.enabled ? (bonus.rules.scoreThreshold.points ?? 0) : 0)
+       + (bonus.rules?.winMargin?.enabled ? (bonus.rules.winMargin.points ?? 0) : 0))
+    : 0
+  const maxPerMatch = (pts.win ?? 3) + maxBonusPerMatch
+  const ptsById = {}
+  const maxFinalById = {}
+  for (const t of teams) {
+    ptsById[t.teamId] = t.Pts
+    maxFinalById[t.teamId] = t.Pts + (remaining[t.teamId] ?? 0) * maxPerMatch
+  }
+  const isClinched = (teamId) => {
+    if (poolRemaining === 0) return true
+    const maxT = maxFinalById[teamId]
+    const ptsT = ptsById[teamId]
+    for (const t of teams) {
+      if (t.teamId === teamId) continue
+      const guaranteedAbove = ptsById[t.teamId] > maxT
+      const guaranteedBelow = maxFinalById[t.teamId] < ptsT
+      if (!guaranteedAbove && !guaranteedBelow) return false
+    }
+    return true
   }
 
   const groups = sortGroup(teams, tieBreakers, fixtures ?? [], matchesMap, pts, bonus)
@@ -278,19 +330,19 @@ export function computeStandings(competition, members, fixtures, matchesInput, {
       if (fullyPlaced) {
         const ordered = [...group.teams].sort((a, b) => manualPos[a.teamId] - manualPos[b.teamId])
         for (const team of ordered) {
-          rows.push({ pos, ...team, manualDecisionRequired: false, manuallyPlaced: true })
+          rows.push({ pos, ...team, manualDecisionRequired: false, manuallyPlaced: true, clinched: isClinched(team.teamId) })
           pos++
         }
       } else {
         manualDecisionRequired.push({ pos, teamIds: group.teams.map(t => t.teamId) })
         for (const team of group.teams) {
-          rows.push({ pos, ...team, manualDecisionRequired: true })
+          rows.push({ pos, ...team, manualDecisionRequired: true, clinched: false })
         }
         pos += group.teams.length
       }
     } else {
       for (const team of group.teams) {
-        rows.push({ pos, ...team, manualDecisionRequired: false })
+        rows.push({ pos, ...team, manualDecisionRequired: false, clinched: isClinched(team.teamId) })
         pos++
       }
     }
