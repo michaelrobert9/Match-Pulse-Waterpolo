@@ -2477,6 +2477,37 @@ export async function fetchProfileReports(personId = null) {
 
 // People profiles controlled or managed by the current user (the parent's
 // children, the player's own profile, a manager's assigned players).
+// Resolve the user ACCOUNTS linked to a player profile, for the admin-only
+// "Linked accounts" panel on the profile page. ownerUid is the player managing
+// their own profile; guardianUids are parents/guardians; managerUids are
+// managers/coaches. Each uid is looked up in the shared identity `userProfiles`
+// for a display name + email; a uid with no profile still returns so the link is
+// never hidden. Best-effort per uid — a blocked read degrades to just the uid.
+export async function fetchProfileLinkedUsers(person) {
+  const ownerUid     = person?.ownerUid ?? null
+  const guardianUids = Array.isArray(person?.guardianUids) ? person.guardianUids : []
+  const managerUids  = Array.isArray(person?.managerUids)  ? person.managerUids  : []
+  const uids = [...new Set([ownerUid, ...guardianUids, ...managerUids].filter(Boolean))]
+  if (uids.length === 0) return { owner: null, guardians: [], managers: [] }
+
+  const byUid = {}
+  await Promise.all(uids.map(async u => {
+    try {
+      const s = await getDoc(doc(identityDb, 'userProfiles', u))
+      const d = s.exists() ? s.data() : {}
+      byUid[u] = { uid: u, displayName: d.displayName ?? d.name ?? null, email: d.email ?? null }
+    } catch {
+      byUid[u] = { uid: u, displayName: null, email: null }
+    }
+  }))
+
+  return {
+    owner:     ownerUid ? byUid[ownerUid] : null,
+    guardians: guardianUids.map(u => byUid[u]).filter(Boolean),
+    managers:  managerUids.map(u => byUid[u]).filter(Boolean),
+  }
+}
+
 export async function fetchMyPlayerProfiles() {
   const userId = uid()
   if (!userId) return []

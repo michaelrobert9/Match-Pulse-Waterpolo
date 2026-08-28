@@ -12,7 +12,7 @@ import { useAuth } from '../contexts/AuthContext'
 import { managesPlayerProfile } from '../lib/capabilities'
 import {
   removeSelfFromFixture, updatePersonBanner, updatePerson, updatePersonPhoto,
-  claimPlayerProfile, isProfileClaimed, claimTeamSheetProfile, revokeProfileClaim,
+  claimPlayerProfile, isProfileClaimed, fetchProfileLinkedUsers, claimTeamSheetProfile, revokeProfileClaim,
 } from '../lib/adminQueries'
 import { sendEmailVerification } from 'firebase/auth'
 import { auth } from '../firebase'
@@ -427,6 +427,9 @@ export default function PlayerProfile() {
           onClaimed={patch => setPerson(p => ({ ...p, ...patch }))} />
       )}
 
+      {/* Linked accounts — platform admins only. */}
+      {isPlatformAdmin && <LinkedAccountsCard person={person} />}
+
       {/* Master-admin revocation of a wrong claim (addendum A4). Returns the
           profile to unclaimed, restores the pre-claim snapshot and blocks the
           revoked uid from re-claiming. */}
@@ -497,6 +500,56 @@ export default function PlayerProfile() {
 // Claim card: an unclaimed profile can be taken over by the player themselves or
 // a parent/guardian. No verification — the master-admin link tool is the safety
 // valve. Once claimed, the profile locks to further self-claims.
+// Linked accounts (platform admins only): the user accounts that control this
+// profile — the self-managing player (ownerUid), parents/guardians (guardianUids)
+// and managers (managerUids), each resolved to a display name + email.
+function LinkedAccountsCard({ person }) {
+  const [data, setData]       = useState(null)
+  const [loading, setLoading] = useState(true)
+  useEffect(() => {
+    let alive = true
+    setLoading(true)
+    fetchProfileLinkedUsers(person)
+      .then(d => { if (alive) setData(d) })
+      .catch(() => { if (alive) setData({ owner: null, guardians: [], managers: [] }) })
+      .finally(() => { if (alive) setLoading(false) })
+    return () => { alive = false }
+  }, [person?.id, person?.ownerUid,
+      (person?.guardianUids ?? []).join(','), (person?.managerUids ?? []).join(',')])
+
+  const rows = []
+  if (data?.owner) rows.push({ ...data.owner, role: 'Player (self-managed)' })
+  for (const g of (data?.guardians ?? [])) rows.push({ ...g, role: 'Parent / guardian' })
+  for (const m of (data?.managers  ?? [])) rows.push({ ...m, role: 'Manager' })
+
+  return (
+    <section className="bg-white rounded-xl border border-slate-200 shadow-sm p-4">
+      <div className="flex items-center gap-2 mb-3">
+        <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Linked accounts</span>
+        <span className="text-[10px] font-semibold uppercase tracking-wider text-amber-600 bg-amber-50 border border-amber-200 rounded px-1.5 py-0.5">Admin only</span>
+      </div>
+      {loading ? (
+        <p className="text-sm text-slate-400">Loading…</p>
+      ) : rows.length === 0 ? (
+        <p className="text-sm text-slate-500">No accounts are linked to this profile yet — it is unclaimed.</p>
+      ) : (
+        <ul className="space-y-2.5">
+          {rows.map((r, i) => (
+            <li key={`${r.uid}-${i}`} className="flex items-start justify-between gap-3">
+              <div className="min-w-0">
+                <div className="text-sm font-semibold text-slate-900 truncate">{r.displayName || r.email || 'Unknown user'}</div>
+                {r.email && r.displayName && <div className="text-xs text-slate-500 truncate">{r.email}</div>}
+                <div className="text-[11px] font-mono text-slate-400 truncate">{r.uid}</div>
+              </div>
+              <span className="shrink-0 text-[10px] font-bold uppercase tracking-wider text-slate-600 bg-slate-100 border border-slate-200 rounded-full px-2 py-0.5">{r.role}</span>
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
+  )
+}
+
 function ClaimCard({ person, onClaimed }) {
   const [busy, setBusy] = useState(false)
   const [err,  setErr]  = useState('')
