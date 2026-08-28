@@ -204,6 +204,7 @@ export async function fetchCompetitionTopPOTM(competitionId, limit = 5) {
         name:      potm.name,
         photoUrl:  potm.photoUrl ?? null,
         teamName:  potm.side === 'home' ? data.homeTeamName : data.awayTeamName,
+      orgName:   potm.side === 'home' ? (data.homeOrgName ?? null) : (data.awayOrgName ?? null),
         teamColor: potm.side === 'home' ? (data.homeTeamColor ?? null) : (data.awayTeamColor ?? null),
         count: 1,
       })

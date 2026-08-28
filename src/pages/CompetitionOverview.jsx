@@ -373,7 +373,7 @@ export default function CompetitionOverview() {
                   )}
                   <div className="flex-1 min-w-0">
                     <div className="text-slate-900 text-sm font-semibold truncate">{leader.name}</div>
-                    {leader.teamName && <div className="micro-label">{leader.teamName}</div>}
+                    {(leader.orgName || leader.teamName) && <div className="micro-label">{leader.orgName || leader.teamName}</div>}
                   </div>
                   <div className="text-right shrink-0">
                     <div className="font-mono font-black text-amber-500 text-xl tabular-nums">{leader.count}</div>
