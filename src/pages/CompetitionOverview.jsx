@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { ChevronRight, Star, Trophy } from 'lucide-react'
+import { Star, Trophy } from 'lucide-react'
 import { Link, useParams } from 'react-router-dom'
 import {
   fetchCompetition, fetchCompetitionTeams,
@@ -459,25 +459,6 @@ export default function CompetitionOverview() {
               ))}
             </div>
           </div>
-        )}
-
-        {/* Standings preview — provisional, shown WHILE the competition is still
-            being decided (positions not yet final). Never for festivals. */}
-        {!positionsFinal && koRows.length === 0 && previewRows.length > 0 && (
-          <Link to={competitionUrl(competition) + '/standings'}
-            className="flex items-center gap-3 bg-white rounded-xl border border-slate-200 px-4 py-4 hover:border-slate-300 transition-colors shadow-sm">
-            <div className="flex-1 space-y-1.5">
-              {previewRows.slice(0, 3).map((row, i) => (
-                <div key={row.teamId} className="flex items-center gap-2">
-                  <span className="micro-label w-3 text-right shrink-0">{i + 1}</span>
-                  <span className="w-2 h-2 rounded-sm shrink-0" style={{ backgroundColor: teamColorById[row.teamId] }} />
-                  <span className="text-slate-900 text-xs flex-1 truncate">{row.orgName ? `${row.orgName} ${row.teamName}` : row.teamName}</span>
-                  <span className="font-mono font-bold text-[color:var(--ca)] text-xs">{row.Pts ?? 0}pts</span>
-                </div>
-              ))}
-            </div>
-            <ChevronRight className="w-4 h-4 text-slate-400 shrink-0 ml-2" />
-          </Link>
         )}
 
       </div>

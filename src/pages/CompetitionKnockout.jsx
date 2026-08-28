@@ -7,7 +7,6 @@ import {
 } from '../lib/queries'
 import { competitionTeamLabel } from '../lib/teamNaming'
 import { computePoolStandings } from '../lib/standings'
-import { computePoolQualificationScenarios } from '../lib/qualificationScenarios'
 import {
   resolveBracket, computeBestPlacedAtPosition, knockoutResult, knockoutWinnerSide, SLOT_STATUS,
 } from '../lib/competitionStructure'
@@ -20,16 +19,6 @@ function Spinner() {
   return <div className="flex justify-center py-12"><div className="w-5 h-5 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin"/></div>
 }
 
-function ordinal(n) {
-  const s = ['th', 'st', 'nd', 'rd'], v = n % 100
-  return `${n}${s[(v - 20) % 10] || s[v] || s[0]}`
-}
-
-// Strip the trailing Home/Away marker a seed label carries by convention.
-function cleanSeedName(name) {
-  return (name ?? '').replace(/\s+(Home|Away)$/i, '').trim()
-}
-
 export default function CompetitionKnockout() {
   const { id, series, ageGroup, season, competitionSlug } = useParams()
   const [competition, setCompetition] = useState(null)
@@ -38,7 +27,6 @@ export default function CompetitionKnockout() {
   const [resolved, setResolved] = useState({})
   const [teamNames, setTeamNames] = useState({})
   const [matches, setMatches] = useState({})
-  const [scenarios, setScenarios] = useState({})
   const [provisional, setProvisional] = useState(false)
   const [loading, setLoading] = useState(true)
 
@@ -70,7 +58,6 @@ export default function CompetitionKnockout() {
 
       const poolsCtx = {}
       const poolStandings = {}
-      const poolScenarios = {}
       for (const pool of pools) {
         const pf = fxMembers.filter(f => f.poolId === pool.poolId)
         const poolTeamIds = (pool.slots ?? []).map(s => s.teamId).filter(Boolean)
@@ -78,12 +65,6 @@ export default function CompetitionKnockout() {
           poolTeamIds, manualOverrides: pool.manualOverrides ?? [],
         })
         poolsCtx[pool.poolId] = { rows: poolStandings[pool.poolId].rows, verified: !!pool.verified }
-        // Last-round qualification scenarios: which teams can still take each
-        // place in this pool, and what each needs. Empty (finalRound:false)
-        // until the pool reaches its final round of matches.
-        poolScenarios[pool.poolId] = computePoolQualificationScenarios(
-          comp, poolStandings[pool.poolId].rows, pf, matches,
-        )
       }
       // Cross-pool best-placed rankings. The ceiling is derived from the actual
       // pools and the positions the bracket references (NOT a hard-coded 1–6) so
@@ -110,7 +91,6 @@ export default function CompetitionKnockout() {
 
       const res = resolveBracket(knockout, { pools: poolsCtx, bestPlaced, bracketResults, lockedTeams })
       setSlots(knockout); setResolved(res); setTeamNames(names); setMatches(matches)
-      setScenarios(poolScenarios)
       setProvisional(Object.values(res).some(r => r.status === SLOT_STATUS.provisional))
     }).finally(() => setLoading(false))
   }, [id, series, ageGroup, season, competitionSlug])
@@ -202,30 +182,6 @@ export default function CompetitionKnockout() {
                     </div>
                   )
                 }
-                // Last-round qualification picture for any pool-position place in
-                // this game that is not yet settled. Deliberately understated —
-                // it sits below the card, in muted text a notch lighter than the
-                // team names above it, so it informs without competing.
-                const scenarioBlocks = []
-                for (const slot of pair) {
-                  const src = slot?.source
-                  if (!src || src.type !== 'pool_position') continue
-                  if (resolved[slot.slotId]?.status === SLOT_STATUS.resolved) continue
-                  const sc = scenarios[src.poolId]
-                  if (!sc?.finalRound) continue
-                  const pos = Number(src.position) || 0
-                  const bp = sc.byPosition?.[pos]
-                  if (!bp?.contested) continue
-                  scenarioBlocks.push({
-                    slotId: slot.slotId,
-                    placeLabel: cleanSeedName(slot.name) || `${ordinal(pos)} place`,
-                    candidates: bp.candidates.map(c => ({
-                      teamId: c.teamId,
-                      label: competitionTeamLabel({ orgName: c.orgName, teamName: c.teamName }) || c.teamName || c.teamId,
-                      requirement: c.requirement,
-                    })),
-                  })
-                }
                 const card = (
                   <div className={`bg-white rounded-xl border px-4 py-3 shadow-sm ${played ? 'border-slate-200' : 'border-slate-200'}`}>
                     <div className="flex items-center justify-between mb-1.5">
@@ -245,32 +201,10 @@ export default function CompetitionKnockout() {
                     )}
                   </div>
                 )
-                const scenarioSub = scenarioBlocks.length > 0 && (
-                  <div className="mt-1 px-1.5 space-y-1.5">
-                    {scenarioBlocks.map(block => (
-                      <div key={block.slotId}>
-                        <div className="text-[9px] font-bold uppercase tracking-widest text-slate-400">
-                          Still up for grabs · {block.placeLabel}
-                        </div>
-                        <ul className="mt-0.5 space-y-0.5">
-                          {block.candidates.map(c => (
-                            <li key={c.teamId} className="text-[11px] leading-snug text-slate-400">
-                              <span className="font-medium text-slate-500">{c.label}</span>
-                              <span className="text-slate-400"> — {c.requirement}</span>
-                            </li>
-                          ))}
-                        </ul>
-                      </div>
-                    ))}
-                  </div>
-                )
-                return (
-                  <div key={home?.slotId ?? gi}>
-                    {match ? (
-                      <Link to={matchUrl(match)} className="block hover:opacity-90 transition-opacity">{card}</Link>
-                    ) : card}
-                    {scenarioSub}
-                  </div>
+                return match ? (
+                  <Link key={home?.slotId ?? gi} to={matchUrl(match)} className="block hover:opacity-90 transition-opacity">{card}</Link>
+                ) : (
+                  <div key={home?.slotId ?? gi}>{card}</div>
                 )
               })}
             </div>
