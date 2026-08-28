@@ -91,12 +91,6 @@ function TeamRow({ row, bonusOn }) {
       </div>
       <div className="flex-1 min-w-0 flex items-center gap-2 px-2 py-3">
         <span className="text-slate-900 text-sm font-semibold truncate">{competitionTeamLabel({ orgName: row.orgName, teamName: row.teamName })}</span>
-        {row.clinched && (
-          <span title="Position mathematically secured — provisional until final confirmation"
-            className="shrink-0 text-[8px] font-bold uppercase tracking-wider text-emerald-700 bg-emerald-50 border border-emerald-200 rounded px-1 py-0.5 leading-none">
-            Provisional
-          </span>
-        )}
       </div>
       {[row.P, row.W, row.D, row.L, row.GF, row.GA].map((val, ci) => (
         <div key={ci} className="w-8 text-center font-mono text-xs text-slate-500 py-3">{val ?? 0}</div>

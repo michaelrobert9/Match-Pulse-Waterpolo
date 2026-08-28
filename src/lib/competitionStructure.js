@@ -138,10 +138,15 @@ export function resolveSlot(slot, context = {}) {
       if (row.manualDecisionRequired) {
         return { teamId: null, status: SLOT_STATUS.manual_required, reason: 'Pool position tied — manual decision required' }
       }
+      const confirmed = pool.verified || row.clinched === true
       return {
         teamId: row.teamId,
-        status: pool.verified ? SLOT_STATUS.resolved : SLOT_STATUS.provisional,
-        reason: pool.verified ? 'Verified pool position' : 'Provisional — pool not yet verified',
+        status: confirmed ? SLOT_STATUS.resolved : SLOT_STATUS.provisional,
+        reason: pool.verified
+          ? 'Verified pool position'
+          : row.clinched === true
+            ? 'Position mathematically confirmed'
+            : 'Provisional — pool not yet verified',
       }
     }
 
