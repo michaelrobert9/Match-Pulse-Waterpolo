@@ -39,6 +39,8 @@ export default function CompetitionOverview() {
   const [teams,       setTeams]       = useState([])
   const [scorers,     setScorers]     = useState([])
   const [potmLeaders, setPotmLeaders] = useState([])
+  const [showAllScorers, setShowAllScorers] = useState(false)
+  const [showAllPotm,    setShowAllPotm]    = useState(false)
   const [fixtures,    setFixtures]    = useState([])
   const [pools,       setPools]       = useState([])
   const [knockout,    setKnockout]    = useState([])
@@ -60,9 +62,9 @@ export default function CompetitionOverview() {
       setCompetition(comp)
       return Promise.all([
         fetchCompetitionTeams(comp.id),
-        comp.type !== 'festival' ? fetchCompetitionTopScorers(comp.id, 5) : Promise.resolve([]),
+        comp.type !== 'festival' ? fetchCompetitionTopScorers(comp.id, Infinity) : Promise.resolve([]),
         fetchCompetitionFixtures(comp.id),
-        comp.rules?.potm?.enabled ? fetchCompetitionTopPOTM(comp.id, 5) : Promise.resolve([]),
+        comp.rules?.potm?.enabled ? fetchCompetitionTopPOTM(comp.id, Infinity) : Promise.resolve([]),
         comp.type !== 'festival' ? fetchCompetitionPools(comp.id) : Promise.resolve([]),
         comp.type !== 'festival' ? fetchCompetitionKnockout(comp.id) : Promise.resolve([]),
         comp.type !== 'festival' ? fetchCompetitionMembers(comp.id) : Promise.resolve([]),
@@ -339,7 +341,7 @@ export default function CompetitionOverview() {
           <div>
             <div className="micro-label text-slate-500 mb-3">Top scorers</div>
             <div className="space-y-2">
-              {scorers.map((player, i) => (
+              {(showAllScorers ? scorers : scorers.slice(0, 5)).map((player, i) => (
                 <div key={player.id} className="flex items-center gap-3 bg-white rounded-xl border border-slate-200 px-4 py-3 shadow-sm">
                   <span className="font-mono font-bold text-slate-400 text-xs w-4 shrink-0 text-right">{i + 1}</span>
                   <span className="w-2.5 h-2.5 rounded-sm shrink-0" style={{ backgroundColor: player.teamPrimaryColor }} />
@@ -354,6 +356,13 @@ export default function CompetitionOverview() {
                 </div>
               ))}
             </div>
+            {scorers.length > 5 && (
+              <div className="flex justify-end mt-2">
+                <button type="button" onClick={() => setShowAllScorers(v => !v)} className="text-xs font-semibold text-slate-600 hover:text-slate-900">
+                  {showAllScorers ? 'Show less' : 'See more'}
+                </button>
+              </div>
+            )}
           </div>
         )}
 
@@ -365,7 +374,7 @@ export default function CompetitionOverview() {
               <div className="micro-label text-slate-500">Player of the Match</div>
             </div>
             <div className="space-y-2">
-              {potmLeaders.map((leader, i) => (
+              {(showAllPotm ? potmLeaders : potmLeaders.slice(0, 5)).map((leader, i) => (
                 <div key={leader.key} className="flex items-center gap-3 bg-white rounded-xl border border-slate-200 px-4 py-3 shadow-sm">
                   <span className="font-mono font-bold text-slate-400 text-xs w-4 shrink-0 text-right">{i + 1}</span>
                   {leader.teamColor && (
@@ -382,6 +391,13 @@ export default function CompetitionOverview() {
                 </div>
               ))}
             </div>
+            {potmLeaders.length > 5 && (
+              <div className="flex justify-end mt-2">
+                <button type="button" onClick={() => setShowAllPotm(v => !v)} className="text-xs font-semibold text-slate-600 hover:text-slate-900">
+                  {showAllPotm ? 'Show less' : 'See more'}
+                </button>
+              </div>
+            )}
           </div>
         )}
 
