@@ -15,7 +15,7 @@ import { BRONZE_ROUND_LABEL } from '../lib/playoffs'
 import { competitionTeamLabel } from '../lib/teamNaming'
 import { matchUrl, competitionUrl } from '../lib/slugify'
 import { prefetchMatchTeams } from '../lib/teamIdentity'
-import { MatchTeamIdentity, MatchTeamCrest } from '../components/TeamIdentity'
+import { MatchTeamIdentity, MatchTeamCrest, TeamCrest } from '../components/TeamIdentity'
 import CompetitionNav from '../components/CompetitionNav'
 import { useSeoMeta } from '../lib/useSeoMeta'
 import { useAuth } from '../contexts/AuthContext'
@@ -179,7 +179,7 @@ export default function CompetitionOverview() {
         const m = members.find(x => x.teamId === tid)
         const name = t ? (t.orgName ? `${t.orgName} ${t.displayName}` : t.displayName)
           : (m ? competitionTeamLabel(m.displaySnapshot) : tid)
-        return { teamId: tid, name: name || tid, color: t?.primaryColor ?? m?.displaySnapshot?.primaryColor ?? null }
+        return { teamId: tid, name: name || tid, color: t?.primaryColor ?? m?.displaySnapshot?.primaryColor ?? null, logo: t?.logoUrl ?? m?.displaySnapshot?.logoUrl ?? null }
       }
       // Champion podium (used for a true single-elimination knockout).
       const podiumRaw = bracketPodium({ knockout, resolved, matches: matchesById, bronzeLabel: BRONZE_ROUND_LABEL })
@@ -236,7 +236,7 @@ export default function CompetitionOverview() {
                     </span>
                     {decided ? (
                       <>
-                        <span className="w-2.5 h-2.5 rounded-sm shrink-0" style={{ backgroundColor: row.color }} />
+                        <TeamCrest identity={{ primary: row.name, color: row.color, logo: row.logo }} size={26} />
                         <div className="flex-1 min-w-0">
                           <div className={`text-slate-900 truncate ${champ ? 'font-black text-xl leading-tight' : 'text-sm font-semibold'}`}>{row.name}</div>
                           <div className={`text-[10px] font-bold uppercase tracking-widest ${tier ? tier.text : 'text-slate-400'}`}>
@@ -279,7 +279,7 @@ export default function CompetitionOverview() {
                     <span className="text-[11px] font-black uppercase tracking-widest text-amber-600">Champions</span>
                   </div>
                   <div className="flex items-center gap-2 min-w-0">
-                    <span className="w-3 h-3 rounded-sm shrink-0" style={{ backgroundColor: koFinal.podium[0].color }} />
+                    <TeamCrest identity={{ primary: koFinal.podium[0].name, color: koFinal.podium[0].color, logo: koFinal.podium[0].logo }} size={32} />
                     <span className="text-slate-900 font-black text-xl leading-tight truncate">{koFinal.podium[0].name}</span>
                   </div>
                 </div>
