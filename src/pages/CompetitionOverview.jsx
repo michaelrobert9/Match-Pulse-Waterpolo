@@ -10,7 +10,7 @@ import {
 } from '../lib/queries'
 import { isScheduled } from '../lib/fixtureStatus'
 import { computeStandings, computePoolStandings } from '../lib/standings'
-import { resolveBracket, computeBestPlacedAtPosition, bracketPodium, knockoutResult } from '../lib/competitionStructure'
+import { resolveBracket, computeBestPlacedAtPosition, bracketPodium, bracketFinalStandings, knockoutResult } from '../lib/competitionStructure'
 import { BRONZE_ROUND_LABEL } from '../lib/playoffs'
 import { competitionTeamLabel } from '../lib/teamNaming'
 import { matchUrl, competitionUrl } from '../lib/slugify'
@@ -23,6 +23,11 @@ import { competitionViewableBy } from '../lib/competitionRules'
 
 function Spinner() {
   return <div className="flex justify-center py-12"><div className="w-5 h-5 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin"/></div>
+}
+
+function ordinalLabel(n) {
+  const s = ['th', 'st', 'nd', 'rd'], v = n % 100
+  return `${n}${s[(v - 20) % 10] || s[v] || s[0]}`
 }
 
 function fmtShortDate(val) {
@@ -139,8 +144,8 @@ export default function CompetitionOverview() {
   // page (from pool standings + played results), then read the final placings
   // from the RESOLVED slots. This names the champion even when the final fixture
   // has no teams stamped on it, and appears the moment the final is decided.
-  const koRows = (() => {
-    if (isFestival || knockout.length === 0) return []
+  const koFinal = (() => {
+    if (isFestival || knockout.length === 0) return { podium: [], ranking: null, rankingDecided: 0 }
     try {
       const matchesById = Object.fromEntries(fixtures.map(f => [f.id, f]))
       const poolsCtx = {}, poolStandings = {}
@@ -169,8 +174,6 @@ export default function CompetitionOverview() {
       const lockedTeams = {}
       for (const a of advancement) lockedTeams[a.slotId] = a.teamId
       const resolved = resolveBracket(knockout, { pools: poolsCtx, bestPlaced, bracketResults, lockedTeams })
-      const podium = bracketPodium({ knockout, resolved, matches: matchesById, bronzeLabel: BRONZE_ROUND_LABEL })
-      if (!podium) return []
       const nameColor = tid => {
         const t = teams.find(x => x.id === tid)
         const m = members.find(x => x.teamId === tid)
@@ -178,13 +181,24 @@ export default function CompetitionOverview() {
           : (m ? competitionTeamLabel(m.displaySnapshot) : tid)
         return { teamId: tid, name: name || tid, color: t?.primaryColor ?? m?.displaySnapshot?.primaryColor ?? null }
       }
-      return [
-        { ...nameColor(podium.first),  caption: 'Champions' },
-        { ...nameColor(podium.second), caption: 'Runner-up' },
-        ...(podium.third ? [{ ...nameColor(podium.third), caption: '3rd place' }] : []),
-      ].filter(r => r.teamId)
+      // Champion podium (used for a true single-elimination knockout).
+      const podiumRaw = bracketPodium({ knockout, resolved, matches: matchesById, bronzeLabel: BRONZE_ROUND_LABEL })
+      const podium = podiumRaw ? [
+        { ...nameColor(podiumRaw.first),  caption: 'Champions' },
+        { ...nameColor(podiumRaw.second), caption: 'Runner-up' },
+        ...(podiumRaw.third ? [{ ...nameColor(podiumRaw.third), caption: '3rd place' }] : []),
+      ].filter(r => r.teamId) : []
+      // Full final placings for a ranking-playoff tournament (Final, 3rd/4th,
+      // 5th/6th, …): every place, filled in as its game is decided, placeholder
+      // otherwise. null when the bracket isn't a pure ranking structure.
+      const fs = bracketFinalStandings({ knockout, resolved, matches: matchesById })
+      const ranking = fs ? fs.ranking.map(r => ({
+        place: r.place,
+        ...(r.teamId ? nameColor(r.teamId) : { teamId: null, name: null, color: null }),
+      })) : null
+      return { podium, ranking, rankingDecided: fs ? fs.decidedCount : 0 }
     } catch {
-      return []
+      return { podium: [], ranking: null, rankingDecided: 0 }
     }
   })()
 
@@ -194,9 +208,60 @@ export default function CompetitionOverview() {
 
       <div className="px-4 sm:px-6 lg:px-8 py-5 space-y-6">
 
-        {/* Champions — knockout final positions, shown the moment the final is
-            decided (3rd place fills in when its play-off is decided). */}
-        {koRows.length > 0 && (
+        {/* Final standings — a ranking-playoff tournament (Final, 3rd/4th, 5th/6th,
+            …). The FULL placings are listed, each filling in the moment its game is
+            decided; places still to be played show a "To be decided" placeholder.
+            Shown once at least one final position is confirmed. */}
+        {koFinal.ranking && koFinal.rankingDecided > 0 ? (
+          <div>
+            <div className="flex items-center gap-1.5 mb-3">
+              <Trophy className="w-3.5 h-3.5 text-amber-400" />
+              <div className="micro-label text-slate-500">Final standings</div>
+            </div>
+            <div className="bg-white rounded-2xl border border-amber-200 shadow-sm overflow-hidden">
+              <div className="h-1.5 bg-gradient-to-r from-amber-400 to-amber-500" />
+              {koFinal.ranking.map(row => {
+                const decided = !!row.teamId
+                const tier = PODIUM[row.place - 1] || null
+                const champ = row.place === 1 && decided
+                return (
+                  <div key={row.place}
+                    className={`flex items-center gap-3 px-5 border-t border-slate-100 first:border-t-0 ${champ ? 'py-5 bg-gradient-to-b from-amber-50 to-white' : 'py-3'}`}>
+                    <span className={`rounded-full flex items-center justify-center shrink-0 font-mono font-black ${
+                      champ ? 'w-11 h-11 text-lg bg-amber-100 text-amber-700'
+                        : tier ? `w-7 h-7 text-[11px] ${tier.bg} ${tier.text}`
+                        : 'w-7 h-7 text-[11px] bg-slate-100 text-slate-500'}`}
+                      style={{ border: champ ? '2px solid #f59e0b' : tier ? `1.5px solid ${tier.ring}` : '1.5px solid #cbd5e1' }}>
+                      {row.place}
+                    </span>
+                    {decided ? (
+                      <>
+                        <span className="w-2.5 h-2.5 rounded-sm shrink-0" style={{ backgroundColor: row.color }} />
+                        <div className="flex-1 min-w-0">
+                          <div className={`text-slate-900 truncate ${champ ? 'font-black text-xl leading-tight' : 'text-sm font-semibold'}`}>{row.name}</div>
+                          <div className={`text-[10px] font-bold uppercase tracking-widest ${tier ? tier.text : 'text-slate-400'}`}>
+                            {row.place === 1 ? 'Champions' : row.place === 2 ? 'Runner-up' : `${ordinalLabel(row.place)} place`}
+                          </div>
+                        </div>
+                      </>
+                    ) : (
+                      <div className="flex-1 min-w-0">
+                        <div className="text-slate-400 text-sm italic truncate">To be decided</div>
+                        <div className="text-[10px] font-bold uppercase tracking-widest text-slate-300">{ordinalLabel(row.place)} place</div>
+                      </div>
+                    )}
+                  </div>
+                )
+              })}
+              <Link to={competitionUrl(competition) + '/knockout'}
+                className="block text-center text-[11px] text-[color:var(--ca)] hover:opacity-80 py-2.5 border-t border-slate-100 transition-colors">
+                Full bracket →
+              </Link>
+            </div>
+          </div>
+        ) : koFinal.podium.length > 0 && (
+          /* Champion podium — a true single-elimination knockout (no fixed
+             place-ranking games). Shown the moment the final is decided. */
           <div>
             <div className="flex items-center gap-1.5 mb-3">
               <Trophy className="w-3.5 h-3.5 text-amber-400" />
@@ -214,13 +279,13 @@ export default function CompetitionOverview() {
                     <span className="text-[11px] font-black uppercase tracking-widest text-amber-600">Champions</span>
                   </div>
                   <div className="flex items-center gap-2 min-w-0">
-                    <span className="w-3 h-3 rounded-sm shrink-0" style={{ backgroundColor: koRows[0].color }} />
-                    <span className="text-slate-900 font-black text-xl leading-tight truncate">{koRows[0].name}</span>
+                    <span className="w-3 h-3 rounded-sm shrink-0" style={{ backgroundColor: koFinal.podium[0].color }} />
+                    <span className="text-slate-900 font-black text-xl leading-tight truncate">{koFinal.podium[0].name}</span>
                   </div>
                 </div>
               </div>
               {/* Runner-up (silver) + 3rd — existing sizing */}
-              {koRows.slice(1).map((row, idx) => {
+              {koFinal.podium.slice(1).map((row, idx) => {
                 const i = idx + 1
                 const p = PODIUM[i]
                 return (
