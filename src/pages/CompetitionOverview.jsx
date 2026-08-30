@@ -227,7 +227,7 @@ export default function CompetitionOverview() {
                 return (
                   <div key={row.place}
                     className={`flex items-center gap-3 px-5 border-t border-slate-100 first:border-t-0 ${champ ? 'py-5 bg-gradient-to-b from-amber-50 to-white' : 'py-3'}`}>
-                    <span className={`rounded-full flex items-center justify-center shrink-0 font-mono font-black ${
+                    <span className={`rounded-lg flex items-center justify-center shrink-0 font-mono font-black ${
                       champ ? 'w-11 h-11 text-lg bg-amber-100 text-amber-700'
                         : tier ? `w-7 h-7 text-[11px] ${tier.bg} ${tier.text}`
                         : 'w-7 h-7 text-[11px] bg-slate-100 text-slate-500'}`}
@@ -271,7 +271,7 @@ export default function CompetitionOverview() {
               <div className="h-1.5 bg-gradient-to-r from-amber-400 to-amber-500" />
               {/* Champion — pronounced, gold */}
               <div className="flex items-center gap-3.5 px-5 py-5 bg-gradient-to-b from-amber-50 to-white">
-                <span className="w-12 h-12 rounded-full flex items-center justify-center shrink-0 bg-amber-100 text-amber-700 font-mono font-black text-lg"
+                <span className="w-12 h-12 rounded-lg flex items-center justify-center shrink-0 bg-amber-100 text-amber-700 font-mono font-black text-lg"
                   style={{ border: '2px solid #f59e0b' }}>1</span>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-1.5 mb-1">
@@ -290,7 +290,7 @@ export default function CompetitionOverview() {
                 const p = PODIUM[i]
                 return (
                   <div key={row.teamId} className="flex items-center gap-3 px-5 py-3 border-t border-slate-100">
-                    <span className={`w-7 h-7 rounded-full flex items-center justify-center shrink-0 font-mono font-black text-[11px] ${p.bg} ${p.text}`}
+                    <span className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 font-mono font-black text-[11px] ${p.bg} ${p.text}`}
                       style={{ border: `1.5px solid ${p.ring}` }}>{i + 1}</span>
                     <span className="w-2.5 h-2.5 rounded-sm shrink-0" style={{ backgroundColor: row.color }} />
                     <div className="flex-1 min-w-0">
@@ -325,7 +325,7 @@ export default function CompetitionOverview() {
                 const name = row.orgName ? `${row.orgName} ${row.teamName}` : row.teamName
                 if (i === 0) return (
                   <div key={row.teamId} className="flex items-center gap-3.5 px-5 py-5 bg-gradient-to-b from-amber-50 to-white">
-                    <span className="w-12 h-12 rounded-full flex items-center justify-center shrink-0 bg-amber-100 text-amber-700 font-mono font-black text-lg"
+                    <span className="w-12 h-12 rounded-lg flex items-center justify-center shrink-0 bg-amber-100 text-amber-700 font-mono font-black text-lg"
                       style={{ border: '2px solid #f59e0b' }}>1</span>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-1.5 mb-1">
@@ -342,7 +342,7 @@ export default function CompetitionOverview() {
                 )
                 return (
                   <div key={row.teamId} className="flex items-center gap-3 px-5 py-3 border-t border-slate-100">
-                    <span className={`w-7 h-7 rounded-full flex items-center justify-center shrink-0 font-mono font-black text-[11px] ${p.bg} ${p.text}`}
+                    <span className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 font-mono font-black text-[11px] ${p.bg} ${p.text}`}
                       style={{ border: `1.5px solid ${p.ring}` }}>{i + 1}</span>
                     <span className="w-2.5 h-2.5 rounded-sm shrink-0" style={{ backgroundColor: teamColorById[row.teamId] }} />
                     <div className="flex-1 min-w-0 text-slate-900 text-sm font-semibold truncate">{name}</div>
