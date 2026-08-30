@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { Star, Trophy } from 'lucide-react'
 import { Link, useParams } from 'react-router-dom'
 import {
-  fetchCompetition, fetchCompetitionTeams,
+  fetchCompetition, fetchCompetitionTeams, fetchOrganization,
   fetchCompetitionFixtures, fetchCompetitionTopScorers, fetchCompetitionTopPOTM, toDate,
   fetchCompetitionByPath, fetchCompetitionBySlugSeason,
   fetchCompetitionPools, fetchCompetitionKnockout,
@@ -12,7 +12,7 @@ import { isScheduled } from '../lib/fixtureStatus'
 import { computeStandings, computePoolStandings } from '../lib/standings'
 import { resolveBracket, computeBestPlacedAtPosition, bracketPodium, bracketFinalStandings, knockoutResult } from '../lib/competitionStructure'
 import { BRONZE_ROUND_LABEL } from '../lib/playoffs'
-import { competitionTeamLabel } from '../lib/teamNaming'
+import { competitionTeamLabel, composeTeamDisplay } from '../lib/teamNaming'
 import { matchUrl, competitionUrl } from '../lib/slugify'
 import { prefetchMatchTeams } from '../lib/teamIdentity'
 import { MatchTeamIdentity, MatchTeamCrest, TeamCrest } from '../components/TeamIdentity'
@@ -42,6 +42,7 @@ export default function CompetitionOverview() {
   const [competition, setCompetition] = useState(null)
   useSeoMeta({ type: 'competition', entity: competition })
   const [teams,       setTeams]       = useState([])
+  const [orgMap,      setOrgMap]      = useState({})
   const [scorers,     setScorers]     = useState([])
   const [potmLeaders, setPotmLeaders] = useState([])
   const [showAllScorers, setShowAllScorers] = useState(false)
@@ -83,6 +84,14 @@ export default function CompetitionOverview() {
       setTeams(t); setScorers(s); setFixtures(f); setPotmLeaders(p)
       setPools(pl ?? []); setKnockout(ko ?? [])
       setMembers(mem ?? []); setFxMembers(fxm ?? []); setAdvancement(adv ?? [])
+      // Final-standings naming prefers each org's match name — held only on the
+      // org doc — so fetch the orgs backing this competition's teams.
+      const orgIds = [...new Set(t.map(x => x.organizationId).filter(Boolean))]
+      return Promise.all(orgIds.map(oid => fetchOrganization(oid))).then(orgs => {
+        const map = {}
+        for (const o of orgs) if (o) map[o.id] = o
+        setOrgMap(map)
+      })
     }).finally(() => setLoading(false))
   }, [id, series, ageGroup, season, competitionSlug])
 
@@ -124,6 +133,20 @@ export default function CompetitionOverview() {
   // team label is not what we surface. Map teamId → org match-name for the
   // top-scorer subtitle; fall back to the team label only when a team has no org.
   const orgNameById = Object.fromEntries(teams.map(t => [t.id, t.orgName || null]))
+
+  // Final-standings display name: an org's MATCH NAME (else its full name), never
+  // the team name — EXCEPT when that org fields more than one team here, when the
+  // team name is appended to tell its entries apart (and only that org's).
+  const orgTeamCount = {}
+  for (const t of teams) if (t.organizationId) orgTeamCount[t.organizationId] = (orgTeamCount[t.organizationId] || 0) + 1
+  const teamDisplayName = (teamId, fallback = null) => {
+    const t = teams.find(x => x.id === teamId)
+    if (!t) return fallback
+    const org  = t.organizationId ? orgMap[t.organizationId] : null
+    const base = org?.matchName || org?.name || t.orgName || t.displayName
+    const multi = t.organizationId && orgTeamCount[t.organizationId] > 1
+    return (multi ? composeTeamDisplay(base, t.displayName) : base) || fallback
+  }
 
   // Final positions are only "official" once every pool has been VERIFIED — the
   // organiser's explicit "these standings are final" action (which itself now
@@ -177,7 +200,7 @@ export default function CompetitionOverview() {
       const nameColor = tid => {
         const t = teams.find(x => x.id === tid)
         const m = members.find(x => x.teamId === tid)
-        const name = t ? (t.orgName ? `${t.orgName} ${t.displayName}` : t.displayName)
+        const name = t ? teamDisplayName(tid, tid)
           : (m ? competitionTeamLabel(m.displaySnapshot) : tid)
         return { teamId: tid, name: name || tid, color: t?.primaryColor ?? m?.displaySnapshot?.primaryColor ?? null, logo: t?.logoUrl ?? m?.displaySnapshot?.logoUrl ?? null }
       }
@@ -322,7 +345,7 @@ export default function CompetitionOverview() {
               <div className="h-1.5 bg-gradient-to-r from-amber-400 to-amber-500" />
               {previewRows.slice(0, 3).map((row, i) => {
                 const p = PODIUM[i]
-                const name = row.orgName ? `${row.orgName} ${row.teamName}` : row.teamName
+                const name = teamDisplayName(row.teamId, row.teamName)
                 if (i === 0) return (
                   <div key={row.teamId} className="flex items-center gap-3.5 px-5 py-5 bg-gradient-to-b from-amber-50 to-white">
                     <span className="w-12 h-12 rounded-lg flex items-center justify-center shrink-0 bg-amber-100 text-amber-700 font-mono font-black text-lg"
