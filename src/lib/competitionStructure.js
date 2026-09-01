@@ -281,6 +281,52 @@ export function bracketPodium({ knockout, resolved, matches, bronzeLabel }) {
   return { first, second: teamOf(fin.lose), third: teamOf(winLose(bronzeGame).win) }
 }
 
+// FULL final placings for a RANKING-playoff knockout — one whose every game
+// decides a fixed pair of adjacent places ("Final" → 1st/2nd, "3rd/4th",
+// "5th/6th", …). Returns { ranking: [{ place, teamId|null }], decidedCount,
+// total } where teamId is null for a place whose deciding game has not finished
+// (a placeholder). Returns null when the bracket is NOT a pure ranking structure
+// (e.g. a single-elimination knockout with semi-finals) — the caller falls back
+// to the champion podium there. Winners are taken by SIDE (score) onto the
+// resolved slot, so it works even when the fixtures aren't stamped with teams.
+export function bracketFinalStandings({ knockout, resolved, matches }) {
+  if (!knockout?.length) return null
+  const sorted = [...knockout].sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
+  const byRound = new Map()
+  for (const s of sorted) { const k = s.roundLabel || 'Knockout'; if (!byRound.has(k)) byRound.set(k, []); byRound.get(k).push(s) }
+  const games = []
+  for (const [label, ss] of byRound) for (let i = 0; i < ss.length; i += 2) if (ss[i] && ss[i + 1]) games.push({ label, home: ss[i], away: ss[i + 1] })
+  if (!games.length) return null
+
+  // The adjacent place-pair a game decides, from its round label. "Final" is the
+  // 1st/2nd game; "3rd/4th", "5th/6th", "11th/12th" carry both numbers; a lone
+  // "3rd place play-off" decides 3rd (winner) and 4th (loser).
+  const placesFor = (label) => {
+    const l = (label || '').trim()
+    if (/^final$/i.test(l)) return [1, 2]
+    const nums = (l.match(/\d+/g) || []).map(Number)
+    if (nums.length >= 2) return [Math.min(nums[0], nums[1]), Math.max(nums[0], nums[1])]
+    if (nums.length === 1) return [nums[0], nums[0] + 1]
+    return null
+  }
+  const teamOf = slot => (slot ? (resolved[slot.slotId]?.teamId ?? null) : null)
+  const matchOf = g => { const w = [g.home, g.away].find(s => s.matchId && matches[s.matchId]); return w ? matches[w.matchId] : null }
+
+  const placeMap = new Map()
+  for (const g of games) {
+    const places = placesFor(g.label)
+    if (!places) return null                 // not a pure ranking bracket
+    const [lo, hi] = places
+    const side = knockoutWinnerSide(matchOf(g))
+    const winSlot  = side === 'home' ? g.home : side === 'away' ? g.away : null
+    const loseSlot = side === 'home' ? g.away : side === 'away' ? g.home : null
+    placeMap.set(lo, { place: lo, teamId: teamOf(winSlot) })
+    if (hi !== lo) placeMap.set(hi, { place: hi, teamId: teamOf(loseSlot) })
+  }
+  const ranking = [...placeMap.values()].sort((a, b) => a.place - b.place)
+  return { ranking, decidedCount: ranking.filter(r => r.teamId).length, total: ranking.length }
+}
+
 // Format a scoreline including a knockout shootout suffix, e.g. "2–2 (4–3 SO)".
 export function formatScoreline(match) {
   if (!match) return ''

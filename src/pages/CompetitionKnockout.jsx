@@ -19,6 +19,17 @@ function Spinner() {
   return <div className="flex justify-center py-12"><div className="w-5 h-5 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin"/></div>
 }
 
+// Date + kick-off time for a scheduled knockout match (e.g. "29 Aug · 14:30").
+// The time is appended only when one is actually set — a midnight scheduledAt is
+// treated as date-only so a fixture with no time never shows a bogus "00:00".
+function fmtDateTime(d) {
+  if (!d) return ''
+  const date = d.toLocaleDateString('en-ZA', { day: 'numeric', month: 'short' })
+  if (d.getHours() === 0 && d.getMinutes() === 0) return date
+  const time = d.toLocaleTimeString('en-ZA', { hour: '2-digit', minute: '2-digit', hour12: false })
+  return `${date} · ${time}`
+}
+
 export default function CompetitionKnockout() {
   const { id, series, ageGroup, season, competitionSlug } = useParams()
   const [competition, setCompetition] = useState(null)
@@ -189,7 +200,7 @@ export default function CompetitionKnockout() {
                       {played
                         ? <span className="text-[9px] font-bold uppercase tracking-widest text-slate-400">Full time</span>
                         : match?.scheduledAt
-                        ? <span className="text-[9px] font-bold uppercase tracking-widest text-slate-400">{toDate(match.scheduledAt)?.toLocaleDateString('en-ZA', { day: 'numeric', month: 'short' })}</span>
+                        ? <span className="text-[9px] font-bold uppercase tracking-widest text-slate-400">{fmtDateTime(toDate(match.scheduledAt))}</span>
                         : <span className="text-[9px] font-bold uppercase tracking-widest text-slate-300">TBC</span>}
                     </div>
                     <div className="space-y-1">

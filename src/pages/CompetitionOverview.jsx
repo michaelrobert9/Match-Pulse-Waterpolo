@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { Star, Trophy } from 'lucide-react'
 import { Link, useParams } from 'react-router-dom'
 import {
-  fetchCompetition, fetchCompetitionTeams,
+  fetchCompetition, fetchCompetitionTeams, fetchOrganization,
   fetchCompetitionFixtures, fetchCompetitionTopScorers, fetchCompetitionTopPOTM, toDate,
   fetchCompetitionByPath, fetchCompetitionBySlugSeason,
   fetchCompetitionPools, fetchCompetitionKnockout,
@@ -10,12 +10,12 @@ import {
 } from '../lib/queries'
 import { isScheduled } from '../lib/fixtureStatus'
 import { computeStandings, computePoolStandings } from '../lib/standings'
-import { resolveBracket, computeBestPlacedAtPosition, bracketPodium, knockoutResult } from '../lib/competitionStructure'
+import { resolveBracket, computeBestPlacedAtPosition, bracketPodium, bracketFinalStandings, knockoutResult } from '../lib/competitionStructure'
 import { BRONZE_ROUND_LABEL } from '../lib/playoffs'
-import { competitionTeamLabel } from '../lib/teamNaming'
+import { competitionTeamLabel, composeTeamDisplay } from '../lib/teamNaming'
 import { matchUrl, competitionUrl } from '../lib/slugify'
 import { prefetchMatchTeams } from '../lib/teamIdentity'
-import { MatchTeamIdentity, MatchTeamCrest } from '../components/TeamIdentity'
+import { MatchTeamIdentity, MatchTeamCrest, TeamCrest } from '../components/TeamIdentity'
 import CompetitionNav from '../components/CompetitionNav'
 import { useSeoMeta } from '../lib/useSeoMeta'
 import { useAuth } from '../contexts/AuthContext'
@@ -23,6 +23,11 @@ import { competitionViewableBy } from '../lib/competitionRules'
 
 function Spinner() {
   return <div className="flex justify-center py-12"><div className="w-5 h-5 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin"/></div>
+}
+
+function ordinalLabel(n) {
+  const s = ['th', 'st', 'nd', 'rd'], v = n % 100
+  return `${n}${s[(v - 20) % 10] || s[v] || s[0]}`
 }
 
 function fmtShortDate(val) {
@@ -37,6 +42,7 @@ export default function CompetitionOverview() {
   const [competition, setCompetition] = useState(null)
   useSeoMeta({ type: 'competition', entity: competition })
   const [teams,       setTeams]       = useState([])
+  const [orgMap,      setOrgMap]      = useState({})
   const [scorers,     setScorers]     = useState([])
   const [potmLeaders, setPotmLeaders] = useState([])
   const [showAllScorers, setShowAllScorers] = useState(false)
@@ -78,6 +84,14 @@ export default function CompetitionOverview() {
       setTeams(t); setScorers(s); setFixtures(f); setPotmLeaders(p)
       setPools(pl ?? []); setKnockout(ko ?? [])
       setMembers(mem ?? []); setFxMembers(fxm ?? []); setAdvancement(adv ?? [])
+      // Final-standings naming prefers each org's match name — held only on the
+      // org doc — so fetch the orgs backing this competition's teams.
+      const orgIds = [...new Set(t.map(x => x.organizationId).filter(Boolean))]
+      return Promise.all(orgIds.map(oid => fetchOrganization(oid))).then(orgs => {
+        const map = {}
+        for (const o of orgs) if (o) map[o.id] = o
+        setOrgMap(map)
+      })
     }).finally(() => setLoading(false))
   }, [id, series, ageGroup, season, competitionSlug])
 
@@ -120,6 +134,20 @@ export default function CompetitionOverview() {
   // top-scorer subtitle; fall back to the team label only when a team has no org.
   const orgNameById = Object.fromEntries(teams.map(t => [t.id, t.orgName || null]))
 
+  // Final-standings display name: an org's MATCH NAME (else its full name), never
+  // the team name — EXCEPT when that org fields more than one team here, when the
+  // team name is appended to tell its entries apart (and only that org's).
+  const orgTeamCount = {}
+  for (const t of teams) if (t.organizationId) orgTeamCount[t.organizationId] = (orgTeamCount[t.organizationId] || 0) + 1
+  const teamDisplayName = (teamId, fallback = null) => {
+    const t = teams.find(x => x.id === teamId)
+    if (!t) return fallback
+    const org  = t.organizationId ? orgMap[t.organizationId] : null
+    const base = org?.matchName || org?.name || t.orgName || t.displayName
+    const multi = t.organizationId && orgTeamCount[t.organizationId] > 1
+    return (multi ? composeTeamDisplay(base, t.displayName) : base) || fallback
+  }
+
   // Final positions are only "official" once every pool has been VERIFIED — the
   // organiser's explicit "these standings are final" action (which itself now
   // requires every fixture scored). A competition whose final placings are
@@ -139,8 +167,8 @@ export default function CompetitionOverview() {
   // page (from pool standings + played results), then read the final placings
   // from the RESOLVED slots. This names the champion even when the final fixture
   // has no teams stamped on it, and appears the moment the final is decided.
-  const koRows = (() => {
-    if (isFestival || knockout.length === 0) return []
+  const koFinal = (() => {
+    if (isFestival || knockout.length === 0) return { podium: [], ranking: null, rankingDecided: 0 }
     try {
       const matchesById = Object.fromEntries(fixtures.map(f => [f.id, f]))
       const poolsCtx = {}, poolStandings = {}
@@ -169,22 +197,31 @@ export default function CompetitionOverview() {
       const lockedTeams = {}
       for (const a of advancement) lockedTeams[a.slotId] = a.teamId
       const resolved = resolveBracket(knockout, { pools: poolsCtx, bestPlaced, bracketResults, lockedTeams })
-      const podium = bracketPodium({ knockout, resolved, matches: matchesById, bronzeLabel: BRONZE_ROUND_LABEL })
-      if (!podium) return []
       const nameColor = tid => {
         const t = teams.find(x => x.id === tid)
         const m = members.find(x => x.teamId === tid)
-        const name = t ? (t.orgName ? `${t.orgName} ${t.displayName}` : t.displayName)
+        const name = t ? teamDisplayName(tid, tid)
           : (m ? competitionTeamLabel(m.displaySnapshot) : tid)
-        return { teamId: tid, name: name || tid, color: t?.primaryColor ?? m?.displaySnapshot?.primaryColor ?? null }
+        return { teamId: tid, name: name || tid, color: t?.primaryColor ?? m?.displaySnapshot?.primaryColor ?? null, logo: t?.logoUrl ?? m?.displaySnapshot?.logoUrl ?? null }
       }
-      return [
-        { ...nameColor(podium.first),  caption: 'Champions' },
-        { ...nameColor(podium.second), caption: 'Runner-up' },
-        ...(podium.third ? [{ ...nameColor(podium.third), caption: '3rd place' }] : []),
-      ].filter(r => r.teamId)
+      // Champion podium (used for a true single-elimination knockout).
+      const podiumRaw = bracketPodium({ knockout, resolved, matches: matchesById, bronzeLabel: BRONZE_ROUND_LABEL })
+      const podium = podiumRaw ? [
+        { ...nameColor(podiumRaw.first),  caption: 'Champions' },
+        { ...nameColor(podiumRaw.second), caption: 'Runner-up' },
+        ...(podiumRaw.third ? [{ ...nameColor(podiumRaw.third), caption: '3rd place' }] : []),
+      ].filter(r => r.teamId) : []
+      // Full final placings for a ranking-playoff tournament (Final, 3rd/4th,
+      // 5th/6th, …): every place, filled in as its game is decided, placeholder
+      // otherwise. null when the bracket isn't a pure ranking structure.
+      const fs = bracketFinalStandings({ knockout, resolved, matches: matchesById })
+      const ranking = fs ? fs.ranking.map(r => ({
+        place: r.place,
+        ...(r.teamId ? nameColor(r.teamId) : { teamId: null, name: null, color: null }),
+      })) : null
+      return { podium, ranking, rankingDecided: fs ? fs.decidedCount : 0 }
     } catch {
-      return []
+      return { podium: [], ranking: null, rankingDecided: 0 }
     }
   })()
 
@@ -194,9 +231,60 @@ export default function CompetitionOverview() {
 
       <div className="px-4 sm:px-6 lg:px-8 py-5 space-y-6">
 
-        {/* Champions — knockout final positions, shown the moment the final is
-            decided (3rd place fills in when its play-off is decided). */}
-        {koRows.length > 0 && (
+        {/* Final standings — a ranking-playoff tournament (Final, 3rd/4th, 5th/6th,
+            …). The FULL placings are listed, each filling in the moment its game is
+            decided; places still to be played show a "To be decided" placeholder.
+            Shown once at least one final position is confirmed. */}
+        {koFinal.ranking && koFinal.rankingDecided > 0 ? (
+          <div>
+            <div className="flex items-center gap-1.5 mb-3">
+              <Trophy className="w-3.5 h-3.5 text-amber-400" />
+              <div className="micro-label text-slate-500">Final standings</div>
+            </div>
+            <div className="bg-white rounded-2xl border border-amber-200 shadow-sm overflow-hidden">
+              <div className="h-1.5 bg-gradient-to-r from-amber-400 to-amber-500" />
+              {koFinal.ranking.map(row => {
+                const decided = !!row.teamId
+                const tier = PODIUM[row.place - 1] || null
+                const champ = row.place === 1 && decided
+                return (
+                  <div key={row.place}
+                    className={`flex items-center gap-3 px-5 border-t border-slate-100 first:border-t-0 ${champ ? 'py-5 bg-gradient-to-b from-amber-50 to-white' : 'py-3'}`}>
+                    <span className={`rounded-lg flex items-center justify-center shrink-0 font-mono font-black ${
+                      champ ? 'w-11 h-11 text-lg bg-amber-100 text-amber-700'
+                        : tier ? `w-7 h-7 text-[11px] ${tier.bg} ${tier.text}`
+                        : 'w-7 h-7 text-[11px] bg-slate-100 text-slate-500'}`}
+                      style={{ border: champ ? '2px solid #f59e0b' : tier ? `1.5px solid ${tier.ring}` : '1.5px solid #cbd5e1' }}>
+                      {row.place}
+                    </span>
+                    {decided ? (
+                      <>
+                        <TeamCrest identity={{ primary: row.name, color: row.color, logo: row.logo }} size={26} />
+                        <div className="flex-1 min-w-0">
+                          <div className={`text-slate-900 truncate ${champ ? 'font-black text-xl leading-tight' : 'text-sm font-semibold'}`}>{row.name}</div>
+                          <div className={`text-[10px] font-bold uppercase tracking-widest ${tier ? tier.text : 'text-slate-400'}`}>
+                            {row.place === 1 ? 'Champions' : row.place === 2 ? 'Runner-up' : `${ordinalLabel(row.place)} place`}
+                          </div>
+                        </div>
+                      </>
+                    ) : (
+                      <div className="flex-1 min-w-0">
+                        <div className="text-slate-400 text-sm italic truncate">To be decided</div>
+                        <div className="text-[10px] font-bold uppercase tracking-widest text-slate-300">{ordinalLabel(row.place)} place</div>
+                      </div>
+                    )}
+                  </div>
+                )
+              })}
+              <Link to={competitionUrl(competition) + '/knockout'}
+                className="block text-center text-[11px] text-[color:var(--ca)] hover:opacity-80 py-2.5 border-t border-slate-100 transition-colors">
+                Full bracket →
+              </Link>
+            </div>
+          </div>
+        ) : koFinal.podium.length > 0 && (
+          /* Champion podium — a true single-elimination knockout (no fixed
+             place-ranking games). Shown the moment the final is decided. */
           <div>
             <div className="flex items-center gap-1.5 mb-3">
               <Trophy className="w-3.5 h-3.5 text-amber-400" />
@@ -206,7 +294,7 @@ export default function CompetitionOverview() {
               <div className="h-1.5 bg-gradient-to-r from-amber-400 to-amber-500" />
               {/* Champion — pronounced, gold */}
               <div className="flex items-center gap-3.5 px-5 py-5 bg-gradient-to-b from-amber-50 to-white">
-                <span className="w-12 h-12 rounded-full flex items-center justify-center shrink-0 bg-amber-100 text-amber-700 font-mono font-black text-lg"
+                <span className="w-12 h-12 rounded-lg flex items-center justify-center shrink-0 bg-amber-100 text-amber-700 font-mono font-black text-lg"
                   style={{ border: '2px solid #f59e0b' }}>1</span>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-1.5 mb-1">
@@ -214,18 +302,18 @@ export default function CompetitionOverview() {
                     <span className="text-[11px] font-black uppercase tracking-widest text-amber-600">Champions</span>
                   </div>
                   <div className="flex items-center gap-2 min-w-0">
-                    <span className="w-3 h-3 rounded-sm shrink-0" style={{ backgroundColor: koRows[0].color }} />
-                    <span className="text-slate-900 font-black text-xl leading-tight truncate">{koRows[0].name}</span>
+                    <TeamCrest identity={{ primary: koFinal.podium[0].name, color: koFinal.podium[0].color, logo: koFinal.podium[0].logo }} size={32} />
+                    <span className="text-slate-900 font-black text-xl leading-tight truncate">{koFinal.podium[0].name}</span>
                   </div>
                 </div>
               </div>
               {/* Runner-up (silver) + 3rd — existing sizing */}
-              {koRows.slice(1).map((row, idx) => {
+              {koFinal.podium.slice(1).map((row, idx) => {
                 const i = idx + 1
                 const p = PODIUM[i]
                 return (
                   <div key={row.teamId} className="flex items-center gap-3 px-5 py-3 border-t border-slate-100">
-                    <span className={`w-7 h-7 rounded-full flex items-center justify-center shrink-0 font-mono font-black text-[11px] ${p.bg} ${p.text}`}
+                    <span className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 font-mono font-black text-[11px] ${p.bg} ${p.text}`}
                       style={{ border: `1.5px solid ${p.ring}` }}>{i + 1}</span>
                     <span className="w-2.5 h-2.5 rounded-sm shrink-0" style={{ backgroundColor: row.color }} />
                     <div className="flex-1 min-w-0">
@@ -257,10 +345,10 @@ export default function CompetitionOverview() {
               <div className="h-1.5 bg-gradient-to-r from-amber-400 to-amber-500" />
               {previewRows.slice(0, 3).map((row, i) => {
                 const p = PODIUM[i]
-                const name = row.orgName ? `${row.orgName} ${row.teamName}` : row.teamName
+                const name = teamDisplayName(row.teamId, row.teamName)
                 if (i === 0) return (
                   <div key={row.teamId} className="flex items-center gap-3.5 px-5 py-5 bg-gradient-to-b from-amber-50 to-white">
-                    <span className="w-12 h-12 rounded-full flex items-center justify-center shrink-0 bg-amber-100 text-amber-700 font-mono font-black text-lg"
+                    <span className="w-12 h-12 rounded-lg flex items-center justify-center shrink-0 bg-amber-100 text-amber-700 font-mono font-black text-lg"
                       style={{ border: '2px solid #f59e0b' }}>1</span>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-1.5 mb-1">
@@ -277,7 +365,7 @@ export default function CompetitionOverview() {
                 )
                 return (
                   <div key={row.teamId} className="flex items-center gap-3 px-5 py-3 border-t border-slate-100">
-                    <span className={`w-7 h-7 rounded-full flex items-center justify-center shrink-0 font-mono font-black text-[11px] ${p.bg} ${p.text}`}
+                    <span className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 font-mono font-black text-[11px] ${p.bg} ${p.text}`}
                       style={{ border: `1.5px solid ${p.ring}` }}>{i + 1}</span>
                     <span className="w-2.5 h-2.5 rounded-sm shrink-0" style={{ backgroundColor: teamColorById[row.teamId] }} />
                     <div className="flex-1 min-w-0 text-slate-900 text-sm font-semibold truncate">{name}</div>

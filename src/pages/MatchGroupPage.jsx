@@ -144,6 +144,8 @@ function EditGroupDialog({ group, children, onClose }) {
   const [venue,     setVenue]     = useState(group.venue ?? '')
   const [venueId,   setVenueId]   = useState(group.venueId ?? null)
   const [venueSlug, setVenueSlug] = useState(group.venueSlug ?? null)
+  const [facilityId,   setFacilityId]   = useState(group.facilityId ?? null)
+  const [facilityName, setFacilityName] = useState(group.facilityName ?? null)
   const [saving,    setSaving]    = useState(false)
   const [error,     setError]     = useState('')
 
@@ -151,7 +153,9 @@ function EditGroupDialog({ group, children, onClose }) {
   const origVenue = group.venue ?? ''
   // A cleared date is not a change — we never write an empty match date.
   const dateChanged  = !!matchDate && matchDate !== origDate
+  // A venue edit is a change to the base venue OR to the facility within it.
   const venueChanged = venue.trim() !== origVenue.trim()
+    || (facilityId ?? null) !== (group.facilityId ?? null)
   const changed = dateChanged || venueChanged
 
   const willTake = venueChanged ? children.filter(c => c.venueOverride !== true) : []
@@ -163,7 +167,7 @@ function EditGroupDialog({ group, children, onClose }) {
     try {
       const patch = {}
       if (dateChanged)  patch.matchDate = matchDate
-      if (venueChanged) { patch.venue = venue.trim(); patch.venueId = venueId; patch.venueSlug = venueSlug }
+      if (venueChanged) { patch.venue = venue.trim(); patch.venueId = venueId; patch.venueSlug = venueSlug; patch.facilityId = facilityId; patch.facilityName = facilityName }
       await updateMatchGroup(group.id, patch)
       onClose()   // page is live-subscribed — it refreshes itself
     } catch (e) {
@@ -189,10 +193,11 @@ function EditGroupDialog({ group, children, onClose }) {
           </label>
           <VenuePicker
             pitch={venue} venueId={venueId} venueSlug={venueSlug}
+            facilityId={facilityId} facilityName={facilityName}
             hostOrgId={group.ownerOrgId ?? group.homeOrgId ?? null}
             placeholder="e.g. St Mary's College"
             inputClassName="w-full bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 text-slate-900 text-sm placeholder-slate-400 focus:outline-none focus:border-emerald-500 transition-colors"
-            onChange={v => { setVenue(v.pitch); setVenueId(v.venueId); setVenueSlug(v.venueSlug) }} />
+            onChange={v => { setVenue(v.pitch); setVenueId(v.venueId); setVenueSlug(v.venueSlug); setFacilityId(v.facilityId); setFacilityName(v.facilityName) }} />
         </div>
 
         {/* Live preview — only what will actually change. */}
