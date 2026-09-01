@@ -156,6 +156,8 @@ function SchoolFixtureForm({ org, canChange, onChangeOrg }) {
     pitch:         '',
     venueId:       null,
     venueSlug:     null,
+    facilityId:    null,
+    facilityName:  null,
     periods:       DEFAULT_PERIODS,
     periodMinutes: DEFAULT_PERIOD_MINUTES,
     breakMinutes:  DEFAULT_BREAK_MINUTES,
@@ -193,6 +195,8 @@ function SchoolFixtureForm({ org, canChange, onChangeOrg }) {
         pitch:         form.pitch.trim(),
         venueId:       form.venueId,
         venueSlug:     form.venueSlug,
+        facilityId:    form.facilityId,
+        facilityName:  form.facilityName,
         season:        comp?.season ?? null,
         competitionSlug: comp?.slug ?? null,
         periods:       Number(form.periods),
@@ -211,7 +215,7 @@ function SchoolFixtureForm({ org, canChange, onChangeOrg }) {
       const homeLabel = composeTeamDisplay(homeTeam.teamName || homeTeam.orgName, homeTeam.displayName)
       const awayLabel = composeTeamDisplay(awayTeam.teamName || awayTeam.orgName, awayTeam.displayName)
       setDone({ matchId: ref.id, matchName: `${homeLabel} vs ${awayLabel}` })
-      setForm(f => ({ ...f, yourTeamId: '', opponent: null, scheduledAt: '', pitch: '', venueId: null, venueSlug: null, side: 'home' }))
+      setForm(f => ({ ...f, yourTeamId: '', opponent: null, scheduledAt: '', pitch: '', venueId: null, venueSlug: null, facilityId: null, facilityName: null, side: 'home' }))
     } catch (err) {
       setError(err.message ?? 'Something went wrong. Please try again.')
     } finally { setSaving(false) }
@@ -298,6 +302,7 @@ function SchoolFixtureForm({ org, canChange, onChangeOrg }) {
             </label>
             <VenuePicker
               pitch={form.pitch} venueId={form.venueId} venueSlug={form.venueSlug}
+              facilityId={form.facilityId} facilityName={form.facilityName}
               hostOrgId={org.id}
               placeholder="e.g. Main pool"
               inputClassName="w-full bg-white border border-slate-200 rounded-lg px-3 py-2.5 text-slate-900 text-sm placeholder-slate-400 focus:outline-none focus:border-emerald-500 transition-colors"
@@ -356,6 +361,8 @@ function ClubFixtureForm({ org, canChange, onChangeOrg }) {
     pitch:         '',
     venueId:       null,
     venueSlug:     null,
+    facilityId:    null,
+    facilityName:  null,
     periods:       DEFAULT_PERIODS,
     periodMinutes: DEFAULT_PERIOD_MINUTES,
     breakMinutes:  DEFAULT_BREAK_MINUTES,
@@ -408,6 +415,8 @@ function ClubFixtureForm({ org, canChange, onChangeOrg }) {
         pitch:         form.pitch.trim(),
         venueId:       form.venueId,
         venueSlug:     form.venueSlug,
+        facilityId:    form.facilityId,
+        facilityName:  form.facilityName,
         season:        comp?.season ?? null,
         competitionSlug: comp?.slug ?? null,
         periods:       Number(form.periods),
@@ -423,7 +432,7 @@ function ClubFixtureForm({ org, canChange, onChangeOrg }) {
       const homeLabel = composeTeamDisplay(homeTeam.teamName || homeTeam.orgName, homeTeam.displayName)
       const awayLabel = composeTeamDisplay(awayTeam.teamName || awayTeam.orgName, awayTeam.displayName)
       setDone({ matchId: ref.id, matchName: `${homeLabel} vs ${awayLabel}` })
-      setForm(f => ({ ...f, yourSide: 'club', opponent: null, scheduledAt: '', pitch: '', venueId: null, venueSlug: null, side: 'home' }))
+      setForm(f => ({ ...f, yourSide: 'club', opponent: null, scheduledAt: '', pitch: '', venueId: null, venueSlug: null, facilityId: null, facilityName: null, side: 'home' }))
     } catch (err) {
       setError(err.message ?? 'Something went wrong. Please try again.')
     } finally { setSaving(false) }
@@ -530,6 +539,7 @@ function ClubFixtureForm({ org, canChange, onChangeOrg }) {
           </label>
           <VenuePicker
             pitch={form.pitch} venueId={form.venueId} venueSlug={form.venueSlug}
+            facilityId={form.facilityId} facilityName={form.facilityName}
             hostOrgId={org.id}
             placeholder="e.g. Main pool, Club pool"
             inputClassName="w-full bg-white border border-slate-200 rounded-lg px-3 py-2.5 text-slate-900 text-sm placeholder-slate-400 focus:outline-none focus:border-emerald-500 transition-colors"

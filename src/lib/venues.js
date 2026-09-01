@@ -5,17 +5,24 @@
 //
 // Two central artefacts, both public reads, both in the (default) database
 // reached through the `identityDb` handle (same one used for users/userProfiles):
-//   • venues/{id}                  — the full venue record (not read here)
+//   • venues/{id}                  — the full venue record, including its
+//     `facilities` array. Read ONE AT A TIME, only when a venue is picked
+//     (fetchVenueFacilities), never eagerly — a per-fixture read beats fattening
+//     the index every session already fetches.
 //   • venueIndex/current           — ONE document holding every active venue as a
 //     compact list for the picker: { venues: [{ id, name, nameNormalised, slug,
-//     city, ownerOrgId }, …] }.
+//     city }, …] }. Venues are no longer owned, so the index carries no owner.
 //
 // The index document does not exist until the first venue is created on the main
 // site. A missing or empty index is NOT an error — it simply means "no
 // suggestions available, free text only". The picker must never block on it.
+//
+// A host organisation's own ground is sorted to the top of the picker via that
+// organisation's `homeVenueId` — read from the LOCAL org copy in this app's own
+// database (fetchOrgHomeVenueId), not from the central registry.
 
 import { doc, getDoc } from 'firebase/firestore'
-import { identityDb } from '../firebase'
+import { identityDb, db, SPORT_KEY } from '../firebase'
 
 // Fetch the index once per session and cache the promise, so repeated pickers
 // (and re-mounts) share a single network read. Never throws: any failure or a
@@ -63,10 +70,10 @@ export function normaliseVenueText(s) {
 
 // Filter the index for a query and rank it. Matching is on the normalised name
 // (primary) and city (secondary hint, so two similarly named schools in
-// different towns are distinguishable). The host organisation's own venues sort
-// to the top — that is the right answer most of the time. Returns at most
-// `limit` suggestions.
-export function searchVenues(index, query, { hostOrgId = null, limit = 8 } = {}) {
+// different towns are distinguishable). The host organisation's own ground —
+// identified by its `homeVenueId` — sorts to the top. Returns at most `limit`
+// suggestions.
+export function searchVenues(index, query, { homeVenueId = null, limit = 8 } = {}) {
   const list = Array.isArray(index) ? index : []
   const q = normaliseVenueText(query)
   const matches = !q
@@ -79,10 +86,11 @@ export function searchVenues(index, query, { hostOrgId = null, limit = 8 } = {})
 
   const scored = matches.map(v => {
     const name = v.nameNormalised || normaliseVenueText(v.name)
-    const isHost = hostOrgId && v.ownerOrgId === hostOrgId
-    // Rank: host org first, then a name that STARTS with the query, then the rest.
+    const isHome = homeVenueId && v.id === homeVenueId
+    // Rank: the org's home ground first, then a name that STARTS with the query,
+    // then the rest.
     let rank = 3
-    if (isHost) rank = 0
+    if (isHome) rank = 0
     else if (q && name.startsWith(q)) rank = 1
     else if (q) rank = 2
     return { v, rank, name }
@@ -90,4 +98,69 @@ export function searchVenues(index, query, { hostOrgId = null, limit = 8 } = {})
 
   scored.sort((a, b) => a.rank - b.rank || a.name.localeCompare(b.name))
   return scored.slice(0, limit).map(s => s.v)
+}
+
+// The host organisation's home ground, read from the LOCAL org copy this app
+// syncs (the main site is adding `homeVenueId` to that sync). Returns the venue
+// id or null. Never throws: a missing field, missing doc, or read failure all
+// resolve to null, so the picker simply shows no home-ground badge.
+export async function fetchOrgHomeVenueId(orgId) {
+  if (!orgId) return null
+  try {
+    const snap = await getDoc(doc(db, 'organizations', orgId))
+    return (snap.exists() && snap.data()?.homeVenueId) || null
+  } catch {
+    return null
+  }
+}
+
+// The venue's facilities that are relevant to THIS sport, read from the full
+// central record `venues/{id}` on demand (one read per fixture, not from the
+// index). A facility is a { id, name, displayNoun, sports: [...], order, active }
+// entry; we keep only active ones whose `sports` includes this app's canonical
+// sport key (SPORT_KEY), sorted by the main site's `order`. Never throws: any
+// failure resolves to an empty list, so the facility selector simply does not
+// appear.
+export async function fetchVenueFacilities(venueId) {
+  if (!venueId) return []
+  try {
+    const snap = await getDoc(doc(identityDb, 'venues', venueId))
+    if (!snap.exists()) return []
+    const list = snap.data()?.facilities
+    if (!Array.isArray(list)) return []
+    return list
+      .filter(f => f && f.active !== false && Array.isArray(f.sports) && f.sports.includes(SPORT_KEY))
+      .sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
+  } catch {
+    return []
+  }
+}
+
+// Compose the stored `pitch` display string from a base venue name and an
+// optional facility name: "Kearsney College" alone, "Kearsney College – Astro 1"
+// with a facility. Composed at SAVE time so every display surface reads one
+// ready-made string. Empty base with a facility still yields just the facility.
+export function composeVenuePitch(base, facilityName) {
+  const b = String(base ?? '').trim()
+  const f = String(facilityName ?? '').trim()
+  if (b && f) return `${b} – ${f}`
+  return b || f
+}
+
+// Inverse of composeVenuePitch: recover the base venue name from a stored,
+// possibly-composed `pitch` so it can be shown in the picker input without the
+// facility suffix (which the facility selector shows separately).
+//
+// Driven by the STORED facility, never by pattern-matching the separator: it
+// strips only the exact stored `facilityName` from the end, and ONLY when
+// `facilityId` is set (a real facility link). With no link the pitch is free
+// text — which may itself legitimately contain " – " — so it is returned
+// verbatim, so a re-save can never corrupt it.
+export function stripFacilitySuffix(pitch, facilityId, facilityName) {
+  const p = String(pitch ?? '')
+  if (!facilityId) return p
+  const f = String(facilityName ?? '').trim()
+  if (!f) return p
+  const suffix = ` – ${f}`
+  return p.endsWith(suffix) ? p.slice(0, -suffix.length) : p
 }

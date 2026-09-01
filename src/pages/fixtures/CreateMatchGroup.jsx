@@ -101,9 +101,11 @@ export default function CreateMatchGroup() {
   const [homeOrgId,    setHomeOrgId]    = useState(null)
   const [awayOrgId,    setAwayOrgId]    = useState(null)
   const [matchDate,    setMatchDate]    = useState('')
-  const [defaultVenue,     setDefaultVenue]     = useState('')
-  const [defaultVenueId,   setDefaultVenueId]   = useState(null)
-  const [defaultVenueSlug, setDefaultVenueSlug] = useState(null)
+  const [defaultVenue,        setDefaultVenue]        = useState('')
+  const [defaultVenueId,      setDefaultVenueId]      = useState(null)
+  const [defaultVenueSlug,    setDefaultVenueSlug]    = useState(null)
+  const [defaultFacilityId,   setDefaultFacilityId]   = useState(null)
+  const [defaultFacilityName, setDefaultFacilityName] = useState(null)
 
   const [teamsLoading, setTeamsLoading] = useState(false)
   const [homeTeams,    setHomeTeams]    = useState([])
@@ -160,7 +162,7 @@ export default function CreateMatchGroup() {
 
   // Seed the editable entries whenever a fresh pairing is produced.
   useEffect(() => {
-    setEntries(pairing.rows.map(r => ({ uid: r.key, row: r, included: true, time: '', venue: '', venueId: null, venueSlug: null })))
+    setEntries(pairing.rows.map(r => ({ uid: r.key, row: r, included: true, time: '', venue: '', venueId: null, venueSlug: null, facilityId: null, facilityName: null })))
   }, [pairing])
 
   function updateEntry(uid, patch) {
@@ -193,9 +195,11 @@ export default function CreateMatchGroup() {
           home:        e.row.home,
           away:        e.row.away,
           scheduledAt: combineDateTime(matchDate, e.time),
-          venue:       e.venue || '',
-          venueId:     e.venueId || null,
-          venueSlug:   e.venueSlug || null,
+          venue:        e.venue || '',
+          venueId:      e.venueId || null,
+          venueSlug:    e.venueSlug || null,
+          facilityId:   e.facilityId || null,
+          facilityName: e.facilityName || null,
         })),
         { homeOrg, awayOrg },
       )
@@ -206,17 +210,21 @@ export default function CreateMatchGroup() {
         home:        fr.home,
         away:        fr.away,
         scheduledAt: fr.scheduledAt,
-        venue:       fr.venue || '',
-        venueId:     fr.venueId || null,
-        venueSlug:   fr.venueSlug || null,
+        venue:        fr.venue || '',
+        venueId:      fr.venueId || null,
+        venueSlug:    fr.venueSlug || null,
+        facilityId:   fr.facilityId || null,
+        facilityName: fr.facilityName || null,
       }))
       const result = await createMatchGroup({
         home:       orgSide(homeOrg),
         away:       orgSide(awayOrg),
         matchDate,
-        venue:      defaultVenue.trim(),
-        venueId:    defaultVenueId || null,
-        venueSlug:  defaultVenueSlug || null,
+        venue:        defaultVenue.trim(),
+        venueId:      defaultVenueId || null,
+        venueSlug:    defaultVenueSlug || null,
+        facilityId:   defaultFacilityId || null,
+        facilityName: defaultFacilityName || null,
         sport:      'waterpolo',
         ownerOrgId: homeOrg.id,
         rows,
@@ -311,10 +319,11 @@ export default function CreateMatchGroup() {
                   </label>
                   <VenuePicker
                     pitch={defaultVenue} venueId={defaultVenueId} venueSlug={defaultVenueSlug}
+                    facilityId={defaultFacilityId} facilityName={defaultFacilityName}
                     hostOrgId={homeOrg?.id ?? null}
                     placeholder="e.g. Main courts"
                     inputClassName="w-full bg-white border border-slate-200 rounded-lg px-3 py-2.5 text-slate-900 text-sm placeholder-slate-400 focus:outline-none focus:border-emerald-500 transition-colors"
-                    onChange={v => { setDefaultVenue(v.pitch); setDefaultVenueId(v.venueId); setDefaultVenueSlug(v.venueSlug) }} />
+                    onChange={v => { setDefaultVenue(v.pitch); setDefaultVenueId(v.venueId); setDefaultVenueSlug(v.venueSlug); setDefaultFacilityId(v.facilityId); setDefaultFacilityName(v.facilityName) }} />
                 </div>
               </div>
               <p className="text-[11px] text-slate-400 leading-relaxed">
@@ -393,10 +402,11 @@ export default function CreateMatchGroup() {
                                 onChange={ev => updateEntry(e.uid, { time: ev.target.value })} />
                               <VenuePicker
                                 pitch={e.venue} venueId={e.venueId} venueSlug={e.venueSlug}
+                                facilityId={e.facilityId} facilityName={e.facilityName}
                                 hostOrgId={homeOrg?.id ?? null}
                                 placeholder={defaultVenue.trim() ? `${defaultVenue.trim()} (default)` : 'Venue (optional)'}
                                 inputClassName="w-full bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 text-slate-900 text-sm placeholder-slate-400 focus:outline-none focus:border-emerald-500 transition-colors"
-                                onChange={v => updateEntry(e.uid, { venue: v.pitch, venueId: v.venueId, venueSlug: v.venueSlug })} />
+                                onChange={v => updateEntry(e.uid, { venue: v.pitch, venueId: v.venueId, venueSlug: v.venueSlug, facilityId: v.facilityId, facilityName: v.facilityName })} />
                             </div>
                           </div>
                         </div>

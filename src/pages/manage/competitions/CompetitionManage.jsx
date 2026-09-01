@@ -37,6 +37,7 @@ import CompetitionStatusBadge from '../../../components/CompetitionStatusBadge'
 import CompetitionStructureSection from './CompetitionStructureSection'
 import FormatSelector from '../../../components/FormatSelector'
 import VenuePicker from '../../../components/VenuePicker'
+import { composeVenuePitch } from '../../../lib/venues'
 import { DEFAULT_PERIODS, DEFAULT_PERIOD_MINUTES, DEFAULT_BREAK_MINUTES, competitionMatchFormat } from '../../../lib/matchClock'
 import { composeTeamDisplay } from '../../../lib/teamNaming'
 
@@ -2248,7 +2249,7 @@ function FixturesTab({ competition, teams, fixtures, setFixtures }) {
   const [genDone, setGenDone]     = useState(null)
   const [saving, setSaving]       = useState(false)
   const [newForm, setNewForm]     = useState({
-    homeTeamId: '', awayTeamId: '', scheduledAt: '', pitch: '', venueId: null, venueSlug: null,
+    homeTeamId: '', awayTeamId: '', scheduledAt: '', pitch: '', venueId: null, venueSlug: null, facilityId: null, facilityName: null,
     periods: defaultFmt.periods, periodMinutes: defaultFmt.periodMinutes,
     breakMinutes: defaultFmt.breakMinutes, indoor: defaultFmt.indoor,
   })
@@ -2319,8 +2320,9 @@ function FixturesTab({ competition, teams, fixtures, setFixtures }) {
         breakMinutes: Array.isArray(newForm.breakMinutes) ? newForm.breakMinutes : DEFAULT_BREAK_MINUTES,
         goals: [], cards: [], controlLog: [],
         startedAt: null, pausedAt: null, totalPausedMs: 0, nextPeriodIndex: 1,
-        scheduledAt, pitch: newForm.pitch || '',
+        scheduledAt, pitch: composeVenuePitch(newForm.pitch || '', newForm.facilityName),
         venueId: newForm.venueId || null, venueSlug: newForm.venueSlug || null,
+        facilityId: newForm.facilityId || null, facilityName: newForm.facilityName || null,
         indoor: !!newForm.indoor, status: 'scheduled', tracked: false,
         matchSlug,
         ...(seasonStr ? { season: seasonStr } : {}),
@@ -2337,7 +2339,7 @@ function FixturesTab({ competition, teams, fixtures, setFixtures }) {
         scheduledAt, status: 'scheduled', tracked: false, homeScore: 0, awayScore: 0,
       }])
       setShowNew(false)
-      setNewForm({ homeTeamId: '', awayTeamId: '', scheduledAt: '', pitch: '', venueId: null, venueSlug: null, periods: defaultFmt.periods, periodMinutes: defaultFmt.periodMinutes, breakMinutes: defaultFmt.breakMinutes, indoor: defaultFmt.indoor })
+      setNewForm({ homeTeamId: '', awayTeamId: '', scheduledAt: '', pitch: '', venueId: null, venueSlug: null, facilityId: null, facilityName: null, periods: defaultFmt.periods, periodMinutes: defaultFmt.periodMinutes, breakMinutes: defaultFmt.breakMinutes, indoor: defaultFmt.indoor })
     } finally { setSaving(false) }
   }
 
@@ -2586,6 +2588,7 @@ function FixturesTab({ competition, teams, fixtures, setFixtures }) {
             <label className="micro-label block mb-1.5">Venue (optional)</label>
             <VenuePicker
               pitch={newForm.pitch} venueId={newForm.venueId} venueSlug={newForm.venueSlug}
+              facilityId={newForm.facilityId} facilityName={newForm.facilityName}
               hostOrgId={competition.ownerOrgId || null}
               placeholder="e.g. Main pool"
               onChange={v => setNewForm(f => ({ ...f, ...v }))} />

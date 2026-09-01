@@ -4,6 +4,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom'
 import { fetchMatchGroup, fetchMatchGroupChildren } from '../../lib/queries'
 import { setMatchTimes } from '../../lib/adminQueries'
 import { matchPath, ageLabel } from '../../lib/matchPaths'
+import { stripFacilitySuffix } from '../../lib/venues'
 import VenuePicker from '../../components/VenuePicker'
 
 function Spinner() {
@@ -57,9 +58,13 @@ export default function MatchTimesGrid() {
           home:    c.homeTeamName ?? '',
           away:    c.awayTeamName ?? '',
           when:    toLocalInputValue(toDateSafe(c.scheduledAt)),
-          venue:   c.pitch ?? '',
+          // Stored `pitch` is composed ("Venue – Facility"); show the BASE name in
+          // the input and let the facility selector carry the facility.
+          venue:   stripFacilitySuffix(c.pitch ?? '', c.facilityId, c.facilityName),
           venueId: c.venueId ?? null,
           venueSlug: c.venueSlug ?? null,
+          facilityId: c.facilityId ?? null,
+          facilityName: c.facilityName ?? null,
         })))
       })
       .catch(() => { if (alive) setGroup(null) })
@@ -80,9 +85,11 @@ export default function MatchTimesGrid() {
         matchId:     r.id,
         // Blank datetime is valid — it clears the scheduled time to null.
         scheduledAt: r.when ? new Date(r.when) : null,
-        venue:       r.venue || '',
-        venueId:     r.venueId || null,
-        venueSlug:   r.venueSlug || null,
+        venue:        r.venue || '',
+        venueId:      r.venueId || null,
+        venueSlug:    r.venueSlug || null,
+        facilityId:   r.facilityId || null,
+        facilityName: r.facilityName || null,
       }))
       await setMatchTimes(patches)
       navigate(matchPath(date, slug))
@@ -164,10 +171,11 @@ export default function MatchTimesGrid() {
                       </label>
                       <VenuePicker
                         pitch={r.venue} venueId={r.venueId} venueSlug={r.venueSlug}
+                        facilityId={r.facilityId} facilityName={r.facilityName}
                         hostOrgId={group?.ownerOrgId ?? group?.homeOrgId ?? null}
                         placeholder="e.g. Court 1"
                         inputClassName="w-full bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 text-slate-900 text-sm placeholder-slate-400 focus:outline-none focus:border-emerald-500 transition-colors"
-                        onChange={v => updateRow(r.id, { venue: v.pitch, venueId: v.venueId, venueSlug: v.venueSlug })} />
+                        onChange={v => updateRow(r.id, { venue: v.pitch, venueId: v.venueId, venueSlug: v.venueSlug, facilityId: v.facilityId, facilityName: v.facilityName })} />
                     </div>
                   </div>
                 </div>
