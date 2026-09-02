@@ -5,6 +5,8 @@ import { fetchAllMatches, toDate } from '../../lib/queries'
 import { deleteMatch, removeFixtureFromCompetition } from '../../lib/adminQueries'
 import { isScheduled } from '../../lib/fixtureStatus'
 import { matchUrl } from '../../lib/slugify'
+import { prefetchMatchTeams } from '../../lib/teamIdentity'
+import { MatchTeamIdentity } from '../../components/TeamIdentity'
 import StatusBadge from '../../components/StatusBadge'
 
 const SELECT_CLASS =
@@ -27,7 +29,7 @@ export function FixturesList() {
 
   useEffect(() => {
     fetchAllMatches()
-      .then(setMatches)
+      .then(list => { prefetchMatchTeams(list); setMatches(list) })
       .catch(() => {})
       .finally(() => setLoading(false))
   }, [])
@@ -171,15 +173,13 @@ export function FixturesList() {
                 }`}>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 mb-0.5">
-                    <span className="text-slate-900 text-sm font-semibold truncate">
-                      {m.homeTeamName || 'Home'}
-                    </span>
+                    <MatchTeamIdentity match={m} side="home" hideIdentifier
+                      nameClass="text-slate-900 text-sm font-semibold truncate" />
                     {(isLive || isFinal)
                       ? <span className="font-mono font-black text-slate-900 text-sm tabular-nums shrink-0">{m.homeScore ?? 0}–{m.awayScore ?? 0}</span>
                       : <span className="text-slate-400 text-xs shrink-0">vs</span>}
-                    <span className="text-slate-900 text-sm font-semibold truncate">
-                      {m.awayTeamName || 'Away'}
-                    </span>
+                    <MatchTeamIdentity match={m} side="away" hideIdentifier
+                      nameClass="text-slate-900 text-sm font-semibold truncate" />
                   </div>
                   <div className="micro-label flex items-center gap-2 flex-wrap">
                     <span>{fmtWhen(m.scheduledAt)}</span>
