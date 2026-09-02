@@ -128,6 +128,38 @@ function TeamCard({ team, org }) {
   return url ? <Link to={url}>{inner}</Link> : <div>{inner}</div>
 }
 
+// One team's results, most-recent first: the 5 latest shown, with a "Show more"
+// to reveal the rest. The header links through to the team's own page.
+function TeamResults({ team, org, results }) {
+  const [expanded, setExpanded] = useState(false)
+  const shown  = expanded ? results : results.slice(0, 5)
+  const url    = teamUrl(team, org)
+  const Header = url ? Link : 'div'
+  const headerProps = url ? { to: url } : {}
+  return (
+    <div>
+      <Header {...headerProps}
+        className={`flex items-center justify-between gap-2 mb-2 ${url ? 'group' : ''}`}>
+        <span className="text-slate-900 text-sm font-bold truncate group-hover:text-emerald-600 transition-colors">
+          {team.displayName}
+        </span>
+        <span className="text-[11px] text-slate-400 shrink-0">
+          {results.length} result{results.length !== 1 ? 's' : ''}
+        </span>
+      </Header>
+      <div className="space-y-2">
+        {shown.map(m => <ResultCard key={m.id} match={m} />)}
+      </div>
+      {results.length > 5 && (
+        <button type="button" onClick={() => setExpanded(v => !v)}
+          className="mt-2 w-full text-center text-[11px] font-bold uppercase tracking-widest text-emerald-600 hover:text-emerald-500 py-2 rounded-lg border border-slate-200 hover:border-emerald-300 bg-white transition-colors">
+          {expanded ? 'Show fewer' : `Show ${results.length - 5} more`}
+        </button>
+      )}
+    </div>
+  )
+}
+
 export default function OrgDetail({ type }) {
   const { slug } = useParams()
   const [org,      setOrg]      = useState(null)
@@ -136,6 +168,7 @@ export default function OrgDetail({ type }) {
   const [matches,  setMatches]  = useState([])
   const [loading,  setLoading]  = useState(true)
   const [notFound, setNotFound] = useState(false)
+  const [upcomingExpanded, setUpcomingExpanded] = useState(false)
 
   useEffect(() => {
     let alive = true
@@ -191,13 +224,23 @@ export default function OrgDetail({ type }) {
     ;(toResults ? resultItems : upcomingItems).push(it)
   }
 
-  const upcoming = upcomingItems
+  const upcomingSorted = upcomingItems
     .sort((a, b) => (a.sortAt ?? Infinity) - (b.sortAt ?? Infinity))
-    .slice(0, 5)
+  const upcoming = upcomingExpanded ? upcomingSorted : upcomingSorted.slice(0, 5)
 
-  const results = resultItems
-    .sort((a, b) => (b.sortAt ?? -Infinity) - (a.sortAt ?? -Infinity))
-    .slice(0, 5)
+  // Results grouped BY TEAM — each of the org's teams with its own completed
+  // matches, most-recent first. Raw matches (not match-day rows) so every team's
+  // games sit under it. Teams with no results are omitted here (they still show
+  // in the Teams section below). Ordered by who has played the most.
+  const resultsByTeam = teams
+    .map(team => ({
+      team,
+      results: matches
+        .filter(m => m.status === 'final' && (m.homeTeamId === team.id || m.awayTeamId === team.id))
+        .sort((a, b) => (toDate(b.scheduledAt)?.getTime() ?? 0) - (toDate(a.scheduledAt)?.getTime() ?? 0)),
+    }))
+    .filter(x => x.results.length > 0)
+    .sort((a, b) => b.results.length - a.results.length)
 
   return (
     <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-6 pb-12 space-y-6">
@@ -239,33 +282,41 @@ export default function OrgDetail({ type }) {
       {/* Upcoming Fixtures */}
       <section>
         <SectionHeader title="Upcoming Matches" />
-        {upcoming.length === 0 ? (
+        {upcomingSorted.length === 0 ? (
           <EmptyCard
             message={`No upcoming matches for ${org.name}.`}
             sub="Matches will appear here once they are scheduled."
           />
         ) : (
-          <div className="space-y-2">
-            {upcoming.map(it => it.kind === 'group'
-              ? <MatchDayRow key={it.matchGroupId} item={it} viewerOrgId={org.id} />
-              : <UpcomingCard key={it.match.id} match={it.match} />)}
-          </div>
+          <>
+            <div className="space-y-2">
+              {upcoming.map(it => it.kind === 'group'
+                ? <MatchDayRow key={it.matchGroupId} item={it} viewerOrgId={org.id} />
+                : <UpcomingCard key={it.match.id} match={it.match} />)}
+            </div>
+            {upcomingSorted.length > 5 && (
+              <button type="button" onClick={() => setUpcomingExpanded(v => !v)}
+                className="mt-2 w-full text-center text-[11px] font-bold uppercase tracking-widest text-emerald-600 hover:text-emerald-500 py-2 rounded-lg border border-slate-200 hover:border-emerald-300 bg-white transition-colors">
+                {upcomingExpanded ? 'Show fewer' : `Show ${upcomingSorted.length - 5} more`}
+              </button>
+            )}
+          </>
         )}
       </section>
 
-      {/* Recent Results */}
+      {/* Results — grouped by team, 5 most recent each with "Show more" */}
       <section>
-        <SectionHeader title="Recent Results" />
-        {results.length === 0 ? (
+        <SectionHeader title="Results by team" />
+        {resultsByTeam.length === 0 ? (
           <EmptyCard
             message="No results yet."
             sub="Completed matches will appear here."
           />
         ) : (
-          <div className="space-y-2">
-            {results.map(it => it.kind === 'group'
-              ? <MatchDayRow key={it.matchGroupId} item={it} viewerOrgId={org.id} />
-              : <ResultCard key={it.match.id} match={it.match} />)}
+          <div className="space-y-6">
+            {resultsByTeam.map(({ team, results }) => (
+              <TeamResults key={team.id} team={team} org={org} results={results} />
+            ))}
           </div>
         )}
       </section>
