@@ -15,7 +15,6 @@ import OrgList from './pages/OrgList'
 import OrgDetail from './pages/OrgDetail'
 import Browse from './pages/Browse'
 import PlayersList from './pages/PlayersList'
-import PlayerPage from './pages/PlayerPage'
 import PlayerProfile from './pages/PlayerProfile'
 import MatchDetail from './pages/MatchDetail'
 import MatchGroupPage from './pages/MatchGroupPage'
@@ -145,7 +144,7 @@ export default function App() {
           <Route path="/associations/:slug"             element={<OrgDetail type="association" />} />
           <Route path="/browse"                          element={<Browse />} />
           <Route path="/players"                        element={<PlayersList />} />
-          <Route path="/players/:id"                    element={<PlayerPage />} />
+          <Route path="/players/:id"                    element={<PlayerProfile />} />
           <Route path="/player/:slug"                   element={<PlayerProfile />} />
           {/* Competition-scoped match URL — dateless, singular "match" segment */}
           <Route path="/competitions/:season/:competitionSlug/match/:matchSlug" element={<MatchDetail />} />

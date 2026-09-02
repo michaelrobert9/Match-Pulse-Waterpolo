@@ -3,7 +3,7 @@ import { Link, useParams, useNavigate } from 'react-router-dom'
 import { Camera } from 'lucide-react'
 import { isScheduled } from '../lib/fixtureStatus'
 import {
-  fetchPersonBySlug, fetchCareerForPerson, fetchOrganization,
+  fetchPerson, fetchPersonBySlug, fetchCareerForPerson, fetchOrganization,
   fetchMatchesForPlayer, toDate, fetchRedirect,
 } from '../lib/queries'
 import { matchUrl } from '../lib/slugify'
@@ -277,7 +277,7 @@ function FixtureCard({ match, personId, canSelfRemove, onRemoved }) {
 }
 
 export default function PlayerProfile() {
-  const { slug }         = useParams()
+  const { slug, id }         = useParams()
   const navigate         = useNavigate()
   const { uid, isPlatformAdmin } = useAuth()
   const [person,         setPerson]        = useState(null)
@@ -303,7 +303,7 @@ export default function PlayerProfile() {
   useEffect(() => {
     let alive = true
     setLoading(true); setNotFound(false)
-    fetchPersonBySlug(slug)
+    ;(id ? fetchPerson(id) : fetchPersonBySlug(slug))
       .then(async p => {
         if (!alive) return
         if (!p) {
@@ -314,6 +314,9 @@ export default function PlayerProfile() {
           if (r?.toPath) { navigate(r.toPath, { replace: true }); return }
           setNotFound(true); return
         }
+        // id route: canonicalise to the slug URL when one exists so both
+        // links land on the same page + design.
+        if (id && p.slug) { navigate(`/player/${p.slug}`, { replace: true }); return }
         setPerson(p)
 
         const [c, matches] = await Promise.all([
@@ -337,7 +340,7 @@ export default function PlayerProfile() {
       .catch(() => { if (alive) setNotFound(true) })
       .finally(() => { if (alive) setLoading(false) })
     return () => { alive = false }
-  }, [slug])
+  }, [slug, id])
 
   if (loading) return <Spinner />
 
@@ -417,6 +420,26 @@ export default function PlayerProfile() {
                 </span>
               </div>
             )}
+          </div>
+        </div>
+
+        {/* Combined career stats — part of the details card */}
+        <div className="grid grid-cols-4 divide-x divide-slate-200 border-t border-slate-200">
+          <div className="flex flex-col items-center py-3">
+            <span className="font-mono font-black text-2xl tabular-nums text-slate-900 leading-none">{person.careerCaps ?? 0}</span>
+            <span className="micro-label mt-0.5">Caps</span>
+          </div>
+          <div className="flex flex-col items-center py-3">
+            <span className="font-mono font-black text-2xl tabular-nums text-emerald-600 leading-none">{person.careerGoals ?? 0}</span>
+            <span className="micro-label mt-0.5">Goals</span>
+          </div>
+          <div className="flex flex-col items-center py-3">
+            <span className="font-mono font-black text-2xl tabular-nums text-slate-900 leading-none">{person.careerAssists ?? 0}</span>
+            <span className="micro-label mt-0.5">Assists</span>
+          </div>
+          <div className="flex flex-col items-center py-3">
+            <span className="font-mono font-black text-2xl tabular-nums text-slate-900 leading-none">{((person.careerCards?.green ?? 0) + (person.careerCards?.yellow ?? 0) + (person.careerCards?.red ?? 0)) || 0}</span>
+            <span className="micro-label mt-0.5">Exclusions</span>
           </div>
         </div>
       </div>
