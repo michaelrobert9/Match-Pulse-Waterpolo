@@ -527,7 +527,7 @@ export function EditOrganization() {
         <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-4">
           <div className="flex items-center gap-3 mb-3">
             {org.logoUrl
-              ? <img src={org.logoUrl} alt="" className="w-11 h-11 rounded-lg object-cover border border-slate-200 shrink-0" />
+              ? <img src={org.logoUrl} alt="" className="w-11 h-11 rounded-lg object-contain border border-slate-200 shrink-0" />
               : <div className="w-11 h-11 rounded-lg flex items-center justify-center text-white font-bold shrink-0"
                      style={{ backgroundColor: org.primaryColor || '#555' }}>{monogram(org.name || '')}</div>}
             <div className="min-w-0">

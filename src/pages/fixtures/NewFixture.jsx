@@ -30,7 +30,7 @@ function OrgHeader({ org, typeLabel, canChange, onChangeOrg }) {
       <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0"
         style={{ backgroundColor: color + '20', border: `2px solid ${color}` }}>
         {org.logoUrl
-          ? <img src={org.logoUrl} alt="" className="w-full h-full rounded-xl object-cover" />
+          ? <img src={org.logoUrl} alt="" className="w-full h-full rounded-xl object-contain" />
           : <span className="text-[9px] font-bold font-mono" style={{ color }}>{monogram(org.name)}</span>}
       </div>
       <div className="flex-1">
@@ -79,7 +79,7 @@ function EntityCard({ org, onClick }) {
       <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
         style={{ backgroundColor: color + '20', border: `2px solid ${color}` }}>
         {org.logoUrl
-          ? <img src={org.logoUrl} alt="" className="w-full h-full rounded-xl object-cover" />
+          ? <img src={org.logoUrl} alt="" className="w-full h-full rounded-xl object-contain" />
           : <span className="text-[10px] font-bold font-mono" style={{ color }}>{monogram(org.name)}</span>}
       </div>
       <div className="flex-1 min-w-0">

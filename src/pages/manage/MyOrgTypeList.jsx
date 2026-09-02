@@ -70,7 +70,7 @@ export default function MyOrgTypeList({ type = 'school' }) {
                   <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
                     style={{ backgroundColor: color + '25', border: `2px solid ${color}` }}>
                     {org.logoUrl
-                      ? <img src={org.logoUrl} alt="" className="w-full h-full rounded-xl object-cover" />
+                      ? <img src={org.logoUrl} alt="" className="w-full h-full rounded-xl object-contain" />
                       : <span className="text-[10px] font-bold font-mono" style={{ color }}>{monogram(org.name)}</span>}
                   </div>
                   <div className="flex-1 min-w-0">
