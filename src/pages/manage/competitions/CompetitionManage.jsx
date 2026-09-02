@@ -15,7 +15,7 @@ import {
   updateCompetition, deleteCompetition,
   addFixtureToCompetition, removeFixtureFromCompetition,
   generateRoundRobinFixtures,
-  addTeamToCompetition, addNamedTeamToCompetition, removeTeamFromCompetition,
+  addTeamToCompetition, removeTeamFromCompetition,
   updateCompetitionMemberName,
   updateScheduleConfig,
   generateUniqueMatchSlug,
@@ -1959,14 +1959,10 @@ function TeamsTab({ competition, teams, setTeams }) {
   // the existing per-fixture flow untouched.
   const [sheetTeam, setSheetTeam]           = useState(null)
   const supportsTeamSheets = competition.type === 'tournament' || competition.type === 'festival'
-  const [mode, setMode]                     = useState('named') // 'named' | 'registered'
   const [selectedOrgId, setSelectedOrgId]   = useState('')
   const [orgTeams, setOrgTeams]             = useState([])
   const [loadingTeams, setLoadingTeams]     = useState(false)
   const [selectedTeamId, setSelectedTeamId] = useState('')
-  const [namedName, setNamedName]           = useState('')
-  const [namedColor, setNamedColor]         = useState('')
-  const [namedLinkOrgId, setNamedLinkOrgId] = useState('')
   const [saving, setSaving]                 = useState(false)
 
   useEffect(() => {
@@ -2022,40 +2018,6 @@ function TeamsTab({ competition, teams, setTeams }) {
     } finally { setSaving(false) }
   }
 
-  // Add a participating team by name. The host types the entrant's name; the
-  // team needs no account. An optional link to a registered org is participation
-  // only — it never makes the team one of that org's own club teams, nor does it
-  // grant any control of this competition.
-  async function handleAddNamed(e) {
-    e.preventDefault()
-    const name = namedName.trim()
-    if (!name) return
-    setSaving(true)
-    try {
-      const linkedOrg = namedLinkOrgId ? orgs.find(o => o.id === namedLinkOrgId) : null
-      const color = namedColor || linkedOrg?.primaryColor || null
-      const id = await addNamedTeamToCompetition(competition.id, {
-        teamName:       name,
-        primaryColor:   color,
-        organizationId: linkedOrg?.id   || null,
-        orgName:        linkedOrg?.name || null,
-      })
-      setTeams(prev => [...prev, {
-        id,
-        displayName:    name,
-        orgName:        linkedOrg?.name || null,
-        organizationId: linkedOrg?.id   || null,
-        primaryColor:   color,
-        memberStatus:   'admin_approved',
-        claimed:        !!linkedOrg,
-      }])
-      setShowAdd(false)
-      setNamedName('')
-      setNamedColor('')
-      setNamedLinkOrgId('')
-    } finally { setSaving(false) }
-  }
-
   async function handleRemove(team) {
     if (!confirm(`Remove ${team.displayName} from this competition?`)) return
     // Teams are org assets — only remove the competition membership, not the team doc.
@@ -2095,51 +2057,7 @@ function TeamsTab({ competition, teams, setTeams }) {
 
       {showAdd && (
         <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-4 space-y-3">
-          {/* Mode toggle: type a name (default), or pick a registered team. */}
-          <div className="flex gap-1.5">
-            {[['named', 'By name'], ['registered', 'Registered team']].map(([id, lbl]) => (
-              <button key={id} type="button" onClick={() => setMode(id)}
-                className={`flex-1 px-3 py-1.5 rounded-lg text-xs font-bold transition-colors ${
-                  mode === id ? 'bg-slate-700 text-white' : 'bg-white border border-slate-200 text-slate-500 hover:text-slate-700'
-                }`}>
-                {lbl}
-              </button>
-            ))}
-          </div>
-
-          {mode === 'named' ? (
-            <form onSubmit={handleAddNamed} className="space-y-3">
-              <p className="text-[11px] text-slate-400">
-                Type the entrant’s name — no account required. Optionally link it to a registered
-                school or club; linking is for reference only and gives that org no control here.
-              </p>
-              <div>
-                <label className="micro-label block mb-1.5">Team name</label>
-                <Input value={namedName} onChange={e => setNamedName(e.target.value)}
-                  placeholder="e.g. Crusaders 1st Team" required />
-              </div>
-              <div className="grid grid-cols-[auto,1fr] gap-3 items-end">
-                <div>
-                  <label className="micro-label block mb-1.5">Colour</label>
-                  <input type="color" value={namedColor || '#64748b'} onChange={e => setNamedColor(e.target.value)}
-                    className="w-12 h-10 rounded-lg border border-slate-200 bg-white p-0.5 cursor-pointer" />
-                </div>
-                <div>
-                  <label className="micro-label block mb-1.5">Link to a registered org (optional)</label>
-                  <select value={namedLinkOrgId} onChange={e => setNamedLinkOrgId(e.target.value)}
-                    className="w-full bg-white border border-slate-200 rounded-lg px-3 py-2.5 text-slate-900 text-sm focus:outline-none focus:border-emerald-500">
-                    <option value="">Unclaimed — no link</option>
-                    {orgs.map(o => <option key={o.id} value={o.id}>{o.name}</option>)}
-                  </select>
-                </div>
-              </div>
-              <button type="submit" disabled={saving || !namedName.trim()}
-                className="w-full bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white font-bold text-sm uppercase tracking-wider rounded-lg py-2.5 transition-colors">
-                {saving ? 'Adding…' : 'Add team'}
-              </button>
-            </form>
-          ) : (
-            <form onSubmit={handleAdd} className="space-y-3">
+                      <form onSubmit={handleAdd} className="space-y-3">
               <div>
                 <label className="micro-label block mb-1.5">School / club</label>
                 <select value={selectedOrgId} onChange={e => setSelectedOrgId(e.target.value)} required
@@ -2153,8 +2071,8 @@ function TeamsTab({ competition, teams, setTeams }) {
                   <p className="text-sm text-slate-400 py-1">Loading teams…</p>
                 ) : orgTeams.length === 0 ? (
                   <p className="text-sm text-slate-500 bg-amber-50 border border-amber-100 rounded-lg px-3 py-2">
-                    No teams found for this organisation. Add it by name instead, or create the team
-                    via the organisation profile.
+                    No teams found for this organisation. Create the team on the organisation’s
+                    profile first, then add it here.
                   </p>
                 ) : (
                   <div>
@@ -2172,14 +2090,13 @@ function TeamsTab({ competition, teams, setTeams }) {
                 {saving ? 'Adding…' : 'Add team'}
               </button>
             </form>
-          )}
         </div>
       )}
 
       {teams.length === 0 && !showAdd ? (
         <div className="bg-white rounded-xl border border-slate-200 shadow-sm px-6 py-10 text-center">
           <p className="text-slate-500 text-sm">No teams added yet.</p>
-          <p className="text-slate-400 text-xs mt-1">Add entrants by name — they don’t need an account.</p>
+          <p className="text-slate-400 text-xs mt-1">Add a registered school or club team — they must already exist on MatchPulse.</p>
         </div>
       ) : (
         <div className="space-y-2">

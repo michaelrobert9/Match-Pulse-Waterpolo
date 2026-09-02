@@ -1,42 +1,20 @@
 import { useRef, useState } from 'react'
-import { X, Plus, ChevronDown } from 'lucide-react'
-import { createManualOpponent, searchOpponents } from '../lib/adminQueries'
+import { X, ChevronDown } from 'lucide-react'
+import { searchOpponents } from '../lib/adminQueries'
 import { monogram } from '../lib/names'
-import { TEAM_GENDERS, generatedTeamName, composeTeamDisplay } from '../lib/teamNaming'
-import { LevelPicker, BLANK_LEVEL, levelFieldsOf, levelComplete } from './LevelPicker'
+import { composeTeamDisplay } from '../lib/teamNaming'
 
-// The opponent's structured team fields, derived from the create-form state.
-function opponentFields(form) {
-  const isSchool = form.orgType === 'school'
-  const effectiveGender = form.orgGenderProfile !== 'coed' ? form.orgGenderProfile : form.gender
-  // Gender is the shared axis for every org type; divisions are retired.
-  return isSchool
-    ? { gender: effectiveGender || null, orgGenderProfile: form.orgGenderProfile, ...levelFieldsOf(form.level) }
-    : { gender: form.gender || null,                                              ...levelFieldsOf(form.level) }
-}
-
-function computeOpponentName(form) {
-  const org = form.orgName.trim()
-  if (!org) return ''
-  const suffix = generatedTeamName(opponentFields(form))
-  return composeTeamDisplay(org, suffix)
-}
-
-const BLANK_FORM = {
-  orgType:          'school',
-  orgName:          '',
-  orgGenderProfile: 'coed',
-  gender:           'girls',
-  level:            BLANK_LEVEL,
-}
-
-export default function OpponentSelector({ orgTeams = [], excludeTeamId, orgId, excludeOrgId, value, onChange }) {
+// Opponent picker — REGISTERED teams only.
+//
+// A match opponent must be a team that already exists on MatchPulse. There is
+// deliberately no "type a name to add an unregistered opponent" path: that
+// created duplicate, unlinkable junk teams with no logo or page. To play a team
+// that isn't on MatchPulse yet, register its organisation first, then pick it
+// here.
+export default function OpponentSelector({ orgTeams = [], excludeTeamId, excludeOrgId, value, onChange }) {
   const [inputValue,    setInputValue]    = useState('')
-  const [searchResults, setSearchResults] = useState({ teams: [], manual: [] })
+  const [searchResults, setSearchResults] = useState([])
   const [searching,     setSearching]     = useState(false)
-  const [showCreate,    setShowCreate]    = useState(false)
-  const [newForm,       setNewForm]       = useState(BLANK_FORM)
-  const [creating,      setCreating]      = useState(false)
   const [allowInternal, setAllowInternal] = useState(false)
   const debounce = useRef(null)
 
@@ -44,60 +22,25 @@ export default function OpponentSelector({ orgTeams = [], excludeTeamId, orgId, 
 
   function handleInput(val) {
     setInputValue(val)
-    setShowCreate(false)
     if (debounce.current) clearTimeout(debounce.current)
     if (!val.trim() || val.trim().length < 2) {
-      setSearchResults({ teams: [], manual: [] })
+      setSearchResults([])
       setSearching(false)
       return
     }
     setSearching(true)
     debounce.current = setTimeout(async () => {
       try {
+        // Only registered MatchPulse teams — the manual/name-only results are no
+        // longer offered.
         const res = await searchOpponents(val.trim(), { excludeOrgId: allowInternal ? undefined : excludeOrgId })
-        setSearchResults({
-          teams:  res.teams.filter(t => t.id !== excludeTeamId),
-          manual: res.manual,
-        })
+        setSearchResults((res.teams ?? []).filter(t => t.id !== excludeTeamId))
       } finally { setSearching(false) }
     }, 350)
   }
 
   function selectTeam(team) {
     onChange({ id: team.id, displayName: team.displayName, orgName: team.orgName || null, primaryColor: team.primaryColor || null, organizationId: team.organizationId || null, registered: true })
-  }
-
-  function selectManual(opp) {
-    onChange({ id: null, displayName: opp.name, primaryColor: null, organizationId: null, manualOpponentId: opp.id, registered: false })
-  }
-
-  async function handleCreate() {
-    const computedName = computeOpponentName(newForm)
-    if (!computedName || !levelComplete(newForm.level) || creating) return
-    setCreating(true)
-    const fields = opponentFields(newForm)
-    try {
-      const ref = await createManualOpponent({
-        name:             computedName,
-        type:             newForm.orgType,
-        orgName:          newForm.orgName.trim(),
-        orgGenderProfile: newForm.orgType === 'school' ? newForm.orgGenderProfile : null,
-        gender:           fields.gender ?? null,
-        ageGroup:         fields.ageGroup ?? null,
-        teamLevel:        fields.teamLevel ?? null,
-        createdByOrgId:   orgId,
-      })
-      onChange({
-        id:               null,
-        displayName:      computedName,
-        primaryColor:     null,
-        organizationId:   null,
-        manualOpponentId: ref.id,
-        registered:       false,
-      })
-      setNewForm(BLANK_FORM)
-      setShowCreate(false)
-    } finally { setCreating(false) }
   }
 
   // ── Selected state ────────────────────────────────────────────────────────
@@ -109,11 +52,9 @@ export default function OpponentSelector({ orgTeams = [], excludeTeamId, orgId, 
       <div className="flex items-center gap-2 bg-white border border-emerald-300 rounded-lg px-3 py-2.5 shadow-sm">
         <div className="flex-1 min-w-0">
           <span className="text-slate-900 text-sm font-semibold block truncate">{selectedFullName}</span>
-          <span className={`text-[9px] font-bold uppercase tracking-widest ${value.registered ? 'text-emerald-600' : 'text-sky-600'}`}>
-            {value.registered ? 'MatchPulse team' : 'Manual opponent'}
-          </span>
+          <span className="text-[9px] font-bold uppercase tracking-widest text-emerald-600">MatchPulse team</span>
         </div>
-        <button type="button" onClick={() => { onChange(null); setInputValue(''); setShowCreate(false) }}
+        <button type="button" onClick={() => { onChange(null); setInputValue('') }}
           className="text-slate-400 hover:text-red-500 transition-colors p-1 shrink-0" aria-label="Clear selection">
           <X className="w-4 h-4" />
         </button>
@@ -122,21 +63,20 @@ export default function OpponentSelector({ orgTeams = [], excludeTeamId, orgId, 
   }
 
   const hasQuery   = inputValue.trim().length >= 2
-  const hasResults = searchResults.teams.length > 0 || searchResults.manual.length > 0
-  const previewName = showCreate ? computeOpponentName(newForm) : ''
-  const canCreate   = previewName.length > 0 && levelComplete(newForm.level)
+  const hasResults = searchResults.length > 0
 
   return (
     <div className="space-y-2">
       <input
         type="text" autoComplete="off"
         className="w-full bg-white border border-slate-200 rounded-lg px-3 py-2.5 text-slate-900 text-sm placeholder-slate-400 focus:outline-none focus:border-emerald-500 transition-colors"
-        placeholder="Search teams or add opponent…"
+        placeholder="Search registered teams…"
         value={inputValue}
         onChange={e => handleInput(e.target.value)}
       />
 
-      {/* Internal fixture toggle (collapsed by default — same-org teams not shown) */}
+      {/* Internal fixture toggle (collapsed by default — same-org teams not shown).
+          These are the org's own REGISTERED teams. */}
       {!hasQuery && availableOrgTeams.length > 0 && (
         <div>
           <button type="button"
@@ -162,20 +102,23 @@ export default function OpponentSelector({ orgTeams = [], excludeTeamId, orgId, 
         </div>
       )}
 
-      {/* Search results */}
+      {/* Search results — registered teams only */}
       {hasQuery && (
         <div className="bg-white border border-slate-200 rounded-lg overflow-hidden divide-y divide-slate-100 shadow-sm">
           {searching && (
             <div className="px-3 py-2 text-slate-500 text-xs">Searching…</div>
           )}
-          {!searching && !hasResults && !showCreate && (
-            <div className="px-3 py-2 text-slate-500 text-xs">No matches for "{inputValue}"</div>
+          {!searching && !hasResults && (
+            <div className="px-3 py-3 text-slate-500 text-xs leading-relaxed">
+              No registered team matches “{inputValue}”. Only teams already on MatchPulse can be
+              picked — if the team isn’t here yet, register its organisation first, then come back.
+            </div>
           )}
 
-          {searchResults.teams.length > 0 && (
+          {hasResults && (
             <div>
               <p className="text-[9px] font-bold uppercase tracking-widest text-slate-500 px-3 pt-2 pb-1">MatchPulse teams</p>
-              {searchResults.teams.map(t => {
+              {searchResults.map(t => {
                 const fullName = composeTeamDisplay(t.teamName || t.orgName, t.displayName)
                 return (
                   <button type="button" key={t.id} onClick={() => selectTeam(t)}
@@ -191,148 +134,6 @@ export default function OpponentSelector({ orgTeams = [], excludeTeamId, orgId, 
               })}
             </div>
           )}
-
-          {searchResults.manual.length > 0 && (
-            <div>
-              <p className="text-[9px] font-bold uppercase tracking-widest text-slate-500 px-3 pt-2 pb-1">Previous opponents</p>
-              {searchResults.manual.map(m => (
-                <button type="button" key={m.id} onClick={() => selectManual(m)}
-                  className="w-full flex items-center gap-2.5 px-3 py-2 hover:bg-slate-50 transition-colors text-left">
-                  <div className="w-6 h-6 rounded shrink-0 flex items-center justify-center bg-sky-50 border border-sky-200">
-                    <span className="text-[8px] font-bold text-sky-600">{monogram(m.name)}</span>
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="text-slate-900 text-xs font-semibold truncate">{m.name}</div>
-                    {m.type && m.type !== 'unknown' && <div className="text-[9px] text-slate-500 capitalize">{m.type}</div>}
-                  </div>
-                </button>
-              ))}
-            </div>
-          )}
-
-          {!showCreate && (
-            <button type="button"
-              onClick={() => { setShowCreate(true); setNewForm(f => ({ ...f, orgName: inputValue.trim() })) }}
-              className="w-full flex items-center gap-2 px-3 py-2 hover:bg-slate-50 transition-colors text-left">
-              <Plus className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
-              <span className="text-emerald-600 text-xs font-semibold">Add new opponent…</span>
-            </button>
-          )}
-        </div>
-      )}
-
-      {/* ── Structured opponent creation panel ────────────────────────────────
-           Intentionally a <div>, NOT a <form>. Nesting a <form> inside the outer
-           fixture creation <form> is invalid HTML. Use type="button" + onClick. */}
-      {showCreate && (
-        <div className="bg-sky-50 border border-sky-200 rounded-lg px-3 py-3 space-y-3">
-          <p className="text-[9px] font-bold uppercase tracking-widest text-sky-600">New opponent</p>
-
-          {/* Org type */}
-          <div>
-            <label className="text-[10px] font-bold uppercase tracking-widest text-slate-500 block mb-1.5">Type</label>
-            <div className="flex gap-2">
-              {[{ v: 'school', label: 'School' }, { v: 'club', label: 'Club' }, { v: 'association', label: 'Assoc.' }].map(o => (
-                <button type="button" key={o.v} onClick={() => setNewForm(f => ({ ...f, orgType: o.v }))}
-                  className={`flex-1 text-[10px] font-bold uppercase tracking-wider px-3 py-2 rounded-lg border transition-colors ${
-                    newForm.orgType === o.v ? 'bg-sky-600 border-sky-600 text-white' : 'border-slate-200 text-slate-500 hover:border-slate-400'
-                  }`}>
-                  {o.label}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* Org name */}
-          <div>
-            <label className="text-[10px] font-bold uppercase tracking-widest text-slate-500 block mb-1.5">
-              {newForm.orgType === 'school' ? 'School name' : 'Club name'}
-            </label>
-            <input
-              className="w-full bg-white border border-slate-200 rounded-lg px-3 py-2.5 text-slate-900 text-sm placeholder-slate-400 focus:outline-none focus:border-sky-500 transition-colors"
-              value={newForm.orgName}
-              placeholder={newForm.orgType === 'school' ? 'e.g. Westville Boys High' : 'e.g. Durban HC'}
-              onChange={e => setNewForm(f => ({ ...f, orgName: e.target.value }))}
-            />
-          </div>
-
-          {/* School: gender profile */}
-          {newForm.orgType === 'school' && (
-            <div>
-              <label className="text-[10px] font-bold uppercase tracking-widest text-slate-500 block mb-1.5">School gender</label>
-              <div className="flex gap-1.5 flex-wrap">
-                {[{ v: 'boys', label: 'Boys only' }, { v: 'girls', label: 'Girls only' }, { v: 'coed', label: 'Co-ed' }].map(o => (
-                  <button type="button" key={o.v} onClick={() => setNewForm(f => ({ ...f, orgGenderProfile: o.v }))}
-                    className={`text-[10px] font-bold uppercase tracking-wider px-3 py-1.5 rounded-lg border transition-colors ${
-                      newForm.orgGenderProfile === o.v ? 'bg-sky-600 border-sky-600 text-white' : 'border-slate-200 text-slate-500 hover:border-slate-400'
-                    }`}>
-                    {o.label}
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Co-ed school: team gender */}
-          {newForm.orgType === 'school' && newForm.orgGenderProfile === 'coed' && (
-            <div>
-              <label className="text-[10px] font-bold uppercase tracking-widest text-slate-500 block mb-1.5">Team gender</label>
-              <div className="flex gap-2">
-                {[{ v: 'boys', label: 'Boys' }, { v: 'girls', label: 'Girls' }].map(o => (
-                  <button type="button" key={o.v} onClick={() => setNewForm(f => ({ ...f, gender: o.v }))}
-                    className={`flex-1 text-[10px] font-bold uppercase tracking-wider px-3 py-2 rounded-lg border transition-colors ${
-                      newForm.gender === o.v ? 'bg-sky-600 border-sky-600 text-white' : 'border-slate-200 text-slate-500 hover:border-slate-400'
-                    }`}>
-                    {o.label}
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Club / association: gender (shared axis, divisions retired) */}
-          {newForm.orgType !== 'school' && (
-            <div>
-              <label className="text-[10px] font-bold uppercase tracking-widest text-slate-500 block mb-1.5">Gender</label>
-              <select
-                className="w-full bg-white border border-slate-200 rounded-lg px-3 py-2.5 text-slate-900 text-sm focus:outline-none focus:border-sky-500 transition-colors"
-                value={newForm.gender}
-                onChange={e => setNewForm(f => ({ ...f, gender: e.target.value }))}>
-                <option value="">— select —</option>
-                {TEAM_GENDERS.map(d => <option key={d.value} value={d.value}>{d.label}</option>)}
-              </select>
-            </div>
-          )}
-
-          {/* Team level — the same selector as everywhere else, no free text. */}
-          <div>
-            <label className="text-[10px] font-bold uppercase tracking-widest text-slate-500 block mb-1.5">Team</label>
-            <LevelPicker
-              orgType={newForm.orgType}
-              value={newForm.level}
-              onChange={lvl => setNewForm(f => ({ ...f, level: lvl }))}
-            />
-          </div>
-
-
-          {/* Name preview */}
-          {previewName && (
-            <div className="bg-white border border-sky-200 rounded-lg px-3 py-2">
-              <p className="text-[9px] font-bold uppercase tracking-widest text-sky-500 mb-0.5">Preview</p>
-              <p className="text-slate-900 text-sm font-semibold">{previewName}</p>
-            </div>
-          )}
-
-          <div className="flex gap-2">
-            <button type="button" onClick={handleCreate} disabled={creating || !canCreate}
-              className="flex-1 bg-sky-600 hover:bg-sky-500 disabled:opacity-50 text-white font-bold text-xs uppercase tracking-wider rounded-lg py-2 transition-colors">
-              {creating ? 'Adding…' : 'Add opponent'}
-            </button>
-            <button type="button" onClick={() => { setShowCreate(false); setNewForm(BLANK_FORM) }}
-              className="px-3 py-2 rounded-lg border border-slate-200 text-slate-500 hover:text-slate-900 text-xs font-medium transition-colors">
-              Cancel
-            </button>
-          </div>
         </div>
       )}
     </div>
