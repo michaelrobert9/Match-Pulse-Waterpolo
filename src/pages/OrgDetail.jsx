@@ -129,11 +129,14 @@ function TeamCard({ team, org }) {
 }
 
 // One team's results, most-recent first: the 5 latest shown, with a "Show more"
-// to reveal the rest. The header links through to the team's own page.
-function TeamResults({ team, org, results }) {
+// to reveal the rest. When the side is a registered team the header links through
+// to its own page; a one-off / festival side (no standing team record) shows the
+// name the match was played under, without a link.
+function TeamResults({ group, org }) {
   const [expanded, setExpanded] = useState(false)
+  const { team, name, results } = group
   const shown  = expanded ? results : results.slice(0, 5)
-  const url    = teamUrl(team, org)
+  const url    = team ? teamUrl(team, org) : null
   const Header = url ? Link : 'div'
   const headerProps = url ? { to: url } : {}
   return (
@@ -141,7 +144,7 @@ function TeamResults({ team, org, results }) {
       <Header {...headerProps}
         className={`flex items-center justify-between gap-2 mb-2 ${url ? 'group' : ''}`}>
         <span className="text-slate-900 text-sm font-bold truncate group-hover:text-emerald-600 transition-colors">
-          {team.displayName}
+          {team?.displayName || name}
         </span>
         <span className="text-[11px] text-slate-400 shrink-0">
           {results.length} result{results.length !== 1 ? 's' : ''}
@@ -228,18 +231,36 @@ export default function OrgDetail({ type }) {
     .sort((a, b) => (a.sortAt ?? Infinity) - (b.sortAt ?? Infinity))
   const upcoming = upcomingExpanded ? upcomingSorted : upcomingSorted.slice(0, 5)
 
-  // Results grouped BY TEAM — each of the org's teams with its own completed
-  // matches, most-recent first. Raw matches (not match-day rows) so every team's
-  // games sit under it. Teams with no results are omitted here (they still show
-  // in the Teams section below). Ordered by who has played the most.
-  const resultsByTeam = teams
-    .map(team => ({
-      team,
-      results: matches
-        .filter(m => m.status === 'final' && (m.homeTeamId === team.id || m.awayTeamId === team.id))
-        .sort((a, b) => (toDate(b.scheduledAt)?.getTime() ?? 0) - (toDate(a.scheduledAt)?.getTime() ?? 0)),
+  // Results grouped BY THE TEAM THE ORG FIELDED in each completed match. We key
+  // off the match itself — the side belonging to this org (home if it's the home
+  // org, otherwise away) — NOT the registered-teams list, so festival and one-off
+  // sides that were never saved as a standing team still show up. A side that
+  // does match a registered team gets that team's record (so its header links
+  // through); everything else groups under the name it was played as. Ordered by
+  // who has played the most.
+  const orgTeamById = new Map(teams.map(t => [t.id, t]))
+  const groupMap = new Map()
+  for (const m of matches) {
+    if (m.status !== 'final') continue
+    const side = m.homeOrgId === org.id ? 'home' : m.awayOrgId === org.id ? 'away' : null
+    const teamId   = side === 'home' ? m.homeTeamId   : side === 'away' ? m.awayTeamId   : null
+    const teamName = side === 'home' ? m.homeTeamName : side === 'away' ? m.awayTeamName : null
+    const key = teamId || `name:${(teamName || 'other').toLowerCase()}`
+    if (!groupMap.has(key)) {
+      groupMap.set(key, {
+        id: key,
+        team: teamId ? (orgTeamById.get(teamId) || null) : null,
+        name: teamName || 'Other matches',
+        results: [],
+      })
+    }
+    groupMap.get(key).results.push(m)
+  }
+  const resultsByTeam = [...groupMap.values()]
+    .map(g => ({
+      ...g,
+      results: g.results.sort((a, b) => (toDate(b.scheduledAt)?.getTime() ?? 0) - (toDate(a.scheduledAt)?.getTime() ?? 0)),
     }))
-    .filter(x => x.results.length > 0)
     .sort((a, b) => b.results.length - a.results.length)
 
   return (
@@ -314,8 +335,8 @@ export default function OrgDetail({ type }) {
           />
         ) : (
           <div className="space-y-6">
-            {resultsByTeam.map(({ team, results }) => (
-              <TeamResults key={team.id} team={team} org={org} results={results} />
+            {resultsByTeam.map(group => (
+              <TeamResults key={group.id} group={group} org={org} />
             ))}
           </div>
         )}
