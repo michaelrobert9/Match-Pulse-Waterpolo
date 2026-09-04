@@ -693,7 +693,7 @@ function LogoPreview({ url, size = 48 }) {
   if (!url) return null
   return ok
     ? <img src={url} alt="" onError={() => setOk(false)}
-        className="rounded-xl object-contain border border-slate-200"
+        className="object-contain border border-slate-200"
         style={{ width: size, height: size }} />
     : <div className="rounded-xl bg-slate-100 flex items-center justify-center text-[10px] text-slate-400"
         style={{ width: size, height: size }}>No image</div>

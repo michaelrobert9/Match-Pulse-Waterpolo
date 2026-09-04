@@ -16,7 +16,7 @@ export default function TeamListCrest({ team, org, name, size = 36, className = 
   const showImg = !!identity.image && ok
   return (
     <div
-      className={`rounded-xl shrink-0 flex items-center justify-center overflow-hidden ${className}`}
+      className={`rounded-xl shrink-0 flex items-center justify-center ${className}`}
       style={{ width: size, height: size, backgroundColor: color + '20', border: `1.5px solid ${color}` }}
     >
       {showImg

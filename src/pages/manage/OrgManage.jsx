@@ -1052,7 +1052,7 @@ function SettingsSection({ org, onSaved }) {
         <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-3">
           <div className="flex items-center gap-3 mb-2">
             {org.logoUrl
-              ? <img src={org.logoUrl} alt="" className="w-10 h-10 rounded-lg object-contain border border-slate-200 shrink-0" />
+              ? <img src={org.logoUrl} alt="" className="w-10 h-10 object-contain border border-slate-200 shrink-0" />
               : <div className="w-10 h-10 rounded-lg flex items-center justify-center text-white font-bold text-sm shrink-0"
                      style={{ backgroundColor: org.primaryColor || '#555' }}>{monogram(org.name)}</div>}
             <div className="min-w-0">
@@ -1298,7 +1298,7 @@ export default function OrgManage() {
             <div className="w-14 h-14 rounded-2xl flex items-center justify-center shrink-0"
               style={{ backgroundColor: color + '25', border: `2px solid ${color}` }}>
               {org.logoUrl
-                ? <img src={org.logoUrl} alt="" className="w-full h-full rounded-2xl object-contain" />
+                ? <img src={org.logoUrl} alt="" className="w-full h-full object-contain" />
                 : <span className="text-sm font-bold font-mono" style={{ color }}>{monogram(org.name)}</span>
               }
             </div>

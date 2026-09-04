@@ -40,9 +40,9 @@ function OrgCard({ org }) {
           : <div className="absolute inset-0" style={{ background: `linear-gradient(135deg, ${color} 0%, ${color}bb 100%)` }} />
         }
         {/* Logo badge — bottom-left, half-overlapping the content area */}
-        <div className="absolute bottom-3 left-4 w-12 h-12 rounded-xl bg-white shadow border border-white/80 flex items-center justify-center overflow-hidden shrink-0">
+        <div className="absolute bottom-3 left-4 w-12 h-12 rounded-xl bg-white shadow border border-white/80 flex items-center justify-center shrink-0">
           {hasLogo
-            ? <img src={org.logoUrl} alt="" className="w-full h-full object-contain p-1" />
+            ? <img src={org.logoUrl} alt="" className="w-full h-full object-contain" />
             : <span className="text-sm font-black font-mono leading-none" style={{ color }}>{monogram(org.name)}</span>
           }
         </div>

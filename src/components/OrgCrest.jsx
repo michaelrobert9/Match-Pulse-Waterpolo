@@ -14,7 +14,7 @@ export default function OrgCrest({ org, size = 32, className = '' }) {
   const color = org?.primaryColor || '#555'
   return (
     <div
-      className={`rounded-lg shrink-0 flex items-center justify-center overflow-hidden ${className}`}
+      className={`rounded-lg shrink-0 flex items-center justify-center ${className}`}
       style={{
         width: size, height: size,
         backgroundColor: showImg ? '#fff' : color + '20',
