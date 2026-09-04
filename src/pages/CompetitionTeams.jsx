@@ -32,7 +32,7 @@ function Crest({ identity, size = 36 }) {
   const color = identity?.color || '#64748b'
   const showImg = !!identity?.logo && ok
   return (
-    <span className="rounded-lg shrink-0 flex items-center justify-center overflow-hidden"
+    <span className="rounded-lg shrink-0 flex items-center justify-center"
       style={{ width: size, height: size, backgroundColor: color + '20', border: `1.5px solid ${color}` }}>
       {showImg
         ? <img src={identity.logo} alt="" className="w-full h-full object-contain" onError={() => setOk(false)} />

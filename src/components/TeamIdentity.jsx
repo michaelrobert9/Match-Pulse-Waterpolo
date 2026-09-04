@@ -60,7 +60,7 @@ export function TeamCrest({ identity, size = 40, className = '' }) {
 
   return (
     <div
-      className={`rounded-xl shrink-0 flex items-center justify-center overflow-hidden ${className}`}
+      className={`rounded-xl shrink-0 flex items-center justify-center ${className}`}
       style={{
         width: size, height: size,
         backgroundColor: showImg ? '#fff' : color,

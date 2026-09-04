@@ -237,7 +237,7 @@ export default function TeamDetail() {
       <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm">
         <div className="h-2" style={{ background: `linear-gradient(90deg, ${color}, ${secondary})` }} />
         <div className="p-5 flex items-start gap-4">
-          <div className="w-16 h-16 rounded-xl flex items-center justify-center shrink-0 overflow-hidden"
+          <div className="w-16 h-16 rounded-xl flex items-center justify-center shrink-0"
             style={{ backgroundColor: color + '20', border: `2px solid ${color}` }}>
             {teamImage
               ? <img src={teamImage} alt={fullName} className="w-full h-full object-contain" />
