@@ -175,10 +175,10 @@ function OrgSection({ orgId, org, teams }) {
   return (
     <div className="space-y-2">
       <div className="flex items-center gap-2.5 px-1">
-        <div className="w-6 h-6 rounded-md flex items-center justify-center shrink-0"
+        <div className="w-6 h-6 rounded-md flex items-center justify-center shrink-0 overflow-hidden"
           style={{ backgroundColor: color + '20', border: `1.5px solid ${color}` }}>
           {org?.logoUrl
-            ? <img src={org.logoUrl} alt="" className="w-full h-full object-contain" />
+            ? <img src={org.logoUrl} alt="" className="w-full h-full object-cover" />
             : <span className="text-[8px] font-bold font-mono" style={{ color }}>{monogram(orgName)}</span>}
         </div>
         <div>

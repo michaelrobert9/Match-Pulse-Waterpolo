@@ -116,9 +116,9 @@ function CompBadge({ comp, size = 40 }) {
   useEffect(() => setOk(true), [comp.logoUrl])
   if (comp.logoUrl && ok) {
     return (
-      <div className="rounded-xl shrink-0 bg-white border border-slate-200 flex items-center justify-center"
+      <div className="rounded-xl shrink-0 overflow-hidden bg-white border border-slate-200 flex items-center justify-center"
         style={{ width: size, height: size }}>
-        <img src={comp.logoUrl} alt="" className="w-full h-full object-contain" onError={() => setOk(false)} />
+        <img src={comp.logoUrl} alt="" className="w-full h-full object-cover" onError={() => setOk(false)} />
       </div>
     )
   }
@@ -141,9 +141,9 @@ function OrgBadge({ org, size = 36 }) {
   const color = org.primaryColor || '#555'
   if (org.logoUrl && ok) {
     return (
-      <div className="rounded-lg shrink-0 bg-white border border-slate-200 flex items-center justify-center"
+      <div className="rounded-lg shrink-0 overflow-hidden bg-white border border-slate-200 flex items-center justify-center"
         style={{ width: size, height: size }}>
-        <img src={org.logoUrl} alt="" className="w-full h-full object-contain" onError={() => setOk(false)} />
+        <img src={org.logoUrl} alt="" className="w-full h-full object-cover" onError={() => setOk(false)} />
       </div>
     )
   }

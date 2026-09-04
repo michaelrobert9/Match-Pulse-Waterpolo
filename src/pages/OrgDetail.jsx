@@ -112,10 +112,10 @@ function TeamCard({ team, org }) {
   const url      = teamUrl(team, org)
   const inner = (
     <div className="flex items-center gap-3 bg-white rounded-xl border border-slate-200 px-4 py-3 hover:border-slate-300 transition-colors shadow-sm">
-      <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0"
+      <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0 overflow-hidden"
         style={{ backgroundColor: color + '20', border: `1.5px solid ${color}` }}>
         {identity.image
-          ? <img src={identity.image} alt="" className="w-full h-full object-contain" />
+          ? <img src={identity.image} alt="" className="w-full h-full object-cover" />
           : <span className="text-[10px] font-bold font-mono" style={{ color }}>{monogram(team.displayName)}</span>}
       </div>
       <div className="flex-1 min-w-0">
@@ -273,10 +273,10 @@ export default function OrgDetail({ type }) {
         )}
         <div className="h-2" style={{ background: `linear-gradient(90deg, ${color}, ${secondary})` }} />
         <div className="p-5 flex items-start gap-4">
-          <div className="w-16 h-16 rounded-xl flex items-center justify-center shrink-0"
+          <div className="w-16 h-16 rounded-xl flex items-center justify-center shrink-0 overflow-hidden"
             style={{ backgroundColor: color + '20', border: `2px solid ${color}` }}>
             {org.logoUrl
-              ? <img src={org.logoUrl} alt={org.name} className="w-full h-full object-contain" />
+              ? <img src={org.logoUrl} alt={org.name} className="w-full h-full object-cover" />
               : <span className="text-sm font-bold font-mono" style={{ color }}>{monogram(org.name)}</span>}
           </div>
           <div className="flex-1 min-w-0 pt-0.5">

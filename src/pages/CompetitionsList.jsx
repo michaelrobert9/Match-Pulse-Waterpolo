@@ -41,9 +41,9 @@ function CompetitionCard({ comp }) {
           <CompetitionStatusBadge competition={comp} />
         </div>
         {/* Logo badge — bottom left */}
-        <div className="absolute bottom-3 left-4 w-12 h-12 rounded-xl bg-white shadow border border-white/80 flex items-center justify-center shrink-0">
+        <div className="absolute bottom-3 left-4 w-12 h-12 rounded-xl bg-white shadow border border-white/80 flex items-center justify-center overflow-hidden shrink-0">
           {hasLogo
-            ? <img src={comp.logoUrl} alt="" className="w-full h-full object-contain" />
+            ? <img src={comp.logoUrl} alt="" className="w-full h-full object-cover" />
             : <span className="text-sm font-black text-emerald-700 leading-none">{monogram(comp.name)}</span>
           }
         </div>

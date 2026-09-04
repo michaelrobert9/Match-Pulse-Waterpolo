@@ -12,7 +12,7 @@ export default function CompetitionCrest({ competition, size = 40, className = '
   const showImg = !!logo && ok
   return (
     <div
-      className={`rounded-xl shrink-0 flex items-center justify-center ${className}`}
+      className={`rounded-xl shrink-0 flex items-center justify-center overflow-hidden ${className}`}
       style={{
         width: size, height: size,
         backgroundColor: showImg ? '#fff' : color + '14',
@@ -20,7 +20,7 @@ export default function CompetitionCrest({ competition, size = 40, className = '
       }}
     >
       {showImg
-        ? <img src={logo} alt="" className="w-full h-full object-contain" onError={() => setOk(false)} />
+        ? <img src={logo} alt="" className="w-full h-full object-cover" onError={() => setOk(false)} />
         : <span className="font-display font-black leading-none"
             style={{ fontSize: Math.round(size * 0.32), color }}>
             {monogram(competition?.name)}

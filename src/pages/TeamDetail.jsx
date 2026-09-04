@@ -237,10 +237,10 @@ export default function TeamDetail() {
       <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm">
         <div className="h-2" style={{ background: `linear-gradient(90deg, ${color}, ${secondary})` }} />
         <div className="p-5 flex items-start gap-4">
-          <div className="w-16 h-16 rounded-xl flex items-center justify-center shrink-0"
+          <div className="w-16 h-16 rounded-xl flex items-center justify-center shrink-0 overflow-hidden"
             style={{ backgroundColor: color + '20', border: `2px solid ${color}` }}>
             {teamImage
-              ? <img src={teamImage} alt={fullName} className="w-full h-full object-contain" />
+              ? <img src={teamImage} alt={fullName} className="w-full h-full object-cover" />
               : <span className="text-sm font-bold font-mono" style={{ color }}>{monogram(org ? org.name : team.displayName)}</span>}
           </div>
           <div className="flex-1 min-w-0 pt-0.5">
