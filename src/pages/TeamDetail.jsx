@@ -12,41 +12,11 @@ import { generatedTeamName, composeTeamDisplay } from '../lib/teamNaming'
 import { prefetchMatchTeams, resolveTeamProfileIdentity } from '../lib/teamIdentity'
 import { monogram } from '../lib/names'
 import { useSeoMeta } from '../lib/useSeoMeta'
+import { computeTeamStats, matchSeason } from '../lib/teamStats'
 import { MatchTeamIdentity } from '../components/TeamIdentity'
 import StatusBadge from '../components/StatusBadge'
 import VenueLabel from '../components/VenueLabel'
 import SquadManager from '../components/SquadManager'
-
-// Win/loss/draw + goals for a team across a (optionally season-filtered) set of
-// final matches. Computed from matches rather than the team doc's cumulative
-// counters so a current-season vs all-time split is always available.
-// A match's season: its explicit season field, else the calendar year of its
-// scheduled date. Regular-season matches often carry no season field (only
-// competition-linked matches inherit one from their competition), so without
-// the date fallback they were silently dropped from the season record even
-// though they count toward all-time and appear in recent results. Mirrors the
-// convention deriveSquadFromFrozenLineups already uses in queries.js.
-function matchSeason(m) {
-  if (m.season != null && String(m.season) !== '') return String(m.season)
-  const d = toDate(m.scheduledAt)
-  return d ? String(d.getFullYear()) : null
-}
-
-function computeTeamStats(matches, teamId, season = null) {
-  let played = 0, won = 0, lost = 0, drawn = 0, goalsFor = 0, goalsAgainst = 0
-  for (const m of matches) {
-    if (m.status !== 'final') continue
-    if (season != null && matchSeason(m) !== String(season)) continue
-    const isHome = m.homeTeamId === teamId
-    const teamS  = isHome ? (m.homeScore ?? 0) : (m.awayScore ?? 0)
-    const oppS   = isHome ? (m.awayScore ?? 0) : (m.homeScore ?? 0)
-    played++; goalsFor += teamS; goalsAgainst += oppS
-    if (teamS > oppS) won++
-    else if (teamS < oppS) lost++
-    else drawn++
-  }
-  return { played, won, lost, drawn, goalsFor, goalsAgainst }
-}
 
 function StatGrid({ stats }) {
   const cells = [

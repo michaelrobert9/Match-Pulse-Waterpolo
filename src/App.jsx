@@ -195,6 +195,9 @@ export default function App() {
           {/* Nested team profile: /{org-slug}/{team-segment}. All-dynamic, so it
               ranks below every static two-segment route (e.g. /schools/:slug,
               /competitions/:id) and only catches genuine org/team paths. */}
+          <Route path="/schools/:orgSlug/:teamSlug"      element={<TeamDetail />} />
+          <Route path="/clubs/:orgSlug/:teamSlug"        element={<TeamDetail />} />
+          <Route path="/associations/:orgSlug/:teamSlug" element={<TeamDetail />} />
           <Route path="/:orgSlug/:teamSlug"             element={<TeamDetail />} />
 
           <Route path="*"                               element={<NotFound />} />
