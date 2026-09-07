@@ -16,11 +16,11 @@ export default function TeamListCrest({ team, org, name, size = 36, className = 
   const showImg = !!identity.image && ok
   return (
     <div
-      className={`rounded-xl shrink-0 flex items-center justify-center ${className}`}
+      className={`rounded-xl shrink-0 flex items-center justify-center overflow-hidden ${className}`}
       style={{ width: size, height: size, backgroundColor: color + '20', border: `1.5px solid ${color}` }}
     >
       {showImg
-        ? <img src={identity.image} alt="" className="w-full h-full object-contain" onError={() => setOk(false)} />
+        ? <img src={identity.image} alt="" className="w-full h-full object-cover" onError={() => setOk(false)} />
         : <span className="font-bold font-mono" style={{ color, fontSize: Math.round(size * 0.28) }}>
             {monogram(name || '')}
           </span>

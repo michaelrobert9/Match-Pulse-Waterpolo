@@ -14,7 +14,7 @@ export default function OrgCrest({ org, size = 32, className = '' }) {
   const color = org?.primaryColor || '#555'
   return (
     <div
-      className={`rounded-lg shrink-0 flex items-center justify-center ${className}`}
+      className={`rounded-lg shrink-0 flex items-center justify-center overflow-hidden ${className}`}
       style={{
         width: size, height: size,
         backgroundColor: showImg ? '#fff' : color + '20',
@@ -22,7 +22,7 @@ export default function OrgCrest({ org, size = 32, className = '' }) {
       }}
     >
       {showImg
-        ? <img src={logo} alt="" className="w-full h-full object-contain" onError={() => setOk(false)} />
+        ? <img src={logo} alt="" className="w-full h-full object-cover" onError={() => setOk(false)} />
         : <span className="font-bold font-mono leading-none"
             style={{ color, fontSize: Math.round(size * 0.28) }}>
             {monogram(org?.name)}

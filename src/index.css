@@ -5,6 +5,7 @@
 @layer base {
   body {
     @apply bg-canvas text-slate-900 font-sans antialiased;
+    color-scheme: light;
   }
 
   /* Keyboard focus ring — visible on focus-visible (keyboard nav), hidden on mouse click.

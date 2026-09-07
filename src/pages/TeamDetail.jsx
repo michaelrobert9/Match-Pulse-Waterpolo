@@ -12,29 +12,11 @@ import { generatedTeamName, composeTeamDisplay } from '../lib/teamNaming'
 import { prefetchMatchTeams, resolveTeamProfileIdentity } from '../lib/teamIdentity'
 import { monogram } from '../lib/names'
 import { useSeoMeta } from '../lib/useSeoMeta'
+import { computeTeamStats, matchSeason } from '../lib/teamStats'
 import { MatchTeamIdentity } from '../components/TeamIdentity'
 import StatusBadge from '../components/StatusBadge'
 import VenueLabel from '../components/VenueLabel'
 import SquadManager from '../components/SquadManager'
-
-// Win/loss/draw + goals for a team across a (optionally season-filtered) set of
-// final matches. Computed from matches rather than the team doc's cumulative
-// counters so a current-season vs all-time split is always available.
-function computeTeamStats(matches, teamId, season = null) {
-  let played = 0, won = 0, lost = 0, drawn = 0, goalsFor = 0, goalsAgainst = 0
-  for (const m of matches) {
-    if (m.status !== 'final') continue
-    if (season != null && String(m.season ?? '') !== String(season)) continue
-    const isHome = m.homeTeamId === teamId
-    const teamS  = isHome ? (m.homeScore ?? 0) : (m.awayScore ?? 0)
-    const oppS   = isHome ? (m.awayScore ?? 0) : (m.homeScore ?? 0)
-    played++; goalsFor += teamS; goalsAgainst += oppS
-    if (teamS > oppS) won++
-    else if (teamS < oppS) lost++
-    else drawn++
-  }
-  return { played, won, lost, drawn, goalsFor, goalsAgainst }
-}
 
 function StatGrid({ stats }) {
   const cells = [
@@ -224,7 +206,7 @@ export default function TeamDetail() {
     .slice(0, 5)
 
   const seasons = [...new Set(
-    matches.filter(m => m.status === 'final' && m.season != null).map(m => String(m.season))
+    matches.filter(m => m.status === 'final').map(matchSeason).filter(Boolean)
   )].sort().reverse()
   const currentSeason = seasons[0] ?? null
   const allTimeStats  = computeTeamStats(matches, team.id, null)
@@ -237,10 +219,10 @@ export default function TeamDetail() {
       <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm">
         <div className="h-2" style={{ background: `linear-gradient(90deg, ${color}, ${secondary})` }} />
         <div className="p-5 flex items-start gap-4">
-          <div className="w-16 h-16 rounded-xl flex items-center justify-center shrink-0"
+          <div className="w-16 h-16 rounded-xl flex items-center justify-center shrink-0 overflow-hidden"
             style={{ backgroundColor: color + '20', border: `2px solid ${color}` }}>
             {teamImage
-              ? <img src={teamImage} alt={fullName} className="w-full h-full object-contain" />
+              ? <img src={teamImage} alt={fullName} className="w-full h-full object-cover" />
               : <span className="text-sm font-bold font-mono" style={{ color }}>{monogram(org ? org.name : team.displayName)}</span>}
           </div>
           <div className="flex-1 min-w-0 pt-0.5">

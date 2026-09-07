@@ -32,10 +32,10 @@ function Crest({ identity, size = 36 }) {
   const color = identity?.color || '#64748b'
   const showImg = !!identity?.logo && ok
   return (
-    <span className="rounded-lg shrink-0 flex items-center justify-center"
+    <span className="rounded-lg shrink-0 flex items-center justify-center overflow-hidden"
       style={{ width: size, height: size, backgroundColor: color + '20', border: `1.5px solid ${color}` }}>
       {showImg
-        ? <img src={identity.logo} alt="" className="w-full h-full object-contain" onError={() => setOk(false)} />
+        ? <img src={identity.logo} alt="" className="w-full h-full object-cover" onError={() => setOk(false)} />
         : <span className="font-bold font-mono" style={{ color, fontSize: Math.round(size * 0.3) }}>{monogram(identity?.primary || '')}</span>}
     </span>
   )

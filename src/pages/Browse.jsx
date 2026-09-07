@@ -14,8 +14,8 @@ function CompLogoBadge({ comp }) {
   const abbr = monogram(comp.name)
   if (logo && ok) {
     return (
-      <div className="w-10 h-10 rounded-xl shrink-0 bg-white border border-slate-200 flex items-center justify-center">
-        <img src={logo} alt="" className="w-full h-full object-contain" onError={() => setOk(false)} />
+      <div className="w-10 h-10 rounded-xl shrink-0 overflow-hidden bg-white border border-slate-200 flex items-center justify-center">
+        <img src={logo} alt="" className="w-full h-full object-cover" onError={() => setOk(false)} />
       </div>
     )
   }
@@ -43,10 +43,10 @@ function OrgCard({ org }) {
   return (
     <Link to={orgUrl(org)}
       className="flex items-center gap-3 bg-white rounded-xl border border-slate-200 px-4 py-3 hover:border-slate-300 shadow-sm card-lift">
-      <div className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0"
+      <div className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0 overflow-hidden"
         style={{ backgroundColor: color + '20', border: `1.5px solid ${color}` }}>
         {org.logoUrl
-          ? <img src={org.logoUrl} alt="" className="w-full h-full object-contain" />
+          ? <img src={org.logoUrl} alt="" className="w-full h-full object-cover" />
           : <span className="text-[10px] font-bold font-mono" style={{ color }}>{monogram(org.name)}</span>}
       </div>
       <div className="flex-1 min-w-0">

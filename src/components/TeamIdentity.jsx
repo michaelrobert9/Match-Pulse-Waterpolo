@@ -60,7 +60,7 @@ export function TeamCrest({ identity, size = 40, className = '' }) {
 
   return (
     <div
-      className={`rounded-xl shrink-0 flex items-center justify-center ${className}`}
+      className={`rounded-xl shrink-0 flex items-center justify-center overflow-hidden ${className}`}
       style={{
         width: size, height: size,
         backgroundColor: showImg ? '#fff' : color,
@@ -68,7 +68,7 @@ export function TeamCrest({ identity, size = 40, className = '' }) {
       }}
     >
       {showImg
-        ? <img src={logo} alt="" className="w-full h-full object-contain" onError={() => setImgOk(false)} />
+        ? <img src={logo} alt="" className="w-full h-full object-cover" onError={() => setImgOk(false)} />
         : <span className="font-display font-black text-white leading-none"
             style={{ fontSize: Math.round(size * 0.34) }}>
             {monogram(identity?.primary)}

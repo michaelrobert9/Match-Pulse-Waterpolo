@@ -53,7 +53,7 @@ function OrgChip({ orgId, grant }) {
       <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0"
         style={{ backgroundColor: color + '25', border: `2px solid ${color}` }}>
         {org.logoUrl
-          ? <img src={org.logoUrl} alt="" className="w-full h-full object-contain" />
+          ? <img src={org.logoUrl} alt="" className="w-full h-full rounded-lg object-cover" />
           : <span className="text-[9px] font-bold font-mono" style={{ color }}>{monogram(org.name)}</span>
         }
       </div>

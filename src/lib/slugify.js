@@ -71,15 +71,24 @@ export function teamPathSegment(teamSlug, orgSlug) {
   return teamSlug
 }
 
-// Nested team URL: /{org-slug}/{team-segment} (e.g. /ashton-ballito/u16a).
-// Requires the parent org to build the org-slug prefix; without it we fall back
-// to the legacy /team/:slug form so old links and unresolved orgs still work.
+// Type base for a team's URL — teams live under their org's section, mirroring
+// orgUrl (/schools, /clubs, /associations). Defaults to schools when the type
+// isn't known to the caller; team resolution is by slug, so the prefix is
+// cosmetic and any of the three prefixes resolves the same team.
+function teamTypeBase(org) {
+  return org?.type === 'club' ? 'clubs' : org?.type === 'association' ? 'associations' : 'schools'
+}
+
+// Nested team URL: /{base}/{org-slug}/{team-segment}
+// (e.g. /schools/ashton-ballito/u16a). Requires the parent org to build the
+// org-slug prefix; without it we fall back to the legacy /team/:slug form so
+// old links and unresolved orgs still work.
 export function teamUrl(team, org) {
   const teamSlug = team?.slug
   if (!teamSlug) return null
   const orgSlug = org?.slug || (org?.name && slugify(org.name)) || team?.orgSlug || null
   if (!orgSlug) return `/team/${teamSlug}`
-  return `/${orgSlug}/${teamPathSegment(teamSlug, orgSlug)}`
+  return `/${teamTypeBase(org)}/${orgSlug}/${teamPathSegment(teamSlug, orgSlug)}`
 }
 
 // Organisations live under /schools or /clubs by type. Slug is frozen at
