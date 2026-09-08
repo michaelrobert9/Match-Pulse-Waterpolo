@@ -1314,6 +1314,23 @@ async function computeMatchRestamp(m, { homeDisplay, awayDisplay, matchDate } = 
   return { patch, redirect }
 }
 
+// Resolve an organisation's FULL registered name from its id (best-effort,
+// cached per call via the optional map). The full org name — never an
+// abbreviation — is what a match URL and its denormalised fields carry, so we
+// resolve it live from the org record rather than trusting a possibly-empty
+// denormalised copy on the team/entrant. Returns null when it can't be found.
+async function resolveOrgName(orgId, cache = null) {
+  if (!orgId) return null
+  if (cache && cache.has(orgId)) return cache.get(orgId)
+  let name = null
+  try {
+    const s = await getDoc(doc(db, 'organizations', orgId))
+    name = s.exists() ? (s.data().name ?? null) : null
+  } catch { /* best-effort — fall back to the caller's stored name */ }
+  if (cache) cache.set(orgId, name)
+  return name
+}
+
 export async function createMatch(competitionId, homeTeam, awayTeam, {
   matchDate, scheduledAt = null, pitch = '', venueId = null, venueSlug = null,
   facilityId = null, facilityName = null,
@@ -1323,8 +1340,14 @@ export async function createMatch(competitionId, homeTeam, awayTeam, {
   indoor = false,
 }) {
   const seasonStr = season ? String(season) : null
-  const homeDisplay = composeTeamDisplay(homeTeam.teamName || homeTeam.orgName, homeTeam.displayName)
-  const awayDisplay = composeTeamDisplay(awayTeam.teamName || awayTeam.orgName, awayTeam.displayName)
+  // Always carry the FULL organisation name (matchName is for on-page display
+  // only, resolved live there). Resolve it from the org id when the passed team
+  // didn't carry it, so a URL/display is never a bare team label.
+  const orgCache = new Map()
+  const homeOrgName = homeTeam.orgName || await resolveOrgName(homeTeam.organizationId, orgCache)
+  const awayOrgName = awayTeam.orgName || await resolveOrgName(awayTeam.organizationId, orgCache)
+  const homeDisplay = composeTeamDisplay(homeTeam.teamName || homeOrgName, homeTeam.displayName)
+  const awayDisplay = composeTeamDisplay(awayTeam.teamName || awayOrgName, awayTeam.displayName)
   const baseSlug  = buildMatchSlug(homeDisplay, awayDisplay)
 
   // The canonical URL depends on whether this match belongs to a competition.
@@ -1358,7 +1381,7 @@ export async function createMatch(competitionId, homeTeam, awayTeam, {
     homeTeamId:        homeRegistered ? homeTeam.id : null,
     homeTeamName:      homeTeam.displayName,
     homeDisplay,
-    homeOrgName:       homeTeam.orgName       || null,
+    homeOrgName:       homeOrgName            || null,
     homeTeamSlug:      homeTeam.slug          || null,
     homeTeamColor:     homeTeam.primaryColor  || null,
     homeOrgId:         homeTeam.organizationId ?? null,
@@ -1367,7 +1390,7 @@ export async function createMatch(competitionId, homeTeam, awayTeam, {
     awayTeamId:        awayRegistered ? awayTeam.id : null,
     awayTeamName:      awayTeam.displayName,
     awayDisplay,
-    awayOrgName:       awayTeam.orgName       || null,
+    awayOrgName:       awayOrgName            || null,
     awayTeamSlug:      awayTeam.slug          || null,
     awayTeamColor:     awayTeam.primaryColor  || null,
     awayOrgId:         awayTeam.organizationId ?? null,
@@ -2718,6 +2741,29 @@ export async function resyncCompetitionMatches(competitionId, matchFormat = null
     }
   }
   await flush()
+
+  // Regenerate the frozen URL slug/path from the corrected full-org display, so
+  // matches created with a bare "u14a-vs-u14a" URL become identifiable. Done in
+  // a sequential pass (each write commits before the next) so unique-slug
+  // suffixes are assigned correctly. Match-day children and knockout/playoff
+  // fixtures keep their stable round-name URL and are never re-stamped.
+  for (const m of matches) {
+    const stableUrl = m.matchGroupId || m.isPlayoffHolding || m.playoffGameSlug
+    if (stableUrl) continue
+    const h = m.homeTeamId ? orgOfTeam.get(m.homeTeamId) : null
+    const a = m.awayTeamId ? orgOfTeam.get(m.awayTeamId) : null
+    const hd = composeTeamDisplay((h && h.orgName) || m.homeOrgName, m.homeTeamName) || 'home'
+    const ad = composeTeamDisplay((a && a.orgName) || m.awayOrgName, m.awayTeamName) || 'away'
+    if (buildMatchSlug(hd, ad) === m.matchSlug) continue
+    const rs = await computeMatchRestamp(m, { homeDisplay: hd, awayDisplay: ad }).catch(() => null)
+    if (rs?.patch?.matchSlug) {
+      await updateDoc(doc(db, 'matches', m.id), {
+        matchSlug: rs.patch.matchSlug,
+        ...(rs.patch.path ? { path: rs.patch.path } : {}),
+      }).catch(() => {})
+      changed++
+    }
+  }
   return changed
 }
 
@@ -3408,12 +3454,16 @@ export async function generateRoundRobinFixtures(competitionId, teams, options =
   const seasonStr  = season ? String(season) : null
   const createdIds = []
 
+  const orgCache   = new Map()
+
   for (const [home, away] of pairs) {
-    // Frozen composed Display name — "Org Name – Team Name". Stored so every
-    // view that reads the match's own fields (competition teams/fixtures pages)
-    // shows the coupled name, never a bare "U13A". The slug is built from it too.
-    const homeDisplay = composeTeamDisplay(home.teamName || home.orgName, home.displayName)
-    const awayDisplay = composeTeamDisplay(away.teamName || away.orgName, away.displayName)
+    // Always resolve the FULL organisation name (live from the org id when the
+    // entrant didn't carry it) so neither the URL slug nor the stored fields is
+    // ever a bare team label. Frozen composed Display name — "Org Name – Team".
+    const homeOrgName = home.orgName || await resolveOrgName(home.organizationId, orgCache)
+    const awayOrgName = away.orgName || await resolveOrgName(away.organizationId, orgCache)
+    const homeDisplay = composeTeamDisplay(home.teamName || homeOrgName, home.displayName)
+    const awayDisplay = composeTeamDisplay(away.teamName || awayOrgName, away.displayName)
     const baseSlug  = buildMatchSlug(homeDisplay, awayDisplay)
     const matchSlug = seasonStr
       ? await generateUniqueMatchSlug(seasonStr, baseSlug)
@@ -3427,14 +3477,14 @@ export async function generateRoundRobinFixtures(competitionId, teams, options =
       homeDisplay,
       homeTeamColor:     home.primaryColor  || null,
       homeOrgId:         home.organizationId ?? null,
-      homeOrgName:       home.orgName       || null,
+      homeOrgName:       homeOrgName        || null,
       homeRegistered:    !!home.organizationId,
       awayTeamId:        away.id,
       awayTeamName:      away.displayName,
       awayDisplay,
       awayTeamColor:     away.primaryColor  || null,
       awayOrgId:         away.organizationId ?? null,
-      awayOrgName:       away.orgName       || null,
+      awayOrgName:       awayOrgName        || null,
       awayRegistered:    !!away.organizationId,
       homeScore: 0, awayScore: 0,
       periods:       Number(periods)       || DEFAULT_PERIODS,
