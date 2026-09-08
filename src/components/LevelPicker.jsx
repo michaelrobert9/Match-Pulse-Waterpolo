@@ -1,7 +1,9 @@
 // Shared team-level selector — the IDENTICAL control used everywhere a team is
 // created (org teams, manual opponents). A team is either a senior side (an
-// ordinal, "1st Team" … "10th Team") or an age side (an age group + a letter,
-// "U14" + "A"). There is no free-text path.
+// ordinal, "1st Team" … "10th Team") or an age side (an age group + an OPTIONAL
+// squad letter, "U14" or "U14" + "A"). There is no free-text path. Water polo
+// often fields age teams without a letter (they are told apart by cap colour),
+// so the letter is optional — only the age group is required for an age side.
 
 import { TEAM_LEVELS, TEAM_LETTERS, ageGroupsFor } from '../lib/teamNaming'
 
@@ -21,9 +23,11 @@ export function levelFieldsOf(lvl) {
     : { ageGroup: null, teamLevel: lvl?.ordinal || null }
 }
 
-// Whether the picker holds a complete level.
+// Whether the picker holds a complete level. An age side needs only its age
+// group — the squad letter is optional (water polo tells teams apart by cap
+// colour, so "U14" alone is a valid team). A senior side needs its ordinal.
 export const levelComplete = lvl => lvl?.mode === 'age'
-  ? !!(lvl.ageGroup && lvl.letter)
+  ? !!lvl.ageGroup
   : !!lvl?.ordinal
 
 // Rebuild picker state from a stored team's structured fields.
@@ -49,9 +53,13 @@ export function LevelPicker({ orgType, value, onChange }) {
               <button type="button" key={a} onClick={() => set({ ageGroup: a })} className={chipCls(v.ageGroup === a)}>{a}</button>
             ))}
           </div>
+          <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">
+            Squad letter <span className="text-slate-500 normal-case tracking-normal font-normal">optional</span>
+          </p>
           <div className="grid grid-cols-5 gap-1.5">
             {TEAM_LETTERS.map(l => (
-              <button type="button" key={l} onClick={() => set({ letter: l })} className={chipCls(v.letter === l)}>{l}</button>
+              // Clicking the active letter clears it — an age side needs no letter.
+              <button type="button" key={l} onClick={() => set({ letter: v.letter === l ? '' : l })} className={chipCls(v.letter === l)}>{l}</button>
             ))}
           </div>
         </div>

@@ -23,8 +23,9 @@ import { toDate } from '../../lib/queries'
 import { userDisplayName, userInitial } from '../../lib/names'
 import {
   SCHOOL_GENDER_PROFILES, SCHOOL_GENDER_LABEL, TEAM_GENDERS, DIVISION_TO_GENDER,
-  schoolGenderProfile, generatedTeamName, levelLabel, composeTeamDisplay,
+  schoolGenderProfile, levelLabel, composeTeamDisplay,
 } from '../../lib/teamNaming'
+import { TEAM_CAP_COLORS, coloredTeamName } from '../../lib/capColor'
 import { LevelPicker, chipCls, levelFieldsOf, levelComplete, levelStateOf } from '../../components/LevelPicker'
 import { DEFAULT_PERIODS, DEFAULT_PERIOD_MINUTES, DEFAULT_BREAK_MINUTES } from '../../lib/matchClock'
 import StatusBadge from '../../components/StatusBadge'
@@ -220,6 +221,28 @@ function RecentResultsSection({ matches, setMatches, loading }) {
 
 // ── Teams section ─────────────────────────────────────────────────────────────
 
+// Optional water-polo cap-colour selector (white / blue). Clicking the active
+// colour clears it — a team need not carry a colour. `value` is '' | 'white' | 'blue'.
+function CapColorPicker({ value, onChange }) {
+  return (
+    <div>
+      <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-2">
+        Cap colour <span className="text-slate-500 normal-case tracking-normal font-normal">optional</span>
+      </p>
+      <div className="grid grid-cols-3 gap-1.5">
+        {TEAM_CAP_COLORS.map(c => (
+          <button type="button" key={c.value}
+            onClick={() => onChange(value === c.value ? '' : c.value)}
+            className={chipCls(value === c.value)}>
+            {c.label}
+          </button>
+        ))}
+        <button type="button" onClick={() => onChange('')} className={chipCls(value === '')}>None</button>
+      </div>
+    </div>
+  )
+}
+
 function TeamsSection({ orgId, org, competitions, teams, setTeams, defaultOpen, canManage }) {
   const [showAdd,          setShowAdd]          = useState(false)
   const [editId,           setEditId]           = useState(null)
@@ -248,6 +271,9 @@ function TeamsSection({ orgId, org, competitions, teams, setTeams, defaultOpen, 
   const [axis,  setAxis]  = useState('')
   const [level, setLevel] = useState({ mode: 'senior', ordinal: '', ageGroup: '', letter: '' })
   const [newTeamName, setNewTeamName] = useState('')
+  // Optional water-polo cap colour — '' | 'white' | 'blue'.
+  const [teamColor, setTeamColor] = useState('')
+  const [editColor, setEditColor] = useState('')
 
   useEffect(() => { if (defaultOpen) setShowAdd(true) }, [defaultOpen])
 
@@ -267,9 +293,9 @@ function TeamsSection({ orgId, org, competitions, teams, setTeams, defaultOpen, 
   // take it from the school (co-ed picks per team); clubs and associations
   // select from the shared gender list. Divisions are no longer written.
   const createFields = isSchool
-    ? { gender: effectiveSchoolGender || null, ...levelFieldsOf(level) }
-    : { gender: axis || null,                  ...levelFieldsOf(level) }
-  const previewName = generatedTeamName({ ...createFields, orgGenderProfile: profile })
+    ? { gender: effectiveSchoolGender || null, ...levelFieldsOf(level), teamColor: teamColor || null }
+    : { gender: axis || null,                  ...levelFieldsOf(level), teamColor: teamColor || null }
+  const previewName = coloredTeamName({ ...createFields, orgGenderProfile: profile })
   // Full-card preview: [team name → org match name → org name] – [label]
   const previewFull = composeTeamDisplay(
     (isAssoc && newTeamName.trim()) || org?.matchName || org?.name, previewName)
@@ -281,6 +307,7 @@ function TeamsSection({ orgId, org, competitions, teams, setTeams, defaultOpen, 
     setAxis('')
     setLevel({ mode: 'senior', ordinal: '', ageGroup: '', letter: '' })
     setNewTeamName('')
+    setTeamColor('')
   }
 
   async function handleCreate(e) {
@@ -288,7 +315,7 @@ function TeamsSection({ orgId, org, competitions, teams, setTeams, defaultOpen, 
     if (!canAdd) return
     const name   = previewName
     const isDupe = teams.some(t =>
-      (generatedTeamName({ ...t, orgGenderProfile: profile }) || t.displayName).toLowerCase() === name.toLowerCase()
+      (coloredTeamName({ ...t, orgGenderProfile: profile }) || t.displayName).toLowerCase() === name.toLowerCase()
     )
     if (isDupe) return
     setSaving(true)
@@ -302,6 +329,7 @@ function TeamsSection({ orgId, org, competitions, teams, setTeams, defaultOpen, 
         ...(teamName ? { teamName } : {}),
         gender: createFields.gender ?? null, division: null,
         ageGroup: createFields.ageGroup ?? null, teamLevel: createFields.teamLevel ?? null,
+        teamColor: createFields.teamColor ?? null,
         teamLabel: levelLabel(createFields) || null,
         active: true, primaryColor: org.primaryColor,
         secondaryColor: org.secondaryColor || '#FFFFFF', logoUrl: org.logoUrl || null,
@@ -338,6 +366,7 @@ function TeamsSection({ orgId, org, competitions, teams, setTeams, defaultOpen, 
       : clubAxis(team.gender ?? team.division ?? ''))
     setEditTeamName(team.teamName ?? '')
     setEditLevel(levelStateOf(team))
+    setEditColor(team.teamColor ?? '')
     // Identity overrides — stored values are kept even when the toggle is off
     // (hide-not-clear), so they reappear here when editing with the toggle on.
     setEditName(team.name ?? '')
@@ -350,23 +379,24 @@ function TeamsSection({ orgId, org, competitions, teams, setTeams, defaultOpen, 
   // half of the division→gender split.
   const editGenderEffective = isSchool && !asksGender ? profile : editAxis
   const editFields = isSchool
-    ? { gender: editGenderEffective || null, ...levelFieldsOf(editLevel) }
-    : { gender: editAxis || null, division: null, ...levelFieldsOf(editLevel) }
+    ? { gender: editGenderEffective || null, ...levelFieldsOf(editLevel), teamColor: editColor || null }
+    : { gender: editAxis || null, division: null, ...levelFieldsOf(editLevel), teamColor: editColor || null }
   const editPreview = editId
-    ? generatedTeamName({ ...editFields, orgGenderProfile: profile })
+    ? coloredTeamName({ ...editFields, orgGenderProfile: profile })
     : ''
   const canSaveEdit = levelComplete(editLevel)
     && (isSchool ? !!editGenderEffective : !!editAxis)
 
   async function handleEdit(team) {
     if (!canSaveEdit) return
-    const name = generatedTeamName({ ...editFields, orgGenderProfile: profile }) || team.displayName
+    const name = coloredTeamName({ ...editFields, orgGenderProfile: profile }) || team.displayName
 
     const structuralChanged =
       (editFields.gender    ?? null) !== (team.gender    ?? null) ||
       (editFields.division  ?? null) !== (team.division  ?? null) ||
       (editFields.ageGroup  ?? null) !== (team.ageGroup  ?? null) ||
-      (editFields.teamLevel ?? null) !== (team.teamLevel ?? null)
+      (editFields.teamLevel ?? null) !== (team.teamLevel ?? null) ||
+      (editFields.teamColor ?? null) !== (team.teamColor ?? null)
     // Assoc/league per-team name — separate from the teamMgmt identity overrides.
     const teamNameNext    = isAssoc ? (editTeamName.trim() || null) : (team.teamName ?? null)
     const teamNameChanged = isAssoc && teamNameNext !== (team.teamName ?? null)
@@ -412,6 +442,7 @@ function TeamsSection({ orgId, org, competitions, teams, setTeams, defaultOpen, 
             ...(structuralChanged ? {
               gender: editFields.gender ?? null, division: editFields.division ?? null,
               ageGroup: editFields.ageGroup ?? null, teamLevel: editFields.teamLevel ?? null,
+              teamColor: editFields.teamColor ?? null,
               teamLabel: levelLabel(editFields) || null,
               displayName: name, searchName: name.toLowerCase(),
             } : {}),
@@ -488,6 +519,7 @@ function TeamsSection({ orgId, org, competitions, teams, setTeams, defaultOpen, 
                 <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-2">Team</p>
                 <LevelPicker orgType={orgType} value={level} onChange={setLevel} />
               </div>
+              <CapColorPicker value={teamColor} onChange={setTeamColor} />
             </div>
           ) : (
             /* ── Club / association: (team name for assoc) → gender → level ── */
@@ -520,6 +552,7 @@ function TeamsSection({ orgId, org, competitions, teams, setTeams, defaultOpen, 
                   <LevelPicker orgType={orgType} value={level} onChange={setLevel} />
                 </div>
               )}
+              {axis && <CapColorPicker value={teamColor} onChange={setTeamColor} />}
             </div>
           )}
 
@@ -531,7 +564,7 @@ function TeamsSection({ orgId, org, competitions, teams, setTeams, defaultOpen, 
 
           {(() => {
             const isDupe = previewName && teams.some(t =>
-              (generatedTeamName({ ...t, orgGenderProfile: profile }) || t.displayName).toLowerCase() === previewName.toLowerCase()
+              (coloredTeamName({ ...t, orgGenderProfile: profile }) || t.displayName).toLowerCase() === previewName.toLowerCase()
             )
             return (
               <>
@@ -565,7 +598,7 @@ function TeamsSection({ orgId, org, competitions, teams, setTeams, defaultOpen, 
           // the gender word here too (same rule as every other display), and
           // lead with the per-team name where one is set (assoc/league).
           const teamName = composeTeamDisplay(team.teamName,
-            generatedTeamName({ ...team, orgGenderProfile: profile }) || team.displayName)
+            coloredTeamName({ ...team, orgGenderProfile: profile }) || team.displayName)
           return (
           <div key={team.id}>
             <div className={`flex items-center gap-3 px-4 py-3 ${team.active === false ? 'opacity-60' : ''}`}>
@@ -650,6 +683,8 @@ function TeamsSection({ orgId, org, competitions, teams, setTeams, defaultOpen, 
                   </>
                 )}
 
+                <CapColorPicker value={editColor} onChange={setEditColor} />
+
                 {editPreview && (
                   <div className="text-xs text-slate-400">
                     Preview: <span className="text-slate-900 font-semibold">
@@ -720,7 +755,7 @@ function TeamsSection({ orgId, org, competitions, teams, setTeams, defaultOpen, 
       {deleteTarget && (
         <div className="mx-4 mb-4 bg-red-50 border border-red-200 rounded-xl p-4 space-y-3">
           <div>
-            <p className="text-sm font-semibold text-red-800 mb-0.5">Delete "{composeTeamDisplay(deleteTarget.teamName, generatedTeamName({ ...deleteTarget, orgGenderProfile: profile }) || deleteTarget.displayName)}"?</p>
+            <p className="text-sm font-semibold text-red-800 mb-0.5">Delete "{composeTeamDisplay(deleteTarget.teamName, coloredTeamName({ ...deleteTarget, orgGenderProfile: profile }) || deleteTarget.displayName)}"?</p>
             <p className="text-xs text-red-700">This cannot be undone. Type <span className="font-mono font-bold">delete</span> to confirm.</p>
           </div>
           <input
