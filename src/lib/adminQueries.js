@@ -2697,6 +2697,14 @@ export async function resyncCompetitionMatches(competitionId, matchFormat = null
       patch.awayOrgId = a.orgId; patch.awayRegistered = true
       if (a.orgName) patch.awayOrgName = a.orgName
     }
+    // Repair the frozen Display name — "Org Name – Team Name" — so matches whose
+    // homeDisplay was never stored (or was saved bare) show the coupled name.
+    const homeOrgFinal = (h && h.orgName) || m.homeOrgName || null
+    const awayOrgFinal = (a && a.orgName) || m.awayOrgName || null
+    const homeDisplayWanted = composeTeamDisplay(homeOrgFinal, m.homeTeamName) || null
+    const awayDisplayWanted = composeTeamDisplay(awayOrgFinal, m.awayTeamName) || null
+    if (homeDisplayWanted && m.homeDisplay !== homeDisplayWanted) patch.homeDisplay = homeDisplayWanted
+    if (awayDisplayWanted && m.awayDisplay !== awayDisplayWanted) patch.awayDisplay = awayDisplayWanted
     if (matchFormat && notStarted(m)) {
       patch.periods       = Number(matchFormat.periods) || DEFAULT_PERIODS
       patch.periodMinutes = Number(matchFormat.periodMinutes) || 0
@@ -3401,9 +3409,12 @@ export async function generateRoundRobinFixtures(competitionId, teams, options =
   const createdIds = []
 
   for (const [home, away] of pairs) {
-    const baseSlug  = buildMatchSlug(
-      composeTeamDisplay(home.teamName || home.orgName, home.displayName),
-      composeTeamDisplay(away.teamName || away.orgName, away.displayName))
+    // Frozen composed Display name — "Org Name – Team Name". Stored so every
+    // view that reads the match's own fields (competition teams/fixtures pages)
+    // shows the coupled name, never a bare "U13A". The slug is built from it too.
+    const homeDisplay = composeTeamDisplay(home.teamName || home.orgName, home.displayName)
+    const awayDisplay = composeTeamDisplay(away.teamName || away.orgName, away.displayName)
+    const baseSlug  = buildMatchSlug(homeDisplay, awayDisplay)
     const matchSlug = seasonStr
       ? await generateUniqueMatchSlug(seasonStr, baseSlug)
       : await generateUniqueMatchSlugGlobal(baseSlug)
@@ -3413,12 +3424,14 @@ export async function generateRoundRobinFixtures(competitionId, teams, options =
       ownerOrgId:        ownerOrgId ?? null,
       homeTeamId:        home.id,
       homeTeamName:      home.displayName,
+      homeDisplay,
       homeTeamColor:     home.primaryColor  || null,
       homeOrgId:         home.organizationId ?? null,
       homeOrgName:       home.orgName       || null,
       homeRegistered:    !!home.organizationId,
       awayTeamId:        away.id,
       awayTeamName:      away.displayName,
+      awayDisplay,
       awayTeamColor:     away.primaryColor  || null,
       awayOrgId:         away.organizationId ?? null,
       awayOrgName:       away.orgName       || null,

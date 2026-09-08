@@ -2233,6 +2233,10 @@ function FixturesTab({ competition, teams, fixtures, setFixtures }) {
       const away        = teams.find(t => t.id === newForm.awayTeamId)
       const scheduledAt = newForm.scheduledAt ? new Date(newForm.scheduledAt) : null
       const seasonStr   = competition.season ? String(competition.season) : null
+      // Frozen composed Display name — "Org Name – Team Name" — stored on the
+      // match so raw-field views never show a bare team label.
+      const homeDisplay = composeTeamDisplay(home.orgName, home.displayName)
+      const awayDisplay = composeTeamDisplay(away.orgName, away.displayName)
       const baseSlug    = buildMatchSlug(home.displayName, away.displayName)
       const matchSlug   = seasonStr
         ? await generateUniqueMatchSlug(seasonStr, baseSlug)
@@ -2241,9 +2245,9 @@ function FixturesTab({ competition, teams, fixtures, setFixtures }) {
       const ref = await addDoc(collection(db, 'matches'), {
         competitionId: competition.id,
         ownerOrgId: competition.ownerOrgId || null,
-        homeTeamId: home.id, homeTeamName: home.displayName, homeTeamColor: home.primaryColor || null,
+        homeTeamId: home.id, homeTeamName: home.displayName, homeDisplay, homeTeamColor: home.primaryColor || null,
         homeOrgId: home.organizationId ?? null, homeOrgName: home.orgName || null, homeRegistered: !!home.organizationId,
-        awayTeamId: away.id, awayTeamName: away.displayName, awayTeamColor: away.primaryColor || null,
+        awayTeamId: away.id, awayTeamName: away.displayName, awayDisplay, awayTeamColor: away.primaryColor || null,
         awayOrgId: away.organizationId ?? null, awayOrgName: away.orgName || null, awayRegistered: !!away.organizationId,
         homeScore: 0, awayScore: 0,
         periods: Number(newForm.periods), periodMinutes: Number(newForm.periodMinutes),
@@ -2265,6 +2269,7 @@ function FixturesTab({ competition, teams, fixtures, setFixtures }) {
       )
       setFixtures(prev => [...prev, {
         id: ref.id, homeTeamName: home.displayName, awayTeamName: away.displayName,
+        homeDisplay, awayDisplay, homeOrgName: home.orgName || null, awayOrgName: away.orgName || null,
         homeTeamId: home.id, awayTeamId: away.id,
         scheduledAt, status: 'scheduled', tracked: false, homeScore: 0, awayScore: 0,
       }])
