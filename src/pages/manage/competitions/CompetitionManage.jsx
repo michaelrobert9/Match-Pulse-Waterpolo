@@ -348,7 +348,6 @@ function ConfigTab({ competition, onSaved, onGoToTab }) {
       <BasicCard competition={competition} onSaved={onSaved} />
       <ScoringCard competition={competition} onSaved={onSaved} />
       <MatchFormatCard competition={competition} onSaved={onSaved} />
-      <RepairLinksCard competition={competition} />
       <TieBreakersCard competition={competition} onSaved={onSaved} />
       <EligibilityCard competition={competition} onSaved={onSaved} />
       <POTMCard competition={competition} onSaved={onSaved} />
@@ -1437,38 +1436,6 @@ function FestivalStatsCard({ competition, onSaved }) {
 // Default match format for the competition — applied to every new fixture so
 // the organiser doesn't re-enter periods/timing each time. Still overridable per
 // fixture (e.g. a final played to a different format).
-// Repair match links & names for the whole competition — re-links each team's
-// organisation and rebuilds every match's display name and URL from the CURRENT
-// organisation + team. Use it if a match shows a bare team name or a URL like
-// "u14a-vs-u14a". Reports how many matches it changed. (The same repair also
-// runs when the default match format is saved.)
-function RepairLinksCard({ competition }) {
-  const [busy, setBusy]     = useState(false)
-  const [result, setResult] = useState(null)
-  async function run() {
-    setBusy(true); setResult(null)
-    try {
-      const n = await resyncCompetitionMatches(competition.id)
-      setResult({ ok: true, n })
-    } catch (e) {
-      setResult({ ok: false, msg: e.message || 'Repair failed.' })
-    } finally { setBusy(false) }
-  }
-  return (
-    <Card title="Repair match links"
-      subtitle="Rebuilds every match’s name and URL from the current organisation + team, and re-links any missing organisations. Use this if a match shows a bare team name or a URL like “u14a-vs-u14a”.">
-      <div className="flex items-center gap-3 flex-wrap">
-        <button onClick={run} disabled={busy}
-          className="inline-flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest px-3 py-2 rounded-lg bg-emerald-600 text-white hover:bg-emerald-500 disabled:opacity-50 transition-colors">
-          {busy ? 'Repairing…' : 'Repair now'}
-        </button>
-        {result?.ok && <span className="text-sm text-emerald-700">Repaired {result.n} match{result.n === 1 ? '' : 'es'}.</span>}
-        {result && !result.ok && <span className="text-sm text-red-600">{result.msg}</span>}
-      </div>
-    </Card>
-  )
-}
-
 function MatchFormatCard({ competition, onSaved }) {
   const [editing, setEditing] = useState(false)
   const [saving, setSaving]   = useState(false)
@@ -1492,7 +1459,7 @@ function MatchFormatCard({ competition, onSaved }) {
     } finally { setSaving(false) }
   }
 
-  const summary = `${current.indoor ? 'Indoor' : 'Outdoor'} · ${current.periods} × ${current.periodMinutes} min`
+  const summary = `${current.periods} × ${current.periodMinutes} min`
     + (current.breakMinutes?.length ? ` · breaks ${current.breakMinutes.join(' / ')}m` : '')
 
   return (
