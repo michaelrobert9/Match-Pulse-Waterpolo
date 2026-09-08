@@ -26,10 +26,10 @@ function userEmail() { return auth?.currentUser?.email ?? null }
 // layer so authorisation is enforced at the source, not only in the UI.
 async function currentAuthState() {
   const userId = uid()
-  if (!userId) return { uid: null, isPlatformAdmin: false, orgRoles: {} }
+  if (!userId) return { uid: null, isPlatformAdmin: false, orgRoles: {}, competitionRoles: {} }
   const snap = await getDoc(doc(identityDb, 'users', userId))
   const data = snap.exists() ? snap.data() : {}
-  return { uid: userId, isPlatformAdmin: data.platformAdmin === true, orgRoles: data.orgRoles ?? {} }
+  return { uid: userId, isPlatformAdmin: data.platformAdmin === true, orgRoles: data.orgRoles ?? {}, competitionRoles: data.competitionRoles ?? {} }
 }
 
 // Throws competition/not-found or competition/not-authorised. Returns the
@@ -752,6 +752,22 @@ export async function fetchCompetitionsForOrg(orgId) {
 export async function fetchCompetitionsForUser(userId) {
   const snap = await getDocs(query(collection(db, 'competitions'), where('ownerUserId', '==', userId)))
   return snap.docs.map(d => ({ id: d.id, ...d.data() }))
+    .sort((a, b) => String(b.season ?? '').localeCompare(String(a.season ?? '')))
+}
+
+// Fetch specific competitions by id from THIS sport's db, skipping any id that
+// doesn't resolve here. Used to surface competitions a user was granted direct
+// (org-independent) access to — their competitionRoles map can hold ids from
+// other sports, which simply won't exist in this db and are dropped.
+export async function fetchCompetitionsByIds(ids = []) {
+  const unique = [...new Set((ids || []).filter(Boolean))]
+  if (unique.length === 0) return []
+  const docs = await Promise.all(unique.map(id =>
+    getDoc(doc(db, 'competitions', id))
+      .then(d => (d.exists() ? { id: d.id, ...d.data() } : null))
+      .catch(() => null)
+  ))
+  return docs.filter(Boolean)
     .sort((a, b) => String(b.season ?? '').localeCompare(String(a.season ?? '')))
 }
 

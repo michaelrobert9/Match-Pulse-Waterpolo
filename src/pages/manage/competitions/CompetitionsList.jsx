@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { ChevronRight, Plus, Trophy, ListOrdered, Sparkles, Lock, Search } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../../../contexts/AuthContext'
-import { fetchCompetitionsForOrg, fetchCompetitionsForUser, fetchAllCompetitions } from '../../../lib/adminQueries'
+import { fetchCompetitionsForOrg, fetchCompetitionsForUser, fetchCompetitionsByIds, fetchAllCompetitions } from '../../../lib/adminQueries'
 import { fetchOrganization } from '../../../lib/queries'
 import { orgEntitlementStatus, userEntitlementStatus, bestEntitlement } from '../../../lib/entitlement'
 import { competitionStatus } from '../../../lib/competitionRules'
@@ -28,7 +28,7 @@ function Spinner() {
 }
 
 export default function CompetitionsManageList() {
-  const { orgRoles, uid, userEntitlement, isPlatformAdmin } = useAuth()
+  const { orgRoles, competitionRoles, uid, userEntitlement, isPlatformAdmin } = useAuth()
   const [comps,   setComps]   = useState([])
   const [loading, setLoading] = useState(true)
   // entitlementStatus: best entitlement across the user and all orgs they own
@@ -56,14 +56,20 @@ export default function CompetitionsManageList() {
     }
 
     const orgIds = Object.keys(orgRoles ?? {})
+    // Competitions the user was granted DIRECT access to (competition admin,
+    // independent of any org) live on their competitionRoles map — resolve those
+    // ids to competition docs so a granted admin actually sees the competition
+    // here, not just org-owned and personally-owned ones.
+    const grantedIds = Object.keys(competitionRoles ?? {})
     Promise.all([
       Promise.all(orgIds.map(id => fetchCompetitionsForOrg(id).catch(() => []))),
       Promise.all(orgIds.map(id => fetchOrganization(id).catch(() => null))),
       uid ? fetchCompetitionsForUser(uid).catch(() => []) : Promise.resolve([]),
-    ]).then(([lists, orgs, personal]) => {
+      fetchCompetitionsByIds(grantedIds).catch(() => []),
+    ]).then(([lists, orgs, personal, granted]) => {
       if (!alive) return
       const seen = new Set()
-      const flat = [...lists.flat(), ...personal]
+      const flat = [...lists.flat(), ...personal, ...granted]
         .filter(c => { if (seen.has(c.id)) return false; seen.add(c.id); return true })
       flat.sort((a, b) => String(b.season ?? '').localeCompare(String(a.season ?? '')) || String(a.name).localeCompare(String(b.name)))
       setComps(flat)
@@ -72,7 +78,7 @@ export default function CompetitionsManageList() {
       setLoading(false)
     })
     return () => { alive = false }
-  }, [orgRoles, uid, userEntitlement, isPlatformAdmin])
+  }, [orgRoles, competitionRoles, uid, userEntitlement, isPlatformAdmin])
 
   // Text search on name + status filter. Both are pure client-side narrowing of
   // the already-fetched list, so they apply uniformly to the admin's
