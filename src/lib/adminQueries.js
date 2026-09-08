@@ -755,6 +755,22 @@ export async function fetchCompetitionsForUser(userId) {
     .sort((a, b) => String(b.season ?? '').localeCompare(String(a.season ?? '')))
 }
 
+// Fetch specific competitions by id from THIS sport's db, skipping any id that
+// doesn't resolve here. Used to surface competitions a user was granted direct
+// (org-independent) access to — their competitionRoles map can hold ids from
+// other sports, which simply won't exist in this db and are dropped.
+export async function fetchCompetitionsByIds(ids = []) {
+  const unique = [...new Set((ids || []).filter(Boolean))]
+  if (unique.length === 0) return []
+  const docs = await Promise.all(unique.map(id =>
+    getDoc(doc(db, 'competitions', id))
+      .then(d => (d.exists() ? { id: d.id, ...d.data() } : null))
+      .catch(() => null)
+  ))
+  return docs.filter(Boolean)
+    .sort((a, b) => String(b.season ?? '').localeCompare(String(a.season ?? '')))
+}
+
 // Every competition on the platform — the platform-admin scope of the unified
 // competitions list. Ordinary organisers use the org/user-scoped fetchers above.
 export async function fetchAllCompetitions() {
