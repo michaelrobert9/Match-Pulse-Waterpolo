@@ -2678,7 +2678,12 @@ function AwaitingResultSection({ competition }) {
 
 // ── Results tab ────────────────────────────────────────────────────────────────
 
-function ResultsTab({ competition, fixtures }) {
+function ResultsTab({ competition, fixtures, teams }) {
+  const resolveName = (teamId, orgName, teamName) => {
+    if (orgName) return `${orgName} ${teamName}`
+    const team = (teams || []).find(t => t.id === teamId)
+    return team?.orgName ? `${team.orgName} ${teamName}` : (teamName ?? '')
+  }
   const played = fixtures
     .filter(f => !isScheduled(f))
     .sort((a, b) => (b.scheduledAt?.toMillis?.() ?? 0) - (a.scheduledAt?.toMillis?.() ?? 0))
@@ -2710,11 +2715,11 @@ function ResultsTab({ competition, fixtures }) {
               className="flex items-center gap-3 bg-white rounded-xl border border-slate-200 shadow-sm px-4 py-3 hover:border-slate-300 transition-colors">
               <div className="flex-1 min-w-0">
                 <div className="flex items-center justify-between gap-2">
-                  <span className="text-slate-900 text-sm font-medium truncate">{fx.homeOrgName ? `${fx.homeOrgName} ${fx.homeTeamName}` : (fx.homeTeamName ?? "")}</span>
+                  <span className="text-slate-900 text-sm font-medium truncate">{resolveName(fx.homeTeamId, fx.homeOrgName, fx.homeTeamName)}</span>
                   <span className="font-mono text-slate-900 text-sm font-bold shrink-0">
                     {fx.homeScore ?? 0}–{fx.awayScore ?? 0}
                   </span>
-                  <span className="text-slate-900 text-sm font-medium text-right truncate">{fx.awayOrgName ? `${fx.awayOrgName} ${fx.awayTeamName}` : (fx.awayTeamName ?? "")}</span>
+                  <span className="text-slate-900 text-sm font-medium text-right truncate">{resolveName(fx.awayTeamId, fx.awayOrgName, fx.awayTeamName)}</span>
                 </div>
                 <div className="micro-label mt-0.5">{formatFixtureDate(fx.scheduledAt)}</div>
               </div>
@@ -2894,7 +2899,7 @@ export default function CompetitionManage() {
         />
       )}
       {validTab === 'results' && (
-        <ResultsTab competition={competition} fixtures={fixtures} />
+        <ResultsTab competition={competition} fixtures={fixtures} teams={teams} />
       )}
       {validTab === 'standings' && competition.type === 'league' && (
         <LeagueStandingsTab competition={competition} />
