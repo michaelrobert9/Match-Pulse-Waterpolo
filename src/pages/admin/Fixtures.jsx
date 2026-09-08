@@ -5,7 +5,7 @@ import { fetchAllMatches, toDate } from '../../lib/queries'
 import { deleteMatch, removeFixtureFromCompetition } from '../../lib/adminQueries'
 import { isScheduled } from '../../lib/fixtureStatus'
 import { matchUrl } from '../../lib/slugify'
-import { prefetchMatchTeams } from '../../lib/teamIdentity'
+import { prefetchMatchTeams, resolveTeamSideSync } from '../../lib/teamIdentity'
 import { MatchTeamIdentity } from '../../components/TeamIdentity'
 import StatusBadge from '../../components/StatusBadge'
 
@@ -97,7 +97,7 @@ export function FixturesList() {
   // even for matches with no stored `path` (whose public page would 404). Also
   // clears the competition fixture-membership doc when the match belongs to one.
   async function handleDelete(m) {
-    if (!confirm(`Delete ${m.homeTeamName || 'Home'} vs ${m.awayTeamName || 'Away'}? This cannot be undone.`)) return
+    if (!confirm(`Delete ${resolveTeamSideSync(m, 'home').primary} vs ${resolveTeamSideSync(m, 'away').primary}? This cannot be undone.`)) return
     try {
       await deleteMatch(m.id)
       if (m.competitionId) await removeFixtureFromCompetition(m.competitionId, m.id).catch(() => {})

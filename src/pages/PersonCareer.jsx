@@ -1,3 +1,4 @@
+import { composeTeamDisplay } from '../lib/teamNaming'
 import { useState, useEffect } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { isScheduled } from '../lib/fixtureStatus'
@@ -263,10 +264,10 @@ function FixtureCard({ match, personId, canSelfRemove, onRemoved }) {
         <div className="flex items-center justify-between gap-3">
           <div className="flex-1 min-w-0 space-y-0.5">
             <div className={`text-sm font-semibold truncate ${inHome ? 'text-slate-900' : 'text-slate-500'}`}>
-              {match.homeOrgName ? `${match.homeOrgName} ${match.homeTeamName}` : (match.homeTeamName ?? '')}
+              {composeTeamDisplay(match.homeOrgName, match.homeTeamName)}
             </div>
             <div className={`text-sm font-semibold truncate ${!inHome ? 'text-slate-900' : 'text-slate-500'}`}>
-              {match.awayOrgName ? `${match.awayOrgName} ${match.awayTeamName}` : (match.awayTeamName ?? '')}
+              {composeTeamDisplay(match.awayOrgName, match.awayTeamName)}
             </div>
           </div>
           {isFinal ? (

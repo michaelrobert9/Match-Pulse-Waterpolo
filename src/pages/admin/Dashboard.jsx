@@ -6,6 +6,7 @@ import { db } from '../../firebase'
 import { useAuth } from '../../contexts/AuthContext'
 import { isPastExpectedEnd } from '../../lib/matchClock'
 import { rebuildAllCareerStats } from '../../lib/adminQueries'
+import { MatchVersus } from '../../components/TeamIdentity'
 
 // Platform-admin wholesale career rebuild. Runs the same engine as the nightly
 // job on demand — meant for deploy day (populate career totals immediately
@@ -203,7 +204,7 @@ export default function AdminDashboard() {
             {unfinished.map(m => (
               <Link key={m.id} to={`/score/${m.id}`}
                 className="flex items-center justify-between gap-2 text-xs text-orange-800 hover:text-orange-900 bg-white/60 rounded-lg px-3 py-2 transition-colors">
-                <span className="truncate">{m.homeTeamName || 'Home'} vs {m.awayTeamName || 'Away'}</span>
+                <MatchVersus match={m} className="truncate min-w-0" vsClass="font-normal text-orange-400" />
                 <span className="font-bold uppercase tracking-wider shrink-0">End →</span>
               </Link>
             ))}

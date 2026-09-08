@@ -1,3 +1,4 @@
+import { composeTeamDisplay } from '../lib/teamNaming'
 import { useEffect, useRef, useState } from 'react'
 import { Link, NavLink, useLocation } from 'react-router-dom'
 import { ChevronDown, Menu, X } from 'lucide-react'
@@ -171,7 +172,7 @@ export default function Nav() {
                     <Link key={m.id} to={`/score/${m.id}`} onClick={() => setBadgeOpen(false)}
                       className="flex items-center justify-between px-3 py-2.5 hover:bg-slate-50 transition-colors border-b border-slate-100 last:border-0">
                       <span className="text-sm font-medium text-slate-900 truncate">
-                        {m.homeOrgName ? `${m.homeOrgName} ${m.homeTeamName}` : (m.homeTeamName ?? "")} <span className="font-mono font-black">{m.homeScore}–{m.awayScore}</span> {m.awayOrgName ? `${m.awayOrgName} ${m.awayTeamName}` : (m.awayTeamName ?? "")}
+                        {composeTeamDisplay(m.homeOrgName, m.homeTeamName)} <span className="font-mono font-black">{m.homeScore}–{m.awayScore}</span> {composeTeamDisplay(m.awayOrgName, m.awayTeamName)}
                       </span>
                       <span className="text-[10px] text-red-500 font-bold ml-2 shrink-0">● LIVE</span>
                     </Link>
@@ -231,7 +232,7 @@ export default function Nav() {
             <Link key={m.id} to={`/score/${m.id}`} onClick={() => setBadgeOpen(false)}
               className="flex items-center justify-between px-3 py-2.5 hover:bg-slate-50 transition-colors border-b border-slate-100 last:border-0">
               <span className="text-sm font-medium text-slate-900 truncate">
-                {m.homeOrgName ? `${m.homeOrgName} ${m.homeTeamName}` : (m.homeTeamName ?? "")} <span className="font-mono font-black">{m.homeScore}–{m.awayScore}</span> {m.awayOrgName ? `${m.awayOrgName} ${m.awayTeamName}` : (m.awayTeamName ?? "")}
+                {composeTeamDisplay(m.homeOrgName, m.homeTeamName)} <span className="font-mono font-black">{m.homeScore}–{m.awayScore}</span> {composeTeamDisplay(m.awayOrgName, m.awayTeamName)}
               </span>
               <span className="text-[10px] text-red-500 font-bold ml-2 shrink-0">● LIVE</span>
             </Link>

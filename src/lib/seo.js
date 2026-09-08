@@ -1,3 +1,4 @@
+import { composeTeamDisplay } from './teamNaming'
 // SEO metadata + JSON-LD — the single source of truth for what goes in <head>.
 //
 // Pure and isomorphic: NO DOM, NO Firebase, NO React. It maps a route + entity
@@ -171,8 +172,8 @@ export function buildMeta({ type, entity = null, path = null } = {}) {
     }
 
     case 'match': {
-      const home = entity?.homeTeamName ?? 'Home'
-      const away = entity?.awayTeamName ?? 'Away'
+      const home = composeTeamDisplay(entity?.homeOrgName, entity?.homeTeamName) || 'Home'
+      const away = composeTeamDisplay(entity?.awayOrgName, entity?.awayTeamName) || 'Away'
       const isFinal = entity?.status === 'final'
       const score   = isFinal ? ` ${entity?.homeScore ?? 0}-${entity?.awayScore ?? 0}` : ''
       core        = `${home} vs ${away}${score} — Water Polo ${isFinal ? 'Result' : 'Fixture'}`
@@ -285,8 +286,8 @@ export function athleteLd(person) {
 // SportsEvent for a fixture/result. `comp` is optional context for the URL.
 export function sportsEventLd(match, comp = null) {
   if (!match) return null
-  const home = match.homeTeamName ?? 'Home'
-  const away = match.awayTeamName ?? 'Away'
+  const home = composeTeamDisplay(match.homeOrgName, match.homeTeamName) || 'Home'
+  const away = composeTeamDisplay(match.awayOrgName, match.awayTeamName) || 'Away'
   const eventStatus =
     match.status === 'cancelled' ? 'https://schema.org/EventCancelled' :
     match.status === 'postponed' ? 'https://schema.org/EventPostponed' :

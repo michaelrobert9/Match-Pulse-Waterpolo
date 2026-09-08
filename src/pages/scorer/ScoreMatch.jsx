@@ -1050,7 +1050,7 @@ export default function ScoreMatch() {
 
   return (
     <div className="md:flex md:justify-center md:min-h-screen md:bg-slate-950">
-      <div className={`max-w-2xl mx-auto overflow-hidden ${t.root} flex flex-col transition-colors md:border-x md:border-slate-800 md:shadow-2xl`} style={{ height: '100dvh' }}>
+      <div className={`max-w-4xl mx-auto overflow-hidden ${t.root} flex flex-col transition-colors md:border-x md:border-slate-800 md:shadow-2xl`} style={{ height: '100dvh' }}>
       {/* Header — back · title · status on the left; Result on the bar; the rest
           (Restart, Edit, Lineups, theme) collapse into a ⋯ menu so the row never
           overflows or overlaps on a narrow phone. */}
@@ -1527,7 +1527,7 @@ export default function ScoreMatch() {
             <div className="font-mono font-black text-3xl tabular-nums mb-1">
               {match.homeScore ?? 0} — {match.awayScore ?? 0}
             </div>
-            <div className={`text-sm ${t.muted}`}>{match.homeTeamName} vs {match.awayTeamName}</div>
+            <div className={`text-sm ${t.muted}`}>{homeIdentity?.primary ?? match.homeTeamName} vs {awayIdentity?.primary ?? match.awayTeamName}</div>
             <div className={`text-xs ${t.muted} mt-1`}>Duration {formatClock(elapsedMs)} · This will update standings.</div>
           </div>
 
@@ -1544,7 +1544,7 @@ export default function ScoreMatch() {
                 <div className="grid grid-cols-2 gap-3">
                   <div>
                     <div className={`text-[10px] font-bold uppercase tracking-widest ${t.muted} mb-1 truncate`}>
-                      {match.homeTeamName ?? 'Home'}
+                      {homeIdentity?.primary ?? match.homeTeamName ?? 'Home'}
                     </div>
                     <input type="number" min="0" max="99" value={shootoutHome}
                       onChange={e => setShootoutHome(e.target.value)}
@@ -1553,7 +1553,7 @@ export default function ScoreMatch() {
                   </div>
                   <div>
                     <div className={`text-[10px] font-bold uppercase tracking-widest ${t.muted} mb-1 truncate`}>
-                      {match.awayTeamName ?? 'Away'}
+                      {awayIdentity?.primary ?? match.awayTeamName ?? 'Away'}
                     </div>
                     <input type="number" min="0" max="99" value={shootoutAway}
                       onChange={e => setShootoutAway(e.target.value)}
@@ -1667,7 +1667,7 @@ export default function ScoreMatch() {
                 ({match.shootoutHome}–{match.shootoutAway} SO)
               </div>
             )}
-            <div className={`text-sm ${t.muted} mb-1`}>{match.homeTeamName} vs {match.awayTeamName}</div>
+            <div className={`text-sm ${t.muted} mb-1`}>{homeIdentity?.primary ?? match.homeTeamName} vs {awayIdentity?.primary ?? match.awayTeamName}</div>
             <div className={`text-xs ${t.muted} mb-5`}>Result saved · standings updated</div>
             <div className="grid grid-cols-2 gap-3">
               <button onClick={() => {
@@ -1675,8 +1675,8 @@ export default function ScoreMatch() {
                 const as = match.awayScore ?? 0
                 const so = match.shootoutHome != null && match.shootoutAway != null
                   ? ` (${match.shootoutHome}–${match.shootoutAway} SO)` : ''
-                const homeDisplay = match.homeOrgName ? `${match.homeOrgName} ${match.homeTeamName}` : (match.homeTeamName ?? "")
-                const awayDisplay = match.awayOrgName ? `${match.awayOrgName} ${match.awayTeamName}` : (match.awayTeamName ?? "")
+                const homeDisplay = homeIdentity?.primary ?? (match.homeTeamName ?? "")
+                const awayDisplay = awayIdentity?.primary ?? (match.awayTeamName ?? "")
                 const text = `Full time ⏱\n${homeDisplay} ${hs}–${as} ${awayDisplay}${so}`
                 if (navigator.share) {
                   navigator.share({ title: 'Match result', text }).catch(() => {})

@@ -12,7 +12,7 @@ import { MatchTeamIdentity } from '../components/TeamIdentity'
 import MatchDayRow from '../components/MatchDayRow'
 import { collapseMatchDays } from '../lib/matchGroups'
 import { computeTeamStats, latestSeason } from '../lib/teamStats'
-import { seniorityDescriptor } from '../lib/teamNaming'
+import { seniorityDescriptor, composeTeamDisplay } from '../lib/teamNaming'
 import { sortBySeniority } from '../lib/seniority'
 import StatusBadge from '../components/StatusBadge'
 import { monogram } from '../lib/names'
@@ -117,8 +117,8 @@ function SeasonRecordCard({ team, org, stats }) {
         </div>
         <div className="flex-1 min-w-0">
           {url
-            ? <Link to={url} className="text-slate-900 text-sm font-bold truncate block hover:text-emerald-600 transition-colors">{team.displayName}</Link>
-            : <div className="text-slate-900 text-sm font-bold truncate">{team.displayName}</div>}
+            ? <Link to={url} className="text-slate-900 text-sm font-bold truncate block hover:text-emerald-600 transition-colors">{composeTeamDisplay(org?.matchName || org?.name, team.displayName)}</Link>
+            : <div className="text-slate-900 text-sm font-bold truncate">{composeTeamDisplay(org?.matchName || org?.name, team.displayName)}</div>}
         </div>
         {url && (
           <Link to={url}
