@@ -67,6 +67,7 @@ const PeopleList = lazy(() => import('./pages/admin/PeopleAdmin').then(m => ({ d
 const NewPerson  = lazy(() => import('./pages/admin/PeopleAdmin').then(m => ({ default: m.NewPerson })))
 const EditPerson = lazy(() => import('./pages/admin/PeopleAdmin').then(m => ({ default: m.EditPerson })))
 const AdminFixturesList = lazy(() => import('./pages/admin/Fixtures').then(m => ({ default: m.FixturesList })))
+const DeletedMatches = lazy(() => import('./pages/admin/DeletedMatches'))
 const ResultQueue = lazy(() => import('./pages/admin/ResultQueue'))
 const Permissions = lazy(() => import('./pages/admin/Permissions'))
 const UserAccess  = lazy(() => import('./pages/admin/UserAccess'))
@@ -256,6 +257,7 @@ export default function App() {
             <Route path="user-access"                 element={<UserAccess />} />
             <Route path="seo"                         element={<SeoSettings />} />
             <Route path="matches"                     element={<AdminFixturesList />} />
+            <Route path="matches/deleted"             element={<DeletedMatches />} />
             <Route path="result-queue"                element={<ResultQueue />} />
             <Route path="team-governance"             element={<TeamGovernance />} />
             {/* Competitions are one unified, role-scoped list at /manage/competitions

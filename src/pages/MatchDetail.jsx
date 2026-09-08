@@ -491,7 +491,6 @@ export default function MatchDetail() {
     setDeleteError('')
     try {
       await deleteMatch(match.id)
-      if (competitionId) await removeFixtureFromCompetition(competitionId, match.id).catch(() => {})
       navigate(competitionMatchesUrl || '/admin/matches')
     } catch (e) {
       setDeleteError(e.message || 'Delete failed.')

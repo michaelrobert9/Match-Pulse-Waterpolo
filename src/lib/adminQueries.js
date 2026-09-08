@@ -1484,8 +1484,37 @@ export async function updateMatch(id, data) {
   }
   return updateDoc(doc(db, 'matches', id), { ...patch, updatedBy: uid(), updatedAt: serverTimestamp() })
 }
+// Soft-delete: move a match to the recycle bin. It is hidden from every list
+// and excluded from stats/standings (all match reads filter `deleted !== true`),
+// but the record is kept so it can be restored. Competition fixture-membership
+// is left intact so a restore rejoins the competition cleanly.
 export async function deleteMatch(id) {
-  return deleteDoc(doc(db, 'matches', id))
+  return updateDoc(doc(db, 'matches', id), {
+    deleted: true, deletedAt: serverTimestamp(), deletedBy: uid(),
+  })
+}
+
+// Restore a soft-deleted match back into all listings and stats.
+export async function restoreMatch(id) {
+  return updateDoc(doc(db, 'matches', id), {
+    deleted: false, deletedAt: null, restoredAt: serverTimestamp(), restoredBy: uid(),
+  })
+}
+
+// Permanently remove a match (recycle-bin purge) and clear its competition
+// fixture-membership doc. This cannot be undone.
+export async function purgeMatch(id) {
+  const snap = await getDoc(doc(db, 'matches', id)).catch(() => null)
+  const competitionId = snap && snap.exists() ? (snap.data().competitionId ?? null) : null
+  await deleteDoc(doc(db, 'matches', id))
+  if (competitionId) await removeFixtureFromCompetition(competitionId, id).catch(() => {})
+}
+
+// Every soft-deleted match — the recycle bin, most recently deleted first.
+export async function fetchDeletedMatches() {
+  const snap = await getDocs(query(collection(db, 'matches'), where('deleted', '==', true)))
+  return snap.docs.map(d => ({ id: d.id, ...d.data() }))
+    .sort((a, b) => (b.deletedAt?.toMillis?.() ?? 0) - (a.deletedAt?.toMillis?.() ?? 0))
 }
 
 // ── Match groups (a "match day" between two schools) ──────────────────────────

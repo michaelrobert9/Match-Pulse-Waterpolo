@@ -106,6 +106,7 @@ export async function fetchCompetitionFixtures(competitionId) {
   )
   return snap.docs
     .map(d => ({ id: d.id, ...d.data() }))
+    .filter(m => m.deleted !== true)
     .sort((a, b) => toDate(a.scheduledAt) - toDate(b.scheduledAt))
 }
 
@@ -123,6 +124,7 @@ export async function fetchAwaitingResultMatches() {
   const snap = await getDocs(query(collection(db, 'matches'), where('status', '==', 'awaiting_result')))
   return snap.docs
     .map(d => ({ id: d.id, ...d.data() }))
+    .filter(m => m.deleted !== true)
     .sort((a, b) => (toDate(b.scheduledAt) ?? 0) - (toDate(a.scheduledAt) ?? 0))
 }
 
@@ -136,6 +138,7 @@ export async function fetchAwaitingResultMatchesForCompetition(competitionId) {
   ))
   return snap.docs
     .map(d => ({ id: d.id, ...d.data() }))
+    .filter(m => m.deleted !== true)
     .sort((a, b) => (toDate(b.scheduledAt) ?? 0) - (toDate(a.scheduledAt) ?? 0))
 }
 
@@ -241,6 +244,7 @@ export async function fetchCompetitionTopPOTM(competitionId, limit = 5) {
   }
   snap.docs.forEach(d => {
     const data = d.data()
+    if (data.deleted === true) return
     addPotm(data.playerOfMatch, data)
     addPotm(data.playersOfMatch?.home, data)
     addPotm(data.playersOfMatch?.away, data)
@@ -291,8 +295,8 @@ export async function fetchActionableMatches({ isPlatformAdmin = false, orgIds =
     || orgSet.has(m.homeOrgId)
     || orgSet.has(m.awayOrgId)
     || (m.competitionId && compSet.has(m.competitionId))
-  const live = [...liveSnap.docs, ...pausedSnap.docs].map(d => ({ id: d.id, ...d.data() }))
-  const upcoming = upcomingSnap.docs.map(d => ({ id: d.id, ...d.data() }))
+  const live = [...liveSnap.docs, ...pausedSnap.docs].map(d => ({ id: d.id, ...d.data() })).filter(m => m.deleted !== true)
+  const upcoming = upcomingSnap.docs.map(d => ({ id: d.id, ...d.data() })).filter(m => m.deleted !== true)
   // Start of today — upcoming matches scheduled before today are historic (never
   // activated) and should not appear in the actionable scorer list.
   const startOfToday = new Date(); startOfToday.setHours(0, 0, 0, 0)
@@ -435,6 +439,7 @@ export async function fetchRecentMatches(limitN = 5) {
   )
   return snap.docs
     .map(d => ({ id: d.id, ...d.data() }))
+    .filter(m => m.deleted !== true)
     .sort((a, b) => toDate(b.scheduledAt) - toDate(a.scheduledAt))
     .slice(0, limitN)
 }
@@ -453,6 +458,7 @@ export async function fetchUpcomingMatches(limitN = 5) {
   )
   return snap.docs
     .map(d => ({ id: d.id, ...d.data() }))
+    .filter(m => m.deleted !== true)
     .sort((a, b) => toDate(a.scheduledAt) - toDate(b.scheduledAt))
     .slice(0, limitN)
 }
@@ -465,6 +471,7 @@ export async function fetchLiveMatches(n = 10) {
   ))
   return snap.docs
     .map(d => ({ id: d.id, ...d.data() }))
+    .filter(m => m.deleted !== true)
     .sort((a, b) => toDate(a.scheduledAt) - toDate(b.scheduledAt))
     .slice(0, n)
 }
@@ -476,6 +483,7 @@ export async function fetchAllMatches() {
   const snap = await getDocs(collection(db, 'matches'))
   return snap.docs
     .map(d => ({ id: d.id, ...d.data() }))
+    .filter(m => m.deleted !== true)
     .sort((a, b) => (toDate(b.scheduledAt) ?? 0) - (toDate(a.scheduledAt) ?? 0))
 }
 
@@ -487,6 +495,7 @@ export async function fetchTodayMatches() {
   const snap  = await getDocs(query(collection(db, 'matches'), where('status', 'in', SCHEDULED_QUERY_VALUES)))
   return snap.docs
     .map(d => ({ id: d.id, ...d.data() }))
+    .filter(m => m.deleted !== true)
     .filter(m => { const d = toDate(m.scheduledAt); return d && d >= start && d <= end })
     .sort((a, b) => toDate(a.scheduledAt) - toDate(b.scheduledAt))
 }
@@ -550,6 +559,7 @@ export async function fetchMatchesForPlayer(personId) {
   ))
   return snap.docs
     .map(d => ({ id: d.id, ...d.data() }))
+    .filter(m => m.deleted !== true)
     .sort((a, b) => {
       const ta = a.scheduledAt?.toDate?.() ?? (a.scheduledAt ? new Date(a.scheduledAt) : new Date(0))
       const tb = b.scheduledAt?.toDate?.() ?? (b.scheduledAt ? new Date(b.scheduledAt) : new Date(0))
@@ -715,14 +725,16 @@ export async function fetchMatchByPath(path) {
     return Object.values(sampleMatches).find(m => m.path === path) ?? null
   }
   const snap = await getDocs(query(collection(db, 'matches'), where('path', '==', path)))
-  return snap.empty ? null : { id: snap.docs[0].id, ...snap.docs[0].data() }
+  const live = snap.docs.filter(d => d.data().deleted !== true)
+  return live.length ? { id: live[0].id, ...live[0].data() } : null
 }
 
 export function subscribeMatchByPath(path, onChange) {
   if (!configured) return () => {}
   const q = query(collection(db, 'matches'), where('path', '==', path))
   return onSnapshot(q, snap => {
-    onChange(snap.empty ? null : { id: snap.docs[0].id, ...snap.docs[0].data() })
+    const live = snap.docs.filter(d => d.data().deleted !== true)
+    onChange(live.length ? { id: live[0].id, ...live[0].data() } : null)
   })
 }
 
@@ -751,14 +763,14 @@ export function subscribeMatchGroup(matchDate, slug, onChange) {
 export async function fetchMatchGroupChildren(matchGroupId) {
   if (!configured || !matchGroupId) return []
   const snap = await getDocs(query(collection(db, 'matches'), where('matchGroupId', '==', matchGroupId)))
-  return snap.docs.map(d => ({ id: d.id, ...d.data() })).sort((a, b) => (a.groupOrder ?? 0) - (b.groupOrder ?? 0))
+  return snap.docs.map(d => ({ id: d.id, ...d.data() })).filter(m => m.deleted !== true).sort((a, b) => (a.groupOrder ?? 0) - (b.groupOrder ?? 0))
 }
 
 export function subscribeMatchGroupChildren(matchGroupId, onChange) {
   if (!configured || !matchGroupId) return () => {}
   const q = query(collection(db, 'matches'), where('matchGroupId', '==', matchGroupId))
   return onSnapshot(q, snap => {
-    onChange(snap.docs.map(d => ({ id: d.id, ...d.data() })).sort((a, b) => (a.groupOrder ?? 0) - (b.groupOrder ?? 0)))
+    onChange(snap.docs.map(d => ({ id: d.id, ...d.data() })).filter(m => m.deleted !== true).sort((a, b) => (a.groupOrder ?? 0) - (b.groupOrder ?? 0)))
   })
 }
 
@@ -798,7 +810,7 @@ export async function fetchMatchesForTeam(teamId) {
     ...homeSnap.docs.map(d => ({ id: d.id, ...d.data() })),
     ...awaySnap.docs.map(d => ({ id: d.id, ...d.data() })),
   ]
-  return all.sort((a, b) => toDate(a.scheduledAt) - toDate(b.scheduledAt))
+  return all.filter(m => m.deleted !== true).sort((a, b) => toDate(a.scheduledAt) - toDate(b.scheduledAt))
 }
 
 // Team-sheets-everywhere §6: when a team has no stored roster/squad, its squad
@@ -845,5 +857,5 @@ export async function fetchMatchesForOrg(orgId) {
   return [
     ...homeSnap.docs.map(d => ({ id: d.id, ...d.data() })),
     ...awaySnap.docs.map(d => ({ id: d.id, ...d.data() })),
-  ].filter(m => { if (seen.has(m.id)) return false; seen.add(m.id); return true })
+  ].filter(m => m.deleted !== true).filter(m => { if (seen.has(m.id)) return false; seen.add(m.id); return true })
 }

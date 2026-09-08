@@ -21,6 +21,7 @@ import {
   updateScheduleConfig,
   generateUniqueMatchSlug,
   createMatch,
+  deleteMatch,
   fetchCompetitionStaff, setCompetitionStaff, removeCompetitionStaff,
   recalculateCompetitionStats,
   submitFixtureResult, postponeFixture, cancelFixture,
@@ -2292,9 +2293,8 @@ function FixturesTab({ competition, teams, fixtures, setFixtures }) {
   }
 
   async function handleDelete(fixtureId) {
-    if (!confirm('Delete this match?')) return
-    await deleteDoc(doc(db, 'matches', fixtureId))
-    removeFixtureFromCompetition(competition.id, fixtureId).catch(() => {})
+    if (!confirm('Move this match to the recycle bin? You can restore it from admin → Deleted matches.')) return
+    await deleteMatch(fixtureId)
     setFixtures(prev => prev.filter(f => f.id !== fixtureId))
   }
 

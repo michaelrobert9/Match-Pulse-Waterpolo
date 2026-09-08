@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useState } from 'react'
-import { ChevronRight, ExternalLink, Trash2 } from 'lucide-react'
+import { ChevronRight, ExternalLink, Trash2, Plus, Archive } from 'lucide-react'
 import { Link } from 'react-router-dom'
-import { fetchAllMatches, toDate } from '../../lib/queries'
-import { deleteMatch, removeFixtureFromCompetition } from '../../lib/adminQueries'
+import { fetchAllMatches, fetchOrganizations, toDate } from '../../lib/queries'
+import { deleteMatch } from '../../lib/adminQueries'
 import { isScheduled } from '../../lib/fixtureStatus'
 import { matchUrl } from '../../lib/slugify'
 import { prefetchMatchTeams, resolveTeamSideSync } from '../../lib/teamIdentity'
@@ -12,34 +12,59 @@ import StatusBadge from '../../components/StatusBadge'
 const SELECT_CLASS =
   'w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-slate-900 text-xs focus:outline-none focus:border-emerald-500 transition-colors'
 
-// Admin fixtures list. Every match across the platform, most recent first,
-// with client-side filters. Each row links straight to the scorer/edit screen
-// (/score/:id) where platform admins have full edit control, including for
-// finalised matches.
+// Org-type labels for the cascading team filter.
+const ORG_TYPES = [
+  ['school',      'Schools'],
+  ['club',        'Clubs'],
+  ['association', 'Associations'],
+]
+
+// Admin fixtures list. Every (non-deleted) match across the platform, most
+// recent first, with client-side filters. The team filter cascades:
+// type → organisation → team, so you narrow to one school/club and then one of
+// its teams instead of scrolling one flat list of every team name.
 export function FixturesList() {
   const [matches, setMatches] = useState([])
+  const [orgs, setOrgs]       = useState([])
   const [loading, setLoading] = useState(true)
 
   const [fDate,   setFDate]   = useState('')   // '', 'today', 'week', 'past', 'future'
-  const [fTeam,   setFTeam]   = useState('')
+  const [fType,   setFType]   = useState('')   // '', 'school', 'club', 'association'
+  const [fOrg,    setFOrg]    = useState('')   // organizationId
+  const [fTeam,   setFTeam]   = useState('')   // teamId
   const [fGround, setFGround] = useState('')
   const [fLeague, setFLeague] = useState('')
   const [fSeason, setFSeason] = useState('')
   const [fStatus, setFStatus] = useState('')
 
   useEffect(() => {
-    fetchAllMatches()
-      .then(list => { prefetchMatchTeams(list); setMatches(list) })
+    Promise.all([fetchAllMatches(), fetchOrganizations().catch(() => [])])
+      .then(([list, orgList]) => { prefetchMatchTeams(list); setMatches(list); setOrgs(orgList) })
       .catch(() => {})
       .finally(() => setLoading(false))
   }, [])
 
-  // Distinct filter option sets, derived from the loaded matches.
-  const teams = useMemo(() => {
-    const s = new Set()
-    matches.forEach(m => { if (m.homeTeamName) s.add(m.homeTeamName); if (m.awayTeamName) s.add(m.awayTeamName) })
-    return [...s].sort((a, b) => a.localeCompare(b))
-  }, [matches])
+  // Organisations that actually appear in matches, so every dropdown option
+  // yields results. Filtered by the chosen type (school / club / association).
+  const orgOptions = useMemo(() => {
+    const inMatches = new Set()
+    matches.forEach(m => { if (m.homeOrgId) inMatches.add(m.homeOrgId); if (m.awayOrgId) inMatches.add(m.awayOrgId) })
+    return orgs
+      .filter(o => inMatches.has(o.id))
+      .filter(o => !fType || o.type === fType)
+      .sort((a, b) => (a.name || '').localeCompare(b.name || ''))
+  }, [orgs, matches, fType])
+
+  // Teams of the selected organisation that have matches — the third cascade step.
+  const teamOptions = useMemo(() => {
+    if (!fOrg) return []
+    const map = new Map()
+    matches.forEach(m => {
+      if (m.homeOrgId === fOrg && m.homeTeamId) map.set(m.homeTeamId, m.homeTeamName || m.homeTeamId)
+      if (m.awayOrgId === fOrg && m.awayTeamId) map.set(m.awayTeamId, m.awayTeamName || m.awayTeamId)
+    })
+    return [...map.entries()].sort((a, b) => String(a[1]).localeCompare(String(b[1])))
+  }, [matches, fOrg])
 
   const grounds = useMemo(
     () => [...new Set(matches.map(m => m.pitch).filter(Boolean))].sort((a, b) => a.localeCompare(b)),
@@ -67,7 +92,8 @@ export function FixturesList() {
     const weekAhead    = new Date(startOfToday); weekAhead.setDate(weekAhead.getDate() + 7)
 
     return matches.filter(m => {
-      if (fTeam   && m.homeTeamName !== fTeam && m.awayTeamName !== fTeam) return false
+      if (fOrg    && m.homeOrgId !== fOrg && m.awayOrgId !== fOrg) return false
+      if (fTeam   && m.homeTeamId !== fTeam && m.awayTeamId !== fTeam) return false
       if (fGround && m.pitch !== fGround) return false
       if (fLeague && m.competitionId !== fLeague) return false
       if (fSeason && (m.competitionSeason || m.season) !== fSeason) return false
@@ -84,7 +110,7 @@ export function FixturesList() {
       }
       return true
     })
-  }, [matches, fDate, fTeam, fGround, fLeague, fSeason, fStatus])
+  }, [matches, fDate, fOrg, fTeam, fGround, fLeague, fSeason, fStatus])
 
   const fmtWhen = val => {
     const d = toDate(val)
@@ -93,14 +119,12 @@ export function FixturesList() {
       : 'Date TBD'
   }
 
-  // Delete straight from the list — resolution is by document id, so it works
-  // even for matches with no stored `path` (whose public page would 404). Also
-  // clears the competition fixture-membership doc when the match belongs to one.
+  // Soft-delete: move the match to the recycle bin (restorable from Deleted
+  // matches). Competition membership is kept so a restore rejoins cleanly.
   async function handleDelete(m) {
-    if (!confirm(`Delete ${resolveTeamSideSync(m, 'home').primary} vs ${resolveTeamSideSync(m, 'away').primary}? This cannot be undone.`)) return
+    if (!confirm(`Move "${resolveTeamSideSync(m, 'home').primary} vs ${resolveTeamSideSync(m, 'away').primary}" to the recycle bin? You can restore it from Deleted matches.`)) return
     try {
       await deleteMatch(m.id)
-      if (m.competitionId) await removeFixtureFromCompetition(m.competitionId, m.id).catch(() => {})
       setMatches(prev => prev.filter(x => x.id !== m.id))
     } catch (e) {
       alert(e.message || 'Delete failed.')
@@ -115,23 +139,52 @@ export function FixturesList() {
 
   return (
     <div className="px-4 py-5">
-      <div className="flex items-center justify-between mb-4">
-        <h1 className="font-display font-bold text-slate-900 text-lg">Matches</h1>
-        <span className="text-xs text-slate-400">{filtered.length} of {matches.length}</span>
+      <div className="flex items-center justify-between mb-4 gap-2 flex-wrap">
+        <div className="flex items-center gap-2">
+          <h1 className="font-display font-bold text-slate-900 text-lg">Matches</h1>
+          <span className="text-xs text-slate-400">{filtered.length} of {matches.length}</span>
+        </div>
+        <div className="flex items-center gap-2">
+          <Link to="/admin/matches/deleted"
+            className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest px-3 py-2 rounded-lg border border-slate-200 text-slate-500 hover:text-slate-800 hover:bg-slate-50 transition-colors">
+            <Archive className="w-3.5 h-3.5" /> Deleted
+          </Link>
+          <Link to="/match/new"
+            className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest px-3 py-2 rounded-lg bg-emerald-600 text-white hover:bg-emerald-500 transition-colors">
+            <Plus className="w-3.5 h-3.5" /> Create match
+          </Link>
+        </div>
       </div>
 
-      {/* Filters */}
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-2 mb-4">
+      {/* Cascading team finder: type → school/club/association → team */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 mb-2">
+        <select value={fType}
+          onChange={e => { setFType(e.target.value); setFOrg(''); setFTeam('') }}
+          className={SELECT_CLASS}>
+          <option value="">All types</option>
+          {ORG_TYPES.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+        </select>
+        <select value={fOrg}
+          onChange={e => { setFOrg(e.target.value); setFTeam('') }}
+          className={SELECT_CLASS}>
+          <option value="">{fType ? `All ${fType}s` : 'All organisations'}</option>
+          {orgOptions.map(o => <option key={o.id} value={o.id}>{o.name}</option>)}
+        </select>
+        <select value={fTeam} onChange={e => setFTeam(e.target.value)} disabled={!fOrg}
+          className={`${SELECT_CLASS} disabled:opacity-50`}>
+          <option value="">{fOrg ? 'All teams' : 'Select an organisation first'}</option>
+          {teamOptions.map(([id, label]) => <option key={id} value={id}>{label}</option>)}
+        </select>
+      </div>
+
+      {/* Other filters */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-2 mb-4">
         <select value={fDate} onChange={e => setFDate(e.target.value)} className={SELECT_CLASS}>
           <option value="">All dates</option>
           <option value="today">Today</option>
           <option value="week">Next 7 days</option>
           <option value="future">Upcoming</option>
           <option value="past">Past</option>
-        </select>
-        <select value={fTeam} onChange={e => setFTeam(e.target.value)} className={SELECT_CLASS}>
-          <option value="">All teams</option>
-          {teams.map(t => <option key={t} value={t}>{t}</option>)}
         </select>
         <select value={fGround} onChange={e => setFGround(e.target.value)} className={SELECT_CLASS}>
           <option value="">All grounds</option>
@@ -145,7 +198,7 @@ export function FixturesList() {
           <option value="">All seasons</option>
           {seasons.map(s => <option key={s} value={s}>{s}</option>)}
         </select>
-        <select value={fStatus} onChange={e => setFStatus(e.target.value)} className={SELECT_CLASS}>
+        <select value={fStatus} onChange={e => setFStatus(e.target.value)} className={`${SELECT_CLASS} col-span-2 md:col-span-4`}>
           <option value="">All statuses</option>
           <option value="scheduled">Scheduled</option>
           <option value="live">Live</option>
@@ -160,6 +213,10 @@ export function FixturesList() {
       {filtered.length === 0 ? (
         <div className="text-center py-12">
           <p className="text-slate-500 text-sm">No matches found for these filters.</p>
+          <Link to="/match/new"
+            className="inline-flex items-center gap-1.5 mt-3 text-xs font-bold uppercase tracking-widest text-emerald-600 hover:text-emerald-700 transition-colors">
+            <Plus className="w-3.5 h-3.5" /> Create a match
+          </Link>
         </div>
       ) : (
         <div className="space-y-2">
@@ -206,11 +263,10 @@ export function FixturesList() {
                   <ChevronRight className="w-4 h-4" />
                 </Link>
 
-                {/* Delete straight from the list — id-based, so it works even for
-                    matches with no public page. */}
+                {/* Delete → recycle bin (restorable from Deleted matches). */}
                 <button onClick={() => handleDelete(m)}
                   className="shrink-0 text-slate-300 hover:text-red-600 transition-colors p-1"
-                  title="Delete match">
+                  title="Move to recycle bin">
                   <Trash2 className="w-4 h-4" />
                 </button>
               </div>
