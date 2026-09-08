@@ -2233,6 +2233,10 @@ function FixturesTab({ competition, teams, fixtures, setFixtures }) {
       const away        = teams.find(t => t.id === newForm.awayTeamId)
       const scheduledAt = newForm.scheduledAt ? new Date(newForm.scheduledAt) : null
       const seasonStr   = competition.season ? String(competition.season) : null
+      // Frozen composed Display name — "Org Name – Team Name" — stored on the
+      // match so raw-field views never show a bare team label.
+      const homeDisplay = composeTeamDisplay(home.orgName, home.displayName)
+      const awayDisplay = composeTeamDisplay(away.orgName, away.displayName)
       const baseSlug    = buildMatchSlug(home.displayName, away.displayName)
       const matchSlug   = seasonStr
         ? await generateUniqueMatchSlug(seasonStr, baseSlug)
@@ -2241,9 +2245,9 @@ function FixturesTab({ competition, teams, fixtures, setFixtures }) {
       const ref = await addDoc(collection(db, 'matches'), {
         competitionId: competition.id,
         ownerOrgId: competition.ownerOrgId || null,
-        homeTeamId: home.id, homeTeamName: home.displayName, homeTeamColor: home.primaryColor || null,
+        homeTeamId: home.id, homeTeamName: home.displayName, homeDisplay, homeTeamColor: home.primaryColor || null,
         homeOrgId: home.organizationId ?? null, homeOrgName: home.orgName || null, homeRegistered: !!home.organizationId,
-        awayTeamId: away.id, awayTeamName: away.displayName, awayTeamColor: away.primaryColor || null,
+        awayTeamId: away.id, awayTeamName: away.displayName, awayDisplay, awayTeamColor: away.primaryColor || null,
         awayOrgId: away.organizationId ?? null, awayOrgName: away.orgName || null, awayRegistered: !!away.organizationId,
         homeScore: 0, awayScore: 0,
         periods: Number(newForm.periods), periodMinutes: Number(newForm.periodMinutes),
@@ -2265,6 +2269,7 @@ function FixturesTab({ competition, teams, fixtures, setFixtures }) {
       )
       setFixtures(prev => [...prev, {
         id: ref.id, homeTeamName: home.displayName, awayTeamName: away.displayName,
+        homeDisplay, awayDisplay, homeOrgName: home.orgName || null, awayOrgName: away.orgName || null,
         homeTeamId: home.id, awayTeamId: away.id,
         scheduledAt, status: 'scheduled', tracked: false, homeScore: 0, awayScore: 0,
       }])
@@ -2678,7 +2683,12 @@ function AwaitingResultSection({ competition }) {
 
 // ── Results tab ────────────────────────────────────────────────────────────────
 
-function ResultsTab({ competition, fixtures }) {
+function ResultsTab({ competition, fixtures, teams }) {
+  const resolveName = (teamId, orgName, teamName) => {
+    if (orgName) return `${orgName} ${teamName}`
+    const team = (teams || []).find(t => t.id === teamId)
+    return team?.orgName ? `${team.orgName} ${teamName}` : (teamName ?? '')
+  }
   const played = fixtures
     .filter(f => !isScheduled(f))
     .sort((a, b) => (b.scheduledAt?.toMillis?.() ?? 0) - (a.scheduledAt?.toMillis?.() ?? 0))
@@ -2710,11 +2720,11 @@ function ResultsTab({ competition, fixtures }) {
               className="flex items-center gap-3 bg-white rounded-xl border border-slate-200 shadow-sm px-4 py-3 hover:border-slate-300 transition-colors">
               <div className="flex-1 min-w-0">
                 <div className="flex items-center justify-between gap-2">
-                  <span className="text-slate-900 text-sm font-medium truncate">{fx.homeOrgName ? `${fx.homeOrgName} ${fx.homeTeamName}` : (fx.homeTeamName ?? "")}</span>
+                  <span className="text-slate-900 text-sm font-medium truncate">{resolveName(fx.homeTeamId, fx.homeOrgName, fx.homeTeamName)}</span>
                   <span className="font-mono text-slate-900 text-sm font-bold shrink-0">
                     {fx.homeScore ?? 0}–{fx.awayScore ?? 0}
                   </span>
-                  <span className="text-slate-900 text-sm font-medium text-right truncate">{fx.awayOrgName ? `${fx.awayOrgName} ${fx.awayTeamName}` : (fx.awayTeamName ?? "")}</span>
+                  <span className="text-slate-900 text-sm font-medium text-right truncate">{resolveName(fx.awayTeamId, fx.awayOrgName, fx.awayTeamName)}</span>
                 </div>
                 <div className="micro-label mt-0.5">{formatFixtureDate(fx.scheduledAt)}</div>
               </div>
@@ -2894,7 +2904,7 @@ export default function CompetitionManage() {
         />
       )}
       {validTab === 'results' && (
-        <ResultsTab competition={competition} fixtures={fixtures} />
+        <ResultsTab competition={competition} fixtures={fixtures} teams={teams} />
       )}
       {validTab === 'standings' && competition.type === 'league' && (
         <LeagueStandingsTab competition={competition} />

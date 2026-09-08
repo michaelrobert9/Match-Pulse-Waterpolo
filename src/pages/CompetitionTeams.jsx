@@ -9,7 +9,7 @@ import {
   fetchCompetitionSquad, fetchCompetitionTeamSheetSquad,
   addToCompetitionSquad, removeFromCompetitionSquad,
 } from '../lib/adminQueries'
-import { competitionTeamLabel } from '../lib/teamNaming'
+import { competitionTeamLabel, composeTeamDisplay } from '../lib/teamNaming'
 import { buildIdentity } from '../lib/teamIdentity'
 import { prefetchTeams, prefetchOrgs, peekTeam, peekOrg } from '../lib/teamCache'
 import { competitionUrl, matchUrl, playerUrl } from '../lib/slugify'
@@ -121,13 +121,13 @@ function MatchRow({ match, teamId }) {
   return (
     <Link to={matchUrl(match)} className="block bg-white rounded-xl border border-slate-200 px-4 py-3 hover:border-slate-300 transition-colors shadow-sm">
       <div className="flex items-center gap-2">
-        <span className={`text-sm truncate flex-1 ${homeIsTeam ? 'font-bold text-slate-900' : 'text-slate-600'}`}>{match.homeDisplay || match.homeTeamName}</span>
+        <span className={`text-sm truncate flex-1 ${homeIsTeam ? 'font-bold text-slate-900' : 'text-slate-600'}`}>{match.homeDisplay || composeTeamDisplay(match.homeOrgName, match.homeTeamName)}</span>
         <span className="mx-2 text-center shrink-0 min-w-[48px]">
           {isFinal || isLive
             ? <span className={`font-mono font-black tabular-nums ${isLive ? 'text-red-600' : 'text-slate-900'}`}>{match.homeScore}–{match.awayScore}</span>
             : <span className="font-mono text-slate-500 text-xs">{fmtDate(match.scheduledAt)}</span>}
         </span>
-        <span className={`text-sm truncate flex-1 text-right ${!homeIsTeam ? 'font-bold text-slate-900' : 'text-slate-600'}`}>{match.awayDisplay || match.awayTeamName}</span>
+        <span className={`text-sm truncate flex-1 text-right ${!homeIsTeam ? 'font-bold text-slate-900' : 'text-slate-600'}`}>{match.awayDisplay || composeTeamDisplay(match.awayOrgName, match.awayTeamName)}</span>
       </div>
     </Link>
   )

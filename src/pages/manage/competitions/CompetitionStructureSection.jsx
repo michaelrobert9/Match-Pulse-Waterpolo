@@ -764,7 +764,7 @@ function PoolCard({
             {poolMatchList.map(m => (
               <li key={m.id} className="flex items-center gap-2 text-[12px] bg-slate-50 border border-slate-100 rounded-lg px-2.5 py-2">
                 <span className="flex-1 truncate text-slate-700">
-                  {m.homeOrgName ? `${m.homeOrgName} ${m.homeTeamName}` : (m.homeTeamName ?? "")} <span className="text-slate-400">v</span> {m.awayOrgName ? `${m.awayOrgName} ${m.awayTeamName}` : (m.awayTeamName ?? "")}
+                  {teamName(m.homeTeamId)} <span className="text-slate-400">v</span> {teamName(m.awayTeamId)}
                 </span>
                 {fmtMatchTime(m.scheduledAt) && (
                   <span className="text-slate-400 shrink-0 tabular-nums">{fmtMatchTime(m.scheduledAt)}</span>
@@ -814,7 +814,7 @@ function PoolCard({
               const m = matches[f.matchId]
               return (
                 <div key={f.matchId} className="flex items-center gap-2 text-[12px]">
-                  <span className="flex-1 truncate text-slate-600">{m.homeOrgName ? `${m.homeOrgName} ${m.homeTeamName}` : (m.homeTeamName ?? "")} v {m.awayOrgName ? `${m.awayOrgName} ${m.awayTeamName}` : (m.awayTeamName ?? "")}</span>
+                  <span className="flex-1 truncate text-slate-600">{teamName(m.homeTeamId)} v {teamName(m.awayTeamId)}</span>
                   <button onClick={() => onAssignFixture(f.matchId, pool.poolId, false)} disabled={busy}
                     className="text-[10px] font-bold uppercase tracking-widest text-emerald-600 hover:text-emerald-500 border border-emerald-200 rounded px-2 py-0.5 disabled:opacity-40">Add</button>
                 </div>
@@ -1392,7 +1392,7 @@ function KnockoutMatchCard({
               if (!m) return null
               return (
                 <option key={f.matchId} value={f.matchId}>
-                  {m.homeOrgName ? `${m.homeOrgName} ${m.homeTeamName}` : (m.homeTeamName ?? "")} v {m.awayOrgName ? `${m.awayOrgName} ${m.awayTeamName}` : (m.awayTeamName ?? "")}{m.status === 'final' ? ` (${m.homeScore ?? 0}–${m.awayScore ?? 0})` : ''}
+                  {teamName(m.homeTeamId)} v {teamName(m.awayTeamId)}{m.status === 'final' ? ` (${m.homeScore ?? 0}–${m.awayScore ?? 0})` : ''}
                 </option>
               )
             })}
