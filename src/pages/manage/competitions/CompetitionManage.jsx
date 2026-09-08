@@ -20,6 +20,8 @@ import {
   updateCompetitionMemberName,
   updateScheduleConfig,
   generateUniqueMatchSlug,
+  createMatch,
+  deleteMatch,
   fetchCompetitionStaff, setCompetitionStaff, removeCompetitionStaff,
   recalculateCompetitionStats,
   submitFixtureResult, postponeFixture, cancelFixture,
@@ -2232,36 +2234,22 @@ function FixturesTab({ competition, teams, fixtures, setFixtures }) {
       const home        = teams.find(t => t.id === newForm.homeTeamId)
       const away        = teams.find(t => t.id === newForm.awayTeamId)
       const scheduledAt = newForm.scheduledAt ? new Date(newForm.scheduledAt) : null
-      const seasonStr   = competition.season ? String(competition.season) : null
-      // Frozen composed Display name — "Org Name – Team Name" — stored on the
-      // match so raw-field views never show a bare team label.
-      const homeDisplay = composeTeamDisplay(home.orgName, home.displayName)
-      const awayDisplay = composeTeamDisplay(away.orgName, away.displayName)
-      const baseSlug    = buildMatchSlug(home.displayName, away.displayName)
-      const matchSlug   = seasonStr
-        ? await generateUniqueMatchSlug(seasonStr, baseSlug)
-        : baseSlug
-      const compSlug    = competition.slug || null
-      const ref = await addDoc(collection(db, 'matches'), {
-        competitionId: competition.id,
-        ownerOrgId: competition.ownerOrgId || null,
-        homeTeamId: home.id, homeTeamName: home.displayName, homeDisplay, homeTeamColor: home.primaryColor || null,
-        homeOrgId: home.organizationId ?? null, homeOrgName: home.orgName || null, homeRegistered: !!home.organizationId,
-        awayTeamId: away.id, awayTeamName: away.displayName, awayDisplay, awayTeamColor: away.primaryColor || null,
-        awayOrgId: away.organizationId ?? null, awayOrgName: away.orgName || null, awayRegistered: !!away.organizationId,
-        homeScore: 0, awayScore: 0,
-        periods: Number(newForm.periods), periodMinutes: Number(newForm.periodMinutes),
-        breakMinutes: Array.isArray(newForm.breakMinutes) ? newForm.breakMinutes : DEFAULT_BREAK_MINUTES,
-        goals: [], cards: [], controlLog: [],
-        startedAt: null, pausedAt: null, totalPausedMs: 0, nextPeriodIndex: 1,
-        scheduledAt, pitch: composeVenuePitch(newForm.pitch || '', newForm.facilityName),
-        venueId: newForm.venueId || null, venueSlug: newForm.venueSlug || null,
-        facilityId: newForm.facilityId || null, facilityName: newForm.facilityName || null,
-        indoor: !!newForm.indoor, status: 'scheduled', tracked: false,
-        matchSlug,
-        ...(seasonStr ? { season: seasonStr } : {}),
-        ...(compSlug && seasonStr ? { competitionSlug: compSlug, competitionSeason: seasonStr } : {}),
-        createdAt: serverTimestamp(),
+      // Competition match: createMatch builds the competition-scoped, dateless
+      // slug + URL and resolves the FULL organisation name live, so the URL and
+      // the stored fields are never a bare team label.
+      const ref = await createMatch(competition.id, home, away, {
+        scheduledAt,
+        pitch:           newForm.pitch || '',
+        venueId:         newForm.venueId || null,
+        venueSlug:       newForm.venueSlug || null,
+        facilityId:      newForm.facilityId || null,
+        facilityName:    newForm.facilityName || null,
+        season:          competition.season ?? null,
+        competitionSlug: competition.slug || null,
+        periods:         Number(newForm.periods),
+        periodMinutes:   Number(newForm.periodMinutes),
+        breakMinutes:    Array.isArray(newForm.breakMinutes) ? newForm.breakMinutes : DEFAULT_BREAK_MINUTES,
+        indoor:          !!newForm.indoor,
       })
       await addFixtureToCompetition(competition.id,
         { id: ref.id, homeTeamId: home.id, awayTeamId: away.id },
@@ -2269,7 +2257,8 @@ function FixturesTab({ competition, teams, fixtures, setFixtures }) {
       )
       setFixtures(prev => [...prev, {
         id: ref.id, homeTeamName: home.displayName, awayTeamName: away.displayName,
-        homeDisplay, awayDisplay, homeOrgName: home.orgName || null, awayOrgName: away.orgName || null,
+        homeDisplay: composeTeamDisplay(home.orgName, home.displayName), awayDisplay: composeTeamDisplay(away.orgName, away.displayName),
+        homeOrgName: home.orgName || null, awayOrgName: away.orgName || null,
         homeTeamId: home.id, awayTeamId: away.id,
         scheduledAt, status: 'scheduled', tracked: false, homeScore: 0, awayScore: 0,
       }])
@@ -2304,9 +2293,8 @@ function FixturesTab({ competition, teams, fixtures, setFixtures }) {
   }
 
   async function handleDelete(fixtureId) {
-    if (!confirm('Delete this match?')) return
-    await deleteDoc(doc(db, 'matches', fixtureId))
-    removeFixtureFromCompetition(competition.id, fixtureId).catch(() => {})
+    if (!confirm('Move this match to the recycle bin? You can restore it from admin → Deleted matches.')) return
+    await deleteMatch(fixtureId)
     setFixtures(prev => prev.filter(f => f.id !== fixtureId))
   }
 

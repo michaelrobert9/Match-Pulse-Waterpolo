@@ -868,7 +868,9 @@ service cloud.firestore {
       // competitions/.../fixtures), and never deletes the underlying match.
       allow delete: if isPlatformAdmin()
         || hasMatchAuthorityForSide(resource.data.get('homeOrgId', ''), resource.data.get('homeTeamId', ''))
-        || hasMatchAuthorityForSide(resource.data.get('awayOrgId', ''), resource.data.get('awayTeamId', ''));
+        || hasMatchAuthorityForSide(resource.data.get('awayOrgId', ''), resource.data.get('awayTeamId', ''))
+        || (resource.data.get('competitionId', '') != ''
+            && canAdministerCompetition(resource.data.get('competitionId', '')));
 
       match /events/{eventId} {
         allow read:  if true;

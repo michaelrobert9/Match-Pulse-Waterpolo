@@ -114,20 +114,25 @@ function fmtDate(val) {
   return d ? d.toLocaleDateString('en-ZA', { day: 'numeric', month: 'short', year: 'numeric' }) : 'TBD'
 }
 
-function MatchRow({ match, teamId }) {
+function MatchRow({ match, teamId, identities = {} }) {
   const isFinal = match.status === 'final'
   const isLive  = match.status === 'live'
   const homeIsTeam = match.homeTeamId === teamId
+  // Resolve the name LIVE (org match name / org name + team) from the identity
+  // map built off the current org record — never the frozen stored string — so
+  // a later org rename flows through and a team is never shown on its own.
+  const homeName = identities[match.homeTeamId]?.primary || composeTeamDisplay(match.homeOrgName, match.homeTeamName)
+  const awayName = identities[match.awayTeamId]?.primary || composeTeamDisplay(match.awayOrgName, match.awayTeamName)
   return (
     <Link to={matchUrl(match)} className="block bg-white rounded-xl border border-slate-200 px-4 py-3 hover:border-slate-300 transition-colors shadow-sm">
       <div className="flex items-center gap-2">
-        <span className={`text-sm truncate flex-1 ${homeIsTeam ? 'font-bold text-slate-900' : 'text-slate-600'}`}>{match.homeDisplay || composeTeamDisplay(match.homeOrgName, match.homeTeamName)}</span>
+        <span className={`text-sm truncate flex-1 ${homeIsTeam ? 'font-bold text-slate-900' : 'text-slate-600'}`}>{homeName}</span>
         <span className="mx-2 text-center shrink-0 min-w-[48px]">
           {isFinal || isLive
             ? <span className={`font-mono font-black tabular-nums ${isLive ? 'text-red-600' : 'text-slate-900'}`}>{match.homeScore}–{match.awayScore}</span>
             : <span className="font-mono text-slate-500 text-xs">{fmtDate(match.scheduledAt)}</span>}
         </span>
-        <span className={`text-sm truncate flex-1 text-right ${!homeIsTeam ? 'font-bold text-slate-900' : 'text-slate-600'}`}>{match.awayDisplay || composeTeamDisplay(match.awayOrgName, match.awayTeamName)}</span>
+        <span className={`text-sm truncate flex-1 text-right ${!homeIsTeam ? 'font-bold text-slate-900' : 'text-slate-600'}`}>{awayName}</span>
       </div>
     </Link>
   )
@@ -311,14 +316,14 @@ export default function CompetitionTeams() {
             <div className="micro-label text-slate-500 mb-2">Fixtures</div>
             {upcoming.length === 0
               ? <p className="text-slate-400 text-sm py-2">No upcoming matches.</p>
-              : <div className="space-y-2">{upcoming.map(m => <MatchRow key={m.id} match={m} teamId={teamId} />)}</div>}
+              : <div className="space-y-2">{upcoming.map(m => <MatchRow key={m.id} match={m} teamId={teamId} identities={identities} />)}</div>}
           </section>
 
           <section>
             <div className="micro-label text-slate-500 mb-2">Results</div>
             {results.length === 0
               ? <p className="text-slate-400 text-sm py-2">No results yet.</p>
-              : <div className="space-y-2">{results.map(m => <MatchRow key={m.id} match={m} teamId={teamId} />)}</div>}
+              : <div className="space-y-2">{results.map(m => <MatchRow key={m.id} match={m} teamId={teamId} identities={identities} />)}</div>}
           </section>
 
           <section>
