@@ -2653,6 +2653,66 @@ export async function fetchCompetitionFixtures(competitionId) {
   return snap.docs.map(d => ({ matchId: d.id, ...d.data() }))
 }
 
+// Apply the competition's current match format to its matches AND re-link each
+// side's organisation from the team record. This is what makes an edit to the
+// competition format actually reach the fixtures, and it repairs matches whose
+// org link is missing. The format is applied only to matches NOT yet started
+// (status 'scheduled' or unset, no startedAt) so a live or finished match is
+// never rewritten; the org re-link is applied to every match, since it only
+// fills in the association the org pages and standings read. Returns how many
+// matches changed. Writes in chunks to stay within Firestore's batch limit.
+export async function resyncCompetitionMatches(competitionId, matchFormat = null) {
+  await assertCompetitionAdmin(competitionId)
+  const snap = await getDocs(query(collection(db, 'matches'), where('competitionId', '==', competitionId)))
+  const matches = snap.docs.map(d => ({ id: d.id, ...d.data() }))
+  if (matches.length === 0) return 0
+
+  // Resolve each distinct team's org once: team -> organizationId -> org name.
+  const teamIds = [...new Set(matches.flatMap(m => [m.homeTeamId, m.awayTeamId]).filter(Boolean))]
+  const orgOfTeam = new Map()
+  await Promise.all(teamIds.map(async (tid) => {
+    const t = await getDoc(doc(db, 'teams', tid)).catch(() => null)
+    const orgId = t && t.exists() ? (t.data().organizationId ?? null) : null
+    let orgName = null
+    if (orgId) {
+      const o = await getDoc(doc(db, 'organizations', orgId)).catch(() => null)
+      orgName = o && o.exists() ? (o.data().name ?? null) : null
+    }
+    orgOfTeam.set(tid, { orgId, orgName })
+  }))
+
+  const notStarted = (m) => !m.startedAt && (m.status == null || m.status === 'scheduled')
+
+  let batch = writeBatch(db), ops = 0, changed = 0
+  const flush = async () => { if (ops > 0) { await batch.commit(); batch = writeBatch(db); ops = 0 } }
+  for (const m of matches) {
+    const patch = {}
+    const h = m.homeTeamId ? orgOfTeam.get(m.homeTeamId) : null
+    if (h && h.orgId && (m.homeOrgId !== h.orgId || (h.orgName && m.homeOrgName !== h.orgName))) {
+      patch.homeOrgId = h.orgId; patch.homeRegistered = true
+      if (h.orgName) patch.homeOrgName = h.orgName
+    }
+    const a = m.awayTeamId ? orgOfTeam.get(m.awayTeamId) : null
+    if (a && a.orgId && (m.awayOrgId !== a.orgId || (a.orgName && m.awayOrgName !== a.orgName))) {
+      patch.awayOrgId = a.orgId; patch.awayRegistered = true
+      if (a.orgName) patch.awayOrgName = a.orgName
+    }
+    if (matchFormat && notStarted(m)) {
+      patch.periods       = Number(matchFormat.periods) || DEFAULT_PERIODS
+      patch.periodMinutes = Number(matchFormat.periodMinutes) || 0
+      patch.breakMinutes  = Array.isArray(matchFormat.breakMinutes) ? matchFormat.breakMinutes.map(Number) : DEFAULT_BREAK_MINUTES
+      if ('indoor' in matchFormat) patch.indoor = matchFormat.indoor === true
+      if ('sevens' in matchFormat) patch.sevens = matchFormat.sevens === true
+    }
+    if (Object.keys(patch).length > 0) {
+      batch.update(doc(db, 'matches', m.id), patch); ops++; changed++
+      if (ops >= 400) await flush()
+    }
+  }
+  await flush()
+  return changed
+}
+
 export async function fetchCompetitionTeams(competitionId) {
   const snap = await getDocs(collection(db, 'competitions', competitionId, 'teams'))
   return snap.docs.map(d => ({ id: d.id, ...d.data() }))
