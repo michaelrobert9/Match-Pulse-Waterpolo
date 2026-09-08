@@ -9,6 +9,7 @@ import {
 import { updateMatchGroup, deleteMatchGroup } from '../lib/adminQueries'
 import { configured } from '../firebase'
 import ResultsSpine from '../components/ResultsSpine'
+import { MatchVersus } from '../components/TeamIdentity'
 import VenuePicker from '../components/VenuePicker'
 import { computeTally, scoreNoun } from '../lib/matchTally'
 import { ageLabel } from '../lib/matchPaths'
@@ -224,7 +225,7 @@ function EditGroupDialog({ group, children, onClose }) {
                       {willTake.map(c => (
                         <li key={c.id} className="text-[12px] text-slate-600 flex gap-1.5">
                           <span className="font-semibold text-slate-500 shrink-0">{ageLabel(c.ageSlug)}</span>
-                          <span className="truncate">{c.homeTeamName} vs {c.awayTeamName}</span>
+                          <MatchVersus match={c} className="truncate min-w-0 text-[12px] text-slate-600" vsClass="text-slate-400" />
                         </li>
                       ))}
                     </ul>
@@ -312,7 +313,7 @@ function DeleteGroupDialog({ group, children, onClose, onDeleted }) {
               {children.map(c => (
                 <li key={c.id} className="text-[12px] text-slate-600 flex gap-1.5">
                   <span className="font-semibold text-slate-500 shrink-0">{ageLabel(c.ageSlug)}</span>
-                  <span className="truncate">{c.homeTeamName} vs {c.awayTeamName}</span>
+                  <MatchVersus match={c} className="truncate min-w-0 text-[12px] text-slate-600" vsClass="text-slate-400" />
                 </li>
               ))}
             </ul>

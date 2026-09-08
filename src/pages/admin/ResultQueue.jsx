@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { CheckCircle2, Clock, AlertTriangle, Plus, X } from 'lucide-react'
 import { fetchAwaitingResultMatches, toDate } from '../../lib/queries'
 import { submitFixtureResult, postponeFixture, cancelFixture } from '../../lib/adminQueries'
+import { useTeamIdentity } from '../../hooks/useTeamIdentity'
 
 // Admin confirmation queue (spec §6). Lists every fixture in `awaiting_result`
 // — placed there by the daily sweep (live → awaiting) or as a submit-only
@@ -83,10 +84,10 @@ function QueueRow({ match, onResolved }) {
   const homeCount = Math.max(0, Math.min(99, parseInt(home, 10) || 0))
   const awayCount = Math.max(0, Math.min(99, parseInt(away, 10) || 0))
 
-  const homeLabel = match.homeOrgName
-    ? `${match.homeOrgName} ${match.homeTeamName}` : match.homeTeamName || 'Home'
-  const awayLabel = match.awayOrgName
-    ? `${match.awayOrgName} ${match.awayTeamName}` : match.awayTeamName || 'Away'
+  const homeIdentity = useTeamIdentity(match, "home")
+  const awayIdentity = useTeamIdentity(match, "away")
+  const homeLabel = homeIdentity?.primary || match.homeTeamName || "Home"
+  const awayLabel = awayIdentity?.primary || match.awayTeamName || "Away"
 
   function addCard() {
     setCards(prev => [...prev, { side: 'home', cardType: 'yellow', playerName: '' }])

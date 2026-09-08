@@ -40,9 +40,12 @@ export function buildIdentity({ team, org, fallback }) {
   // team must always show its organisation). Only an unregistered / manual
   // opponent (no team record) falls back to the stored display string. The URL
   // slug is separate and stays frozen — this changes the displayed name only.
-  const primary = team
-    ? composeTeamDisplay(namePortion, teamLabel)
-    : (fb.display || composeTeamDisplay(namePortion, teamLabel))
+  // Never emit a bare team label for a registered side: when the org portion
+  // resolves, compose live (org – team); when it does not, fall back to the
+  // frozen coupled display snapshot rather than a lone "U16A". A manual /
+  // unregistered opponent (no org portion) keeps its stored display string.
+  const composed = composeTeamDisplay(namePortion, teamLabel)
+  const primary = namePortion ? composed : (fb.display || composed)
 
   // Logo: apply the same inherit-vs-own rule as resolveTeamProfileIdentity —
   // a team's own logo only when team-level management is on, otherwise the
