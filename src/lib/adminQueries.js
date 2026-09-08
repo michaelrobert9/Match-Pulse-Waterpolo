@@ -26,10 +26,10 @@ function userEmail() { return auth?.currentUser?.email ?? null }
 // layer so authorisation is enforced at the source, not only in the UI.
 async function currentAuthState() {
   const userId = uid()
-  if (!userId) return { uid: null, isPlatformAdmin: false, orgRoles: {} }
+  if (!userId) return { uid: null, isPlatformAdmin: false, orgRoles: {}, competitionRoles: {} }
   const snap = await getDoc(doc(identityDb, 'users', userId))
   const data = snap.exists() ? snap.data() : {}
-  return { uid: userId, isPlatformAdmin: data.platformAdmin === true, orgRoles: data.orgRoles ?? {} }
+  return { uid: userId, isPlatformAdmin: data.platformAdmin === true, orgRoles: data.orgRoles ?? {}, competitionRoles: data.competitionRoles ?? {} }
 }
 
 // Throws competition/not-found or competition/not-authorised. Returns the
