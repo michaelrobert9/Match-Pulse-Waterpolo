@@ -12,7 +12,8 @@
 // The optional identifier is NEVER merged into the primary line.
 
 import { getTeam, getOrg, peekTeam, peekOrg, prefetchTeams, prefetchOrgs } from './teamCache'
-import { generatedTeamName, composeTeamDisplay } from './teamNaming'
+import { composeTeamDisplay } from './teamNaming'
+import { coloredTeamName } from './capColor'
 
 // Compose an identity from a (possibly null) team doc, its (possibly null) org
 // doc, and the match-side fallback fields.
@@ -23,7 +24,7 @@ export function buildIdentity({ team, org, fallback }) {
   // displayName is only a cache/fallback for legacy teams that predate the
   // structured model. Manual opponents use the stored match name.
   const teamLabel = team
-    ? (generatedTeamName({ ...team, orgGenderProfile: org?.genderProfile }) || team.displayName || fb.teamName || '')
+    ? (coloredTeamName({ ...team, orgGenderProfile: org?.genderProfile }) || team.displayName || fb.teamName || '')
     : (fb.teamName ?? '')
   // Name portion, in resolution order: the team's own name (associations and
   // leagues — the organisation then appears nowhere on the card), else the
@@ -65,7 +66,7 @@ export function buildIdentity({ team, org, fallback }) {
 export function resolveTeamProfileIdentity(team, org) {
   const mgmtOn = org?.teamLevelManagement === true
   const canonicalName =
-    generatedTeamName({ ...(team ?? {}), orgGenderProfile: org?.genderProfile })
+    coloredTeamName({ ...(team ?? {}), orgGenderProfile: org?.genderProfile })
     || team?.displayName || team?.name || ''
   return {
     name:  (mgmtOn && team?.name)    ? team.name    : canonicalName,

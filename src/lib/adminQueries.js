@@ -9,7 +9,8 @@ import { slugify, matchSlug as buildMatchSlug } from './slugify'
 import { matchPath, competitionMatchPath, dedupeSlug } from './matchPaths'
 import { redirectKey } from './queries'
 import { periodLabels, DEFAULT_PERIODS, DEFAULT_PERIOD_MINUTES, DEFAULT_BREAK_MINUTES } from './matchClock'
-import { generatedTeamName, teamStructuralKey, levelLabel, composeTeamDisplay } from './teamNaming'
+import { levelLabel, composeTeamDisplay } from './teamNaming'
+import { coloredTeamName, coloredStructuralKey } from './capColor'
 import { defaultRulesForType, rulesHash } from './competitionRules'
 import { assertCanAdministerCompetition } from './competitionAuth'
 import { schedulePoolFixtures } from './scheduler'
@@ -823,7 +824,7 @@ export async function createTeam(orgData, displayName, options = {}) {
   const {
     competitionId = null, season = null,
     ageGroup = null, gender = null, division = null, teamLevel = null,
-    teamName = null,
+    teamName = null, teamColor = null,
   } = options
   const orgSlug = orgData.slug || slugify(orgData.name)
   const name = displayName || orgData.name
@@ -831,16 +832,17 @@ export async function createTeam(orgData, displayName, options = {}) {
   // division (club/association), plus ageGroup + teamLevel (a letter for age
   // sides, an ordinal for senior sides). `teamLabel` and `structuralKey` are
   // DERIVED here and stored for display / duplicate-detection — never parsed
-  // back into structure.
-  const fields = { ageGroup, gender, division, teamLevel }
+  // back into structure. `teamColor` is a repo-local water-polo cap colour
+  // (white/blue) folded into the key so same-level colours stay distinct.
+  const fields = { ageGroup, gender, division, teamLevel, teamColor }
   const teamLabel     = levelLabel(fields) || null
-  const structuralKey = teamStructuralKey(fields) || null
+  const structuralKey = coloredStructuralKey(fields) || null
   // The slug follows the SAME structured rules as the display name. The URL
   // already carries the org (/{orgSlug}/…), so the team segment is the team's
   // own identity: the optional per-team name (associations/leagues) plus the
   // level + gender/division label — i.e. the display name minus the org. Falls
   // back to the display name / season so every team still gets a unique URL.
-  const slugSegment = [teamName, generatedTeamName({ ...fields, orgGenderProfile: orgData.genderProfile })]
+  const slugSegment = [teamName, coloredTeamName({ ...fields, orgGenderProfile: orgData.genderProfile })]
     .map(s => (s ?? '').trim()).filter(Boolean).join(' ') || name || season || orgSlug
   const slug = await generateUniqueTeamSlug(orgSlug, slugSegment)
   return addDoc(collection(db, 'teams'), {
@@ -862,6 +864,7 @@ export async function createTeam(orgData, displayName, options = {}) {
     ...(gender        ? { gender }        : {}),
     ...(division      ? { division }      : {}),
     ...(teamLevel     ? { teamLevel }     : {}),
+    ...(teamColor     ? { teamColor }     : {}),
     // Optional per-team name (associations/leagues): replaces the org's match
     // name in the display — "Durban Panthers – U13 Boys".
     ...(teamName?.trim() ? { teamName: teamName.trim() } : {}),
@@ -949,32 +952,38 @@ export async function searchOpponents(term, { excludeOrgId } = {}) {
 export async function updateTeam(id, data) {
   const { organizationId, orgName, ...patch } = data ?? {}
   // Any change to a structural field re-derives the display name, level label
-  // and structural key from the discrete fields.
-  const structuralChange = ['gender', 'division', 'ageGroup', 'teamLevel', 'orgGenderProfile']
+  // and structural key from the discrete fields. `teamColor` (repo-local water-
+  // polo cap colour) participates too, so recolouring re-derives the name/key.
+  const structuralChange = ['gender', 'division', 'ageGroup', 'teamLevel', 'teamColor', 'orgGenderProfile']
     .some(k => k in patch)
   if (structuralChange) {
+    // A structural edit that omits teamColor (e.g. governance migration) must
+    // not silently drop an existing colour: fall back to the stored value. Read
+    // the current doc once when we need either the org name or the stored colour.
+    const needColor = !('teamColor' in patch)
+    let cur = null
+    if (!orgName || needColor) cur = await getDoc(doc(db, 'teams', id)).catch(() => null)
+    const curData = cur && cur.exists() ? cur.data() : null
+    const teamColor = needColor ? (curData?.teamColor ?? null) : (patch.teamColor ?? null)
     const fields = {
       gender:           patch.gender    ?? null,
       division:         patch.division   ?? null,
       ageGroup:         patch.ageGroup   ?? null,
       teamLevel:        patch.teamLevel  ?? null,
+      teamColor,
       orgGenderProfile: patch.orgGenderProfile,
     }
-    const name = generatedTeamName(fields)
+    const name = coloredTeamName(fields)
     if (name) {
       patch.displayName = name
       // Keep searchName org-led (see createTeam) so a rename never regresses the
       // team to being unsearchable by its school/club name. orgName is stripped
       // from the patch, so recover it from the passed data or the stored doc.
-      let on = orgName
-      if (!on) {
-        const cur = await getDoc(doc(db, 'teams', id)).catch(() => null)
-        on = cur && cur.exists() ? (cur.data().orgName ?? null) : null
-      }
+      const on = orgName || (curData?.orgName ?? null)
       patch.searchName = [on, name].filter(Boolean).join(' ').toLowerCase()
     }
     patch.teamLabel     = levelLabel(fields) || null
-    patch.structuralKey = teamStructuralKey(fields) || null
+    patch.structuralKey = coloredStructuralKey(fields) || null
     delete patch.orgGenderProfile   // derivation input only, not a stored field
   }
   return updateDoc(doc(db, 'teams', id), { ...patch, updatedAt: serverTimestamp() })

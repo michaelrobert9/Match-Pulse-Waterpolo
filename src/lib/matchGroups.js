@@ -6,7 +6,8 @@
 // Repo-local, because the pairing UX is a P3 concern, but the band key and order
 // it emits are the canonical ones.
 
-import { teamStructuralKey, schoolGenderProfile, seniorityDescriptor, levelLabel } from './teamNaming'
+import { schoolGenderProfile, seniorityDescriptor, levelLabel } from './teamNaming'
+import { coloredStructuralKey } from './capColor'
 import { compareSeniority } from './seniority'
 import { slugify, ageLabel, matchPath } from './matchPaths'
 import { computeTally } from './matchTally'
@@ -30,7 +31,9 @@ function teamGender(team, org) {
 // paired manually rather than mis-banded on its gender/division alone.
 export function teamBandKey(team, org) {
   if (!team?.ageGroup && !team?.teamLevel) return ''
-  return teamStructuralKey({ ...team, gender: teamGender(team, org) })
+  // Cap colour (repo-local) is part of the identity, so U14 White and U14 Blue
+  // band separately rather than merging into one U14 band.
+  return coloredStructuralKey({ ...team, gender: teamGender(team, org) })
 }
 
 // The age/level token used in the child URL and for ordering. Built from the
