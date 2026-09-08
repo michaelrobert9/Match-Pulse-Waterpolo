@@ -1050,7 +1050,7 @@ export default function ScoreMatch() {
 
   return (
     <div className="md:flex md:justify-center md:min-h-screen md:bg-slate-950">
-      <div className={`max-w-2xl mx-auto overflow-hidden ${t.root} flex flex-col transition-colors md:border-x md:border-slate-800 md:shadow-2xl`} style={{ height: '100dvh' }}>
+      <div className={`max-w-4xl mx-auto overflow-hidden ${t.root} flex flex-col transition-colors md:border-x md:border-slate-800 md:shadow-2xl`} style={{ height: '100dvh' }}>
       {/* Header — back · title · status on the left; Result on the bar; the rest
           (Restart, Edit, Lineups, theme) collapse into a ⋯ menu so the row never
           overflows or overlaps on a narrow phone. */}
