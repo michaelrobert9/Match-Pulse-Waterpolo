@@ -116,7 +116,12 @@ export default function CompetitionOverview() {
     if (isFestival || teams.length === 0) return []
     const members = teams.map(t => ({
       teamId: t.id, status: 'accepted',
-      displaySnapshot: { teamName: t.displayName, orgName: t.orgName },
+      displaySnapshot: {
+        teamName: t.displayName,
+        orgName: t.orgName,
+        // Standings prefer the org's live match name over its full name.
+        matchName: (t.organizationId && orgMap[t.organizationId]?.matchName) || null,
+      },
     }))
     const fxShim = fixtures.map(m => ({
       matchId: m.id, homeTeamId: m.homeTeamId, awayTeamId: m.awayTeamId,
@@ -132,7 +137,8 @@ export default function CompetitionOverview() {
   // A player represents their ORGANISATION (the name it plays under) — the bare
   // team label is not what we surface. Map teamId → org match-name for the
   // top-scorer subtitle; fall back to the team label only when a team has no org.
-  const orgNameById = Object.fromEntries(teams.map(t => [t.id, t.orgName || null]))
+  const orgNameById = Object.fromEntries(teams.map(t => [t.id,
+    (t.organizationId && (orgMap[t.organizationId]?.matchName || orgMap[t.organizationId]?.name)) || t.orgName || null]))
 
   // Final-standings display name: an org's MATCH NAME (else its full name), never
   // the team name — EXCEPT when that org fields more than one team here, when the
