@@ -4,6 +4,7 @@ import {
   serverTimestamp, writeBatch, increment, arrayUnion, deleteField,
 } from 'firebase/firestore'
 import { httpsCallable } from 'firebase/functions'
+import { sendEmailVerification } from 'firebase/auth'
 import { db, identityDb, auth, functions, SPORT_KEY } from '../firebase'
 import { slugify, matchSlug as buildMatchSlug } from './slugify'
 import { matchPath, competitionMatchPath, dedupeSlug } from './matchPaths'
@@ -2504,11 +2505,24 @@ export function isProfileClaimed(person) {
 // intentionally no identity verification; the master-admin reassignment tool
 // (adminLinkProfileToUser) is the safety valve for mistakes.
 export async function claimPlayerProfile(personId, relationship) {
-  const userId = uid()
-  if (!userId) throw new Error('You must be signed in to claim a profile.')
+  const user = auth?.currentUser
+  if (!user) throw new Error('You must be signed in to claim a profile.')
   if (relationship !== 'player' && relationship !== 'parent') {
     throw new Error('Choose whether you are the player or a parent/guardian.')
   }
+  // The claim rules require a VERIFIED email. Reload to pick up a just-clicked
+  // verification; if it is still unverified, send a fresh link and stop with a
+  // clear, actionable message rather than a raw "insufficient permissions" error.
+  await user.reload().catch(() => {})
+  if (!user.emailVerified) {
+    sendEmailVerification(user).catch(() => {})
+    const e = new Error(`Please verify your email first. We've sent a link to ${user.email || 'your inbox'}; open it, then tap claim again.`)
+    e.code = 'claim/email-unverified'; throw e
+  }
+  // The rules read email_verified off the TOKEN, so force a refresh — otherwise a
+  // just-verified email is still missing from the token used for the write.
+  await user.getIdToken(true).catch(() => {})
+  const userId = user.uid
   const ref = doc(db, 'people', personId)
   const snap = await getDoc(ref)
   if (!snap.exists()) throw new Error('Profile not found.')
