@@ -6,6 +6,10 @@
   body {
     @apply bg-canvas text-slate-900 font-sans antialiased;
     color-scheme: light;
+    /* Never scroll sideways: a stray over-wide element must not push the page
+       off the edge, which showed the dark area behind the app as a black
+       strip and let the menu sit past the edge. */
+    overflow-x: hidden;
   }
 
   /* Keyboard focus ring — visible on focus-visible (keyboard nav), hidden on mouse click.
