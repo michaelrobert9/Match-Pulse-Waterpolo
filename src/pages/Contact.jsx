@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { httpsCallable } from 'firebase/functions'
-import { functions } from '../firebase'
+import { functions, SPORT_KEY } from '../firebase'
 import { useSupportHead } from '../support/head'
 import Turnstile, { turnstileConfigured } from '../components/Turnstile'
 
@@ -46,17 +46,27 @@ export default function Contact() {
     setSending(true)
     setError('')
     try {
-      const call = httpsCallable(functions, 'waterpoloSubmitContactForm')
+      // Single path: the shared MatchPulse callable on the main site. `source`
+      // is this sport's key so the main admin badges the message correctly.
+      // The Functions instance is region-pinned (europe-west1) in firebase.js.
+      const call = httpsCallable(functions, 'submitContactForm')
       await call({
         name: form.name.trim(),
         email: form.email.trim(),
         phone: form.phone.trim(),
         message: form.message.trim(),
-        captchaToken,
+        source: SPORT_KEY,
       })
       setSent(true)
     } catch (err) {
-      setError(err?.message || 'Something went wrong. Please try again.')
+      const code = String(err?.code || '').replace(/^functions\//, '')
+      if (code === 'invalid-argument') {
+        setError('Please add your name, a valid email address and a message, then try again.')
+      } else if (code === 'resource-exhausted') {
+        setError('You’ve sent a few messages recently — please try again in a little while.')
+      } else {
+        setError(err?.message || 'Something went wrong. Please try again.')
+      }
     } finally {
       setSending(false)
     }
