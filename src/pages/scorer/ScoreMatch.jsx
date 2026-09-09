@@ -1702,11 +1702,11 @@ export default function ScoreMatch() {
           <div className="flex gap-2 mb-4">
             {['home', 'away'].map(side => (
               <button key={side} onClick={() => setLineupSide(side)}
-                className={`flex-1 py-2.5 rounded-xl text-sm font-bold border transition-colors flex items-center justify-center gap-2 ${
+                className={`flex-1 min-w-0 px-2 py-2 rounded-xl text-[13px] font-bold border transition-colors flex items-center justify-center gap-1.5 ${
                   lineupSide === side ? 'bg-emerald-600 text-white border-emerald-600' : t.neutralBtn
                 }`}>
                 <span className="w-2 h-2 rounded-sm shrink-0" style={{ backgroundColor: teamColor(side) }} />
-                {teamName(side)}
+                <span className="min-w-0 break-words text-center leading-tight">{teamDisplay(side)}</span>
               </button>
             ))}
           </div>
