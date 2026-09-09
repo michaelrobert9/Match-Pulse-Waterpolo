@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { ChevronRight, ChevronLeft } from 'lucide-react'
 import { Link, useNavigate } from 'react-router-dom'
-import { updateProfile } from 'firebase/auth'
+import { updateProfile, sendEmailVerification } from 'firebase/auth'
 import { doc, getDoc, setDoc, updateDoc, serverTimestamp } from 'firebase/firestore'
 import { useAuth } from '../contexts/AuthContext'
 import { auth, db, identityDb } from '../firebase'
@@ -87,6 +87,38 @@ export default function Profile() {
   const [saving,      setSaving]      = useState(false)
   const [saved,       setSaved]       = useState(false)
   const [error,       setError]       = useState('')
+
+  // Email-verification status + resend. A verified email is required before a
+  // user can claim a player profile, so this page is the place to check it and
+  // request a fresh link if the first never arrived.
+  const [emailVerified, setEmailVerified] = useState(() => auth?.currentUser?.emailVerified ?? true)
+  const [verifyBusy,    setVerifyBusy]    = useState(false)
+  const [verifySent,    setVerifySent]    = useState(false)
+
+  useEffect(() => {
+    auth?.currentUser?.reload?.()
+      .then(() => setEmailVerified(auth.currentUser?.emailVerified ?? true))
+      .catch(() => {})
+  }, [])
+
+  async function resendVerification() {
+    if (!auth?.currentUser || verifyBusy) return
+    setVerifyBusy(true)
+    try {
+      await auth.currentUser.reload().catch(() => {})
+      if (auth.currentUser.emailVerified) { setEmailVerified(true); return }
+      await sendEmailVerification(auth.currentUser)
+      setVerifySent(true)
+    } catch { /* rate-limited or offline — safe to ignore */ }
+    finally { setVerifyBusy(false) }
+  }
+
+  async function checkVerified() {
+    await auth?.currentUser?.reload?.().catch(() => {})
+    const v = auth?.currentUser?.emailVerified ?? false
+    setEmailVerified(v)
+    if (v) await auth.currentUser.getIdToken(true).catch(() => {})
+  }
 
   const orgEntries = Object.entries(orgRoles ?? {})
   const hasOrgs    = orgEntries.length > 0
@@ -200,6 +232,27 @@ export default function Profile() {
         </button>
         <h1 className="text-lg font-display font-bold text-slate-900">Profile</h1>
       </div>
+
+      {/* Email not verified — required before claiming a player profile */}
+      {!emailVerified && (
+        <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3">
+          <div className="text-[10px] font-bold uppercase tracking-widest text-amber-600 mb-1">Verify your email</div>
+          <p className="text-sm text-amber-800 leading-relaxed">
+            Your email address {user?.email && <strong className="font-semibold">{user.email}</strong>} is not verified yet.
+            You need to verify it before you can claim a player profile. Please check your inbox and your spam folder for the link.
+          </p>
+          <div className="flex flex-wrap items-center gap-3 mt-2.5">
+            <button onClick={resendVerification} disabled={verifyBusy || verifySent}
+              className="bg-amber-600 hover:bg-amber-500 disabled:opacity-50 text-white font-bold text-xs uppercase tracking-wider rounded-lg px-4 py-2 transition-colors">
+              {verifySent ? 'Email sent' : verifyBusy ? 'Sending…' : 'Resend verification email'}
+            </button>
+            <button onClick={checkVerified}
+              className="text-xs font-bold text-amber-700 hover:text-amber-900">
+              I have verified, check again
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Access summary */}
       <div className={`flex items-center gap-3 rounded-xl border px-4 py-3 ${roleBadgeColor}`}>
