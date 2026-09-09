@@ -226,7 +226,7 @@ export function computeStandings(competition, members, fixtures, matchesInput, {
   for (const m of confirmedMembers) {
     stats[m.teamId] = mkStats(m.teamId)
     teamNames[m.teamId] = m.displaySnapshot?.teamName ?? m.teamId
-    teamOrgNames[m.teamId] = m.displaySnapshot?.orgName ?? null
+    teamOrgNames[m.teamId] = m.displaySnapshot?.matchName ?? m.displaySnapshot?.orgName ?? null
   }
 
   let played = 0
@@ -385,7 +385,7 @@ export function computeFestivalStats(competition, members, fixtures, matchesInpu
   for (const m of confirmedMembers) {
     stats[m.teamId] = mkStats(m.teamId)
     teamNames[m.teamId] = m.displaySnapshot?.teamName ?? m.teamId
-    teamOrgNames[m.teamId] = m.displaySnapshot?.orgName ?? null
+    teamOrgNames[m.teamId] = m.displaySnapshot?.matchName ?? m.displaySnapshot?.orgName ?? null
   }
 
   for (const fx of fixtures ?? []) {

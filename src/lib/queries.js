@@ -620,7 +620,25 @@ export async function fetchCompetitionBySlugSeason(slug, season) {
 export async function fetchCompetitionMembers(competitionId) {
   if (!configured) return []
   const snap = await getDocs(collection(db, 'competitions', competitionId, 'teams'))
-  return snap.docs.map(d => ({ id: d.id, ...d.data() }))
+  const members = snap.docs.map(d => ({ id: d.id, ...d.data() }))
+  // Enrich each entrant's snapshot with its organisation's LIVE match name (the
+  // short name people use) so standings / pools / festival stats prefer it over
+  // the full organisation name. Best-effort, batched by organisation.
+  const orgIds = [...new Set(members.map(m => m.organizationId).filter(Boolean))]
+  if (orgIds.length) {
+    const matchNameByOrg = {}
+    await Promise.all(orgIds.map(async oid => {
+      try {
+        const o = await getDoc(doc(db, 'organizations', oid))
+        if (o.exists()) matchNameByOrg[oid] = o.data().matchName || null
+      } catch { /* best-effort — fall back to the stored org name */ }
+    }))
+    for (const m of members) {
+      const mn = m.organizationId ? matchNameByOrg[m.organizationId] : null
+      if (mn) m.displaySnapshot = { ...(m.displaySnapshot ?? {}), matchName: mn }
+    }
+  }
+  return members
 }
 
 export async function fetchCompetitionFixtureMembers(competitionId) {

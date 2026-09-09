@@ -2798,7 +2798,24 @@ export async function resyncCompetitionMatches(competitionId, matchFormat = null
 
 export async function fetchCompetitionTeams(competitionId) {
   const snap = await getDocs(collection(db, 'competitions', competitionId, 'teams'))
-  return snap.docs.map(d => ({ id: d.id, ...d.data() }))
+  const members = snap.docs.map(d => ({ id: d.id, ...d.data() }))
+  // Enrich each entrant's snapshot with its organisation's LIVE match name so
+  // structure/pool labels prefer it over the full org name. Best-effort.
+  const orgIds = [...new Set(members.map(m => m.organizationId).filter(Boolean))]
+  if (orgIds.length) {
+    const matchNameByOrg = {}
+    await Promise.all(orgIds.map(async oid => {
+      try {
+        const o = await getDoc(doc(db, 'organizations', oid))
+        if (o.exists()) matchNameByOrg[oid] = o.data().matchName || null
+      } catch { /* best-effort */ }
+    }))
+    for (const m of members) {
+      const mn = m.organizationId ? matchNameByOrg[m.organizationId] : null
+      if (mn) m.displaySnapshot = { ...(m.displaySnapshot ?? {}), matchName: mn }
+    }
+  }
+  return members
 }
 
 export async function addTeamToCompetition(competitionId, teamId, teamData = {}) {
