@@ -364,7 +364,10 @@ export default function PlayerProfile() {
   // Anyone signed in may claim an unclaimed profile that isn't already theirs.
   // Team-sheet profiles (claimStatus set) claim through the email-verified
   // path; legacy roster profiles through the original one.
-  const canClaim = !!uid && person.claimStatus !== 'claimed'
+  // Shown to EVERYONE, signed in or not: a signed-out visitor gets a "Sign up
+  // to claim it" CTA (handled inside ClaimCard) so an unclaimed profile always
+  // invites its owner to take it.
+  const canClaim = person.claimStatus !== 'claimed'
     && !isProfileClaimed(person) && !managesPlayerProfile(person, uid)
 
   // A player represents an organisation ONLY where they actually have records —
@@ -575,6 +578,7 @@ function LinkedAccountsCard({ person }) {
 }
 
 function ClaimCard({ person, onClaimed }) {
+  const { uid } = useAuth()
   const [busy, setBusy] = useState(false)
   const [err,  setErr]  = useState('')
   // Two-step in-UI confirm (relationship being confirmed, or null). window.confirm
@@ -621,7 +625,12 @@ function ClaimCard({ person, onClaimed }) {
             add a photo and banner. If you're a parent you can later transfer it to the player.
           </p>
           {err && <p className="text-red-600 text-xs mb-2">{err}</p>}
-          {confirmRel ? (
+          {!uid ? (
+            <Link to="/signup"
+              className="inline-block bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs uppercase tracking-wider rounded-lg px-5 py-2.5 transition-colors">
+              Sign up to claim it
+            </Link>
+          ) : confirmRel ? (
             <div>
               <p className="text-[12px] text-slate-700 mb-2.5">
                 {confirmRel === 'player'

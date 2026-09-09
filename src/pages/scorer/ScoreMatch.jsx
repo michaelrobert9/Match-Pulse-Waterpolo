@@ -1063,7 +1063,7 @@ export default function ScoreMatch() {
           <div className="flex items-center gap-2 mt-0.5">
             <span className={`text-[9px] font-bold uppercase tracking-widest flex items-center gap-1 ${running ? 'text-emerald-500' : t.muted}`}>
               {running && <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />}
-              {running ? `Live · ${match.currentPeriod ?? ''}` : isPaused ? `Paused · ${match.currentPeriod === 'break' ? 'Break' : match.currentPeriod ?? ''}` : status}
+              {running ? `Live · ${match.currentPeriod ?? ''}` : isBreakState ? 'Break' : isPaused ? `Paused · ${match.currentPeriod ?? ''}` : status}
             </span>
             {!online && (
               <span className="text-[9px] font-bold uppercase tracking-widest text-amber-500">⊘ Offline</span>
@@ -1163,7 +1163,7 @@ export default function ScoreMatch() {
             {match.homeScore ?? 0} <span className={t.muted}>–</span> {match.awayScore ?? 0}
           </span>
           <span className={`text-[10px] font-bold uppercase tracking-widest ${running ? 'text-emerald-500' : t.muted}`}>
-            {running ? 'Live' : isPaused ? 'Paused' : isBreakState ? 'Break' : isFinal ? 'Full time' : status}
+            {running ? 'Live' : isBreakState ? 'Break' : isPaused ? 'Paused' : isFinal ? 'Full time' : status}
           </span>
         </div>
         {/* Away */}

@@ -4,6 +4,7 @@ import {
   signInWithEmailAndPassword,
   signInWithPopup,
   createUserWithEmailAndPassword,
+  sendEmailVerification,
   sendPasswordResetEmail,
   updateProfile as fbUpdateProfile,
   signOut as fbSignOut,
@@ -88,6 +89,12 @@ export function AuthProvider({ children }) {
               updateDoc(userRef, { displayName: u.displayName, updatedAt: serverTimestamp() }).catch(() => {})
               setDoc(doc(identityDb, 'userProfiles', u.uid), { displayName: u.displayName }, { merge: true }).catch(() => {})
             }
+            // Self-heal a profile with no creation date. Older accounts (and any
+            // created before signUp() stamped createdAt) show as "activated" on
+            // the back end but carry no date; backfill it once. Best-effort.
+            if (!data.createdAt) {
+              updateDoc(userRef, { createdAt: serverTimestamp(), updatedAt: serverTimestamp() }).catch(() => {})
+            }
             setOrgRoles(data.orgRoles ?? {})
             setCompetitionRoles(data.competitionRoles ?? {})
             setOverrides(data.permissionOverrides ?? {})
@@ -147,6 +154,10 @@ export function AuthProvider({ children }) {
   async function signUp(email, password, displayName) {
     const cred = await createUserWithEmailAndPassword(auth, email, password)
     if (displayName) await fbUpdateProfile(cred.user, { displayName })
+    // Send the email-verification link now, so it is waiting in the inbox
+    // regardless of which sign-up form created the account. Claiming a player
+    // profile requires a verified email, so this must never be skipped.
+    sendEmailVerification(cred.user).catch(() => {})
     // Seed the central identity doc so back-office panels show the name even if
     // the user never completes the optional profile step. Merge so it coexists
     // with the onAuthStateChanged bootstrap. NOTE: never write plan/billing
@@ -154,6 +165,10 @@ export function AuthProvider({ children }) {
     await setDoc(doc(identityDb, 'users', cred.user.uid), {
       email:         (email ?? '').toLowerCase(),
       displayName:   displayName ?? '',
+      // Stamp the creation date here, at the one point that runs exactly once
+      // per account, so every new profile has an activation date on the back
+      // end regardless of which sign-up path created it.
+      createdAt:     serverTimestamp(),
       updatedAt:     serverTimestamp(),
     }, { merge: true }).catch(() => {})
     setDoc(doc(identityDb, 'userProfiles', cred.user.uid), {
