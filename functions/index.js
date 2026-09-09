@@ -487,6 +487,36 @@ exports.waterpoloDailyCareerStatsRecompute = onSchedule(
   }
 )
 
+// Recycle-bin auto-purge — daily at 03:30. Permanently removes matches that have
+// been soft-deleted (deleted === true) for more than RECYCLE_BIN_TTL_DAYS, and
+// clears their competition fixture-membership doc. Restoring clears the flag, so
+// only abandoned deletions are ever purged. A deleted match with no deletedAt is
+// left for manual purge.
+const RECYCLE_BIN_TTL_DAYS = 90
+exports.waterpoloDailyRecycleBinPurge = onSchedule(
+  { schedule: '30 3 * * *', timeZone: 'Africa/Johannesburg', region: 'europe-west1' },
+  async () => {
+    try {
+      const cutoffMs = Date.now() - RECYCLE_BIN_TTL_DAYS * 24 * 60 * 60 * 1000
+      const snap = await db.collection('matches').where('deleted', '==', true).get()
+      let purged = 0, batch = db.batch(), ops = 0
+      for (const docSnap of snap.docs) {
+        const m = docSnap.data()
+        const del = m.deletedAt
+        if (!del || typeof del.toMillis !== 'function' || del.toMillis() > cutoffMs) continue
+        batch.delete(docSnap.ref); ops++
+        if (m.competitionId) { batch.delete(db.doc(`competitions/${m.competitionId}/fixtures/${docSnap.id}`)); ops++ }
+        purged++
+        if (ops >= 400) { await batch.commit(); batch = db.batch(); ops = 0 }
+      }
+      if (ops > 0) await batch.commit()
+      logger.info('Recycle-bin purge complete', { purged, ttlDays: RECYCLE_BIN_TTL_DAYS })
+    } catch (err) {
+      logger.error('Recycle-bin purge failed', { message: err.message })
+    }
+  }
+)
+
 // Backend authorisation mirror of src/lib/competitionAuth.js#canAdministerCompetition:
 // platform admin; an org-WIDE (teamId == null) grant on the owning org; the
 // competition's creator; or a direct competition staff grant.
