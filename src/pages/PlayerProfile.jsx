@@ -360,7 +360,9 @@ export default function PlayerProfile() {
   // birth — nothing a player would have filled in themselves.
   const isUnclaimedTeamSheet = person.claimStatus === 'unclaimed'
   const canSelfRemove = managesPlayerProfile(person, uid)
-  const canEditBanner = !isUnclaimedTeamSheet && (isPlatformAdmin || managesPlayerProfile(person, uid))
+  // Banner (like everything else on a player profile) is edited from the admin
+  // back end only — never on the public profile page.
+  const canEditBanner = false
   // Anyone signed in may claim an unclaimed profile that isn't already theirs.
   // Team-sheet profiles (claimStatus set) claim through the email-verified
   // path; legacy roster profiles through the original one.

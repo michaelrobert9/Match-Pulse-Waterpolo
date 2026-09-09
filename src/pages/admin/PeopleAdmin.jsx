@@ -37,7 +37,7 @@ function Input({ ...props }) {
 function PersonForm({ initial = {}, onSave, onDelete, saving }) {
   const [form, setForm] = useState({
     fullName: '', dateOfBirth: '', nationality: 'South African',
-    position: 'Mid', photoUrl: '', roles: [],
+    position: 'Mid', photoUrl: '', bannerUrl: '', roles: [],
     representativeOrgs: [], ...initial,
   })
   const [allOrgs, setAllOrgs]   = useState([])
@@ -121,6 +121,11 @@ function PersonForm({ initial = {}, onSave, onDelete, saving }) {
             placeholder="https://…" type="url" />
         </Field>
       </div>
+
+      <Field label="Banner URL (optional)">
+        <Input value={form.bannerUrl ?? ''} onChange={e => set('bannerUrl', e.target.value)}
+          placeholder="https://…" type="url" />
+      </Field>
 
       {/* Roles */}
       <Field label="Roles">
