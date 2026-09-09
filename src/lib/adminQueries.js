@@ -2516,7 +2516,7 @@ export async function claimPlayerProfile(personId, relationship) {
   await user.reload().catch(() => {})
   if (!user.emailVerified) {
     sendEmailVerification(user).catch(() => {})
-    const e = new Error(`Please verify your email first. We've sent a link to ${user.email || 'your inbox'}; open it, then tap claim again.`)
+    const e = new Error(`Your account isn't verified yet. We've sent a verification link to ${user.email || 'your email'}. Please check your inbox and your spam folder, open the link, then try again.`)
     e.code = 'claim/email-unverified'; throw e
   }
   // The rules read email_verified off the TOKEN, so force a refresh — otherwise a
