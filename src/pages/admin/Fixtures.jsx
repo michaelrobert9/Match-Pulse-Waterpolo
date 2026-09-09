@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState } from 'react'
-import { ChevronRight, ExternalLink, Trash2, Plus, Archive } from 'lucide-react'
+import { ChevronRight, ChevronDown, ExternalLink, Trash2, Plus, Archive } from 'lucide-react'
 import { Link } from 'react-router-dom'
+import { collection, getDocs } from 'firebase/firestore'
+import { db } from '../../firebase'
 import { fetchAllMatches, fetchOrganizations, toDate } from '../../lib/queries'
 import { deleteMatch } from '../../lib/adminQueries'
 import { isScheduled } from '../../lib/fixtureStatus'
@@ -12,40 +14,100 @@ import StatusBadge from '../../components/StatusBadge'
 const SELECT_CLASS =
   'w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-slate-900 text-xs focus:outline-none focus:border-emerald-500 transition-colors'
 
-// Org-type labels for the cascading team filter.
 const ORG_TYPES = [
   ['school',      'Schools'],
   ['club',        'Clubs'],
   ['association', 'Associations'],
 ]
 
-// Admin fixtures list. Every (non-deleted) match across the platform, most
-// recent first, with client-side filters. The team filter cascades:
-// type → organisation → team, so you narrow to one school/club and then one of
-// its teams instead of scrolling one flat list of every team name.
+const TABS = [
+  ['competitions', 'Competitions'],
+  ['week',         'This week'],
+  ['upcoming',     'Upcoming'],
+  ['orphaned',     'Orphaned'],
+]
+
+// One match row, reused across every tab and the filtered list.
+function MatchRow({ m, onDelete }) {
+  const isLive  = m.status === 'live' || m.status === 'paused'
+  const isFinal = m.status === 'final'
+  const when = (() => {
+    const d = toDate(m.scheduledAt)
+    return d
+      ? d.toLocaleString('en-ZA', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })
+      : 'Date TBD'
+  })()
+  return (
+    <div className={`flex items-center gap-3 bg-white rounded-xl border px-4 py-3 shadow-sm ${isLive ? 'border-red-200' : 'border-slate-200'}`}>
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-2 mb-0.5">
+          <MatchTeamIdentity match={m} side="home" hideIdentifier nameClass="text-slate-900 text-sm font-semibold truncate" />
+          {(isLive || isFinal)
+            ? <span className="font-mono font-black text-slate-900 text-sm tabular-nums shrink-0">{m.homeScore ?? 0}–{m.awayScore ?? 0}</span>
+            : <span className="text-slate-400 text-xs shrink-0">vs</span>}
+          <MatchTeamIdentity match={m} side="away" hideIdentifier nameClass="text-slate-900 text-sm font-semibold truncate" />
+        </div>
+        <div className="micro-label flex items-center gap-2 flex-wrap">
+          <span>{when}</span>
+          {m.pitch && <span className="text-slate-300">·</span>}
+          {m.pitch && <span>{m.pitch}</span>}
+          {(m.competitionName || m.competitionSlug) && <span className="text-slate-300">·</span>}
+          {(m.competitionName || m.competitionSlug) && <span className="truncate">{m.competitionName || m.competitionSlug}</span>}
+        </div>
+      </div>
+      <StatusBadge status={m.status} className="shrink-0" />
+      <a href={matchUrl(m)} target="_blank" rel="noreferrer"
+        className="shrink-0 text-slate-400 hover:text-slate-700 transition-colors p-1" title="Open public page">
+        <ExternalLink className="w-4 h-4" />
+      </a>
+      <Link to={`/score/${m.id}`}
+        className="shrink-0 flex items-center gap-1 text-[10px] font-bold uppercase tracking-widest text-emerald-600 hover:text-emerald-700 transition-colors">
+        {isFinal ? 'Edit' : isLive ? 'Score' : 'Edit'}
+        <ChevronRight className="w-4 h-4" />
+      </Link>
+      <button onClick={() => onDelete(m)}
+        className="shrink-0 text-slate-300 hover:text-red-600 transition-colors p-1" title="Move to recycle bin">
+        <Trash2 className="w-4 h-4" />
+      </button>
+    </div>
+  )
+}
+
+// Admin matches. Non-deleted matches across the platform, organised into tabs:
+// Competitions (grouped, collapsible) · This week (next 7 days) · Upcoming
+// (beyond) · Orphaned (no competition and no resolvable org/team — stray/old
+// data to clear). The type→school/club/association→team filter searches ACROSS
+// all matches when active, so any match is findable regardless of tab.
 export function FixturesList() {
   const [matches, setMatches] = useState([])
   const [orgs, setOrgs]       = useState([])
+  const [teamIds, setTeamIds] = useState(() => new Set())
   const [loading, setLoading] = useState(true)
 
-  const [fDate,   setFDate]   = useState('')   // '', 'today', 'week', 'past', 'future'
-  const [fType,   setFType]   = useState('')   // '', 'school', 'club', 'association'
-  const [fOrg,    setFOrg]    = useState('')   // organizationId
-  const [fTeam,   setFTeam]   = useState('')   // teamId
+  const [tab, setTab]         = useState('competitions')
+  const [openComps, setOpenComps] = useState(() => new Set())
+
+  const [fType,   setFType]   = useState('')
+  const [fOrg,    setFOrg]    = useState('')
+  const [fTeam,   setFTeam]   = useState('')
   const [fGround, setFGround] = useState('')
   const [fLeague, setFLeague] = useState('')
   const [fSeason, setFSeason] = useState('')
   const [fStatus, setFStatus] = useState('')
 
   useEffect(() => {
-    Promise.all([fetchAllMatches(), fetchOrganizations().catch(() => [])])
-      .then(([list, orgList]) => { prefetchMatchTeams(list); setMatches(list); setOrgs(orgList) })
+    Promise.all([
+      fetchAllMatches(),
+      fetchOrganizations().catch(() => []),
+      getDocs(collection(db, 'teams')).then(s => new Set(s.docs.map(d => d.id))).catch(() => new Set()),
+    ])
+      .then(([list, orgList, tids]) => { prefetchMatchTeams(list); setMatches(list); setOrgs(orgList); setTeamIds(tids) })
       .catch(() => {})
       .finally(() => setLoading(false))
   }, [])
 
-  // Organisations that actually appear in matches, so every dropdown option
-  // yields results. Filtered by the chosen type (school / club / association).
+  const orgIds = useMemo(() => new Set(orgs.map(o => o.id)), [orgs])
+
   const orgOptions = useMemo(() => {
     const inMatches = new Set()
     matches.forEach(m => { if (m.homeOrgId) inMatches.add(m.homeOrgId); if (m.awayOrgId) inMatches.add(m.awayOrgId) })
@@ -55,7 +117,6 @@ export function FixturesList() {
       .sort((a, b) => (a.name || '').localeCompare(b.name || ''))
   }, [orgs, matches, fType])
 
-  // Teams of the selected organisation that have matches — the third cascade step.
   const teamOptions = useMemo(() => {
     if (!fOrg) return []
     const map = new Map()
@@ -85,50 +146,85 @@ export function FixturesList() {
     () => [...new Set(matches.map(m => m.competitionSeason || m.season).filter(Boolean))].sort().reverse(),
     [matches])
 
-  const filtered = useMemo(() => {
-    const now = new Date()
-    const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate())
-    const endOfToday   = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999)
-    const weekAhead    = new Date(startOfToday); weekAhead.setDate(weekAhead.getDate() + 7)
+  const filterActive = !!(fType || fOrg || fTeam || fGround || fLeague || fSeason || fStatus)
 
-    return matches.filter(m => {
-      if (fOrg    && m.homeOrgId !== fOrg && m.awayOrgId !== fOrg) return false
-      if (fTeam   && m.homeTeamId !== fTeam && m.awayTeamId !== fTeam) return false
-      if (fGround && m.pitch !== fGround) return false
-      if (fLeague && m.competitionId !== fLeague) return false
-      if (fSeason && (m.competitionSeason || m.season) !== fSeason) return false
-      // 'scheduled' matches legacy 'upcoming' docs too, until the migration runs.
-      if (fStatus === 'scheduled') { if (!isScheduled(m)) return false }
-      else if (fStatus && m.status !== fStatus) return false
-      if (fDate) {
-        const d = toDate(m.scheduledAt)
-        if (!d) return false
-        if (fDate === 'today'  && !(d >= startOfToday && d <= endOfToday)) return false
-        if (fDate === 'week'   && !(d >= startOfToday && d <= weekAhead))  return false
-        if (fDate === 'past'   && !(d <  startOfToday)) return false
-        if (fDate === 'future' && !(d >  endOfToday))   return false
-      }
-      return true
-    })
-  }, [matches, fDate, fOrg, fTeam, fGround, fLeague, fSeason, fStatus])
-
-  const fmtWhen = val => {
-    const d = toDate(val)
-    return d
-      ? d.toLocaleString('en-ZA', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })
-      : 'Date TBD'
+  const passesFilters = m => {
+    if (fOrg    && m.homeOrgId !== fOrg && m.awayOrgId !== fOrg) return false
+    if (fTeam   && m.homeTeamId !== fTeam && m.awayTeamId !== fTeam) return false
+    if (fGround && m.pitch !== fGround) return false
+    if (fLeague && m.competitionId !== fLeague) return false
+    if (fSeason && (m.competitionSeason || m.season) !== fSeason) return false
+    if (fStatus === 'scheduled') { if (!isScheduled(m)) return false }
+    else if (fStatus && m.status !== fStatus) return false
+    return true
   }
 
-  // Soft-delete: move the match to the recycle bin (restorable from Deleted
-  // matches). Competition membership is kept so a restore rejoins cleanly.
+  // A match is orphaned when it belongs to no competition and neither side
+  // resolves to a live organisation or team — it appears on no public page.
+  const isOrphan = m =>
+    !m.competitionId
+    && !(m.homeOrgId && orgIds.has(m.homeOrgId)) && !(m.awayOrgId && orgIds.has(m.awayOrgId))
+    && !(m.homeTeamId && teamIds.has(m.homeTeamId)) && !(m.awayTeamId && teamIds.has(m.awayTeamId))
+
+  const now = new Date()
+  const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+  const weekAhead    = new Date(startOfToday); weekAhead.setDate(weekAhead.getDate() + 7)
+
+  const byDateAsc  = (a, b) => (toDate(a.scheduledAt) ?? 0) - (toDate(b.scheduledAt) ?? 0)
+  const byDateDesc = (a, b) => (toDate(b.scheduledAt) ?? 0) - (toDate(a.scheduledAt) ?? 0)
+
+  // Filtered (cross-tab) results when any filter is active.
+  const filteredList = useMemo(
+    () => matches.filter(passesFilters).sort(byDateDesc),
+    [matches, fOrg, fTeam, fGround, fLeague, fSeason, fStatus]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Tab counts.
+  const counts = useMemo(() => {
+    let comp = 0, week = 0, up = 0, orph = 0
+    for (const m of matches) {
+      if (m.competitionId) comp++
+      const d = toDate(m.scheduledAt)
+      if (d && d >= startOfToday && d <= weekAhead) week++
+      else if (d && d > weekAhead) up++
+      if (isOrphan(m)) orph++
+    }
+    return { competitions: comp, week, upcoming: up, orphaned: orph }
+  }, [matches, orgIds, teamIds]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Competition groups for the Competitions tab.
+  const compGroups = useMemo(() => {
+    const map = new Map()
+    for (const m of matches) {
+      if (!m.competitionId) continue
+      const g = map.get(m.competitionId) ?? { id: m.competitionId, label: m.competitionName || m.competitionSlug || m.competitionId, items: [] }
+      g.items.push(m)
+      map.set(m.competitionId, g)
+    }
+    return [...map.values()]
+      .map(g => ({ ...g, items: g.items.sort(byDateDesc) }))
+      .sort((a, b) => String(a.label).localeCompare(String(b.label)))
+  }, [matches])
+
+  const weekList = useMemo(
+    () => matches.filter(m => { const d = toDate(m.scheduledAt); return d && d >= startOfToday && d <= weekAhead }).sort(byDateAsc),
+    [matches]) // eslint-disable-line react-hooks/exhaustive-deps
+  const upcomingList = useMemo(
+    () => matches.filter(m => { const d = toDate(m.scheduledAt); return d && d > weekAhead }).sort(byDateAsc),
+    [matches]) // eslint-disable-line react-hooks/exhaustive-deps
+  const orphanList = useMemo(
+    () => matches.filter(isOrphan).sort(byDateDesc),
+    [matches, orgIds, teamIds]) // eslint-disable-line react-hooks/exhaustive-deps
+
   async function handleDelete(m) {
     if (!confirm(`Move "${resolveTeamSideSync(m, 'home').primary} vs ${resolveTeamSideSync(m, 'away').primary}" to the recycle bin? You can restore it from Deleted matches.`)) return
     try {
       await deleteMatch(m.id)
       setMatches(prev => prev.filter(x => x.id !== m.id))
-    } catch (e) {
-      alert(e.message || 'Delete failed.')
-    }
+    } catch (e) { alert(e.message || 'Delete failed.') }
+  }
+
+  function toggleComp(id) {
+    setOpenComps(prev => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n })
   }
 
   if (loading) return (
@@ -137,12 +233,16 @@ export function FixturesList() {
     </div>
   )
 
+  const emptyNote = txt => (
+    <div className="text-center py-12"><p className="text-slate-500 text-sm">{txt}</p></div>
+  )
+
   return (
     <div className="px-4 py-5">
       <div className="flex items-center justify-between mb-4 gap-2 flex-wrap">
         <div className="flex items-center gap-2">
           <h1 className="font-display font-bold text-slate-900 text-lg">Matches</h1>
-          <span className="text-xs text-slate-400">{filtered.length} of {matches.length}</span>
+          <span className="text-xs text-slate-400">{matches.length} total</span>
         </div>
         <div className="flex items-center gap-2">
           <Link to="/admin/matches/deleted"
@@ -158,34 +258,21 @@ export function FixturesList() {
 
       {/* Cascading team finder: type → school/club/association → team */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 mb-2">
-        <select value={fType}
-          onChange={e => { setFType(e.target.value); setFOrg(''); setFTeam('') }}
-          className={SELECT_CLASS}>
+        <select value={fType} onChange={e => { setFType(e.target.value); setFOrg(''); setFTeam('') }} className={SELECT_CLASS}>
           <option value="">All types</option>
           {ORG_TYPES.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
         </select>
-        <select value={fOrg}
-          onChange={e => { setFOrg(e.target.value); setFTeam('') }}
-          className={SELECT_CLASS}>
+        <select value={fOrg} onChange={e => { setFOrg(e.target.value); setFTeam('') }} className={SELECT_CLASS}>
           <option value="">{fType ? `All ${fType}s` : 'All organisations'}</option>
           {orgOptions.map(o => <option key={o.id} value={o.id}>{o.name}</option>)}
         </select>
-        <select value={fTeam} onChange={e => setFTeam(e.target.value)} disabled={!fOrg}
-          className={`${SELECT_CLASS} disabled:opacity-50`}>
+        <select value={fTeam} onChange={e => setFTeam(e.target.value)} disabled={!fOrg} className={`${SELECT_CLASS} disabled:opacity-50`}>
           <option value="">{fOrg ? 'All teams' : 'Select an organisation first'}</option>
           {teamOptions.map(([id, label]) => <option key={id} value={id}>{label}</option>)}
         </select>
       </div>
 
-      {/* Other filters */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-2 mb-4">
-        <select value={fDate} onChange={e => setFDate(e.target.value)} className={SELECT_CLASS}>
-          <option value="">All dates</option>
-          <option value="today">Today</option>
-          <option value="week">Next 7 days</option>
-          <option value="future">Upcoming</option>
-          <option value="past">Past</option>
-        </select>
         <select value={fGround} onChange={e => setFGround(e.target.value)} className={SELECT_CLASS}>
           <option value="">All grounds</option>
           {grounds.map(g => <option key={g} value={g}>{g}</option>)}
@@ -198,7 +285,7 @@ export function FixturesList() {
           <option value="">All seasons</option>
           {seasons.map(s => <option key={s} value={s}>{s}</option>)}
         </select>
-        <select value={fStatus} onChange={e => setFStatus(e.target.value)} className={`${SELECT_CLASS} col-span-2 md:col-span-4`}>
+        <select value={fStatus} onChange={e => setFStatus(e.target.value)} className={SELECT_CLASS}>
           <option value="">All statuses</option>
           <option value="scheduled">Scheduled</option>
           <option value="live">Live</option>
@@ -210,69 +297,76 @@ export function FixturesList() {
         </select>
       </div>
 
-      {filtered.length === 0 ? (
-        <div className="text-center py-12">
-          <p className="text-slate-500 text-sm">No matches found for these filters.</p>
-          <Link to="/match/new"
-            className="inline-flex items-center gap-1.5 mt-3 text-xs font-bold uppercase tracking-widest text-emerald-600 hover:text-emerald-700 transition-colors">
-            <Plus className="w-3.5 h-3.5" /> Create a match
-          </Link>
+      {filterActive ? (
+        // Cross-tab filtered results — any match, regardless of tab.
+        <div>
+          <div className="flex items-center justify-between mb-2">
+            <p className="text-xs font-bold uppercase tracking-widest text-slate-400">Filtered results · {filteredList.length}</p>
+            <button onClick={() => { setFType(''); setFOrg(''); setFTeam(''); setFGround(''); setFLeague(''); setFSeason(''); setFStatus('') }}
+              className="text-[10px] font-bold uppercase tracking-widest text-emerald-600 hover:text-emerald-700">Clear filters</button>
+          </div>
+          {filteredList.length === 0 ? emptyNote('No matches for these filters.')
+            : <div className="space-y-2">{filteredList.map(m => <MatchRow key={m.id} m={m} onDelete={handleDelete} />)}</div>}
         </div>
       ) : (
-        <div className="space-y-2">
-          {filtered.map(m => {
-            const isLive  = m.status === 'live' || m.status === 'paused'
-            const isFinal = m.status === 'final'
-            return (
-              <div key={m.id}
-                className={`flex items-center gap-3 bg-white rounded-xl border px-4 py-3 shadow-sm ${
-                  isLive ? 'border-red-200' : 'border-slate-200'
+        <>
+          {/* Tabs */}
+          <div className="flex gap-1.5 mb-4 flex-wrap">
+            {TABS.map(([id, label]) => (
+              <button key={id} onClick={() => setTab(id)}
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-colors ${
+                  tab === id ? 'bg-slate-800 text-white' : 'bg-white border border-slate-200 text-slate-500 hover:text-slate-700'
                 }`}>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 mb-0.5">
-                    <MatchTeamIdentity match={m} side="home" hideIdentifier
-                      nameClass="text-slate-900 text-sm font-semibold truncate" />
-                    {(isLive || isFinal)
-                      ? <span className="font-mono font-black text-slate-900 text-sm tabular-nums shrink-0">{m.homeScore ?? 0}–{m.awayScore ?? 0}</span>
-                      : <span className="text-slate-400 text-xs shrink-0">vs</span>}
-                    <MatchTeamIdentity match={m} side="away" hideIdentifier
-                      nameClass="text-slate-900 text-sm font-semibold truncate" />
-                  </div>
-                  <div className="micro-label flex items-center gap-2 flex-wrap">
-                    <span>{fmtWhen(m.scheduledAt)}</span>
-                    {m.pitch && <span className="text-slate-300">·</span>}
-                    {m.pitch && <span>{m.pitch}</span>}
-                    {(m.competitionName || m.competitionSlug) && <span className="text-slate-300">·</span>}
-                    {(m.competitionName || m.competitionSlug) && <span className="truncate">{m.competitionName || m.competitionSlug}</span>}
-                  </div>
-                </div>
+                {label} <span className={tab === id ? 'text-slate-300' : 'text-slate-400'}>{counts[id] ?? 0}</span>
+              </button>
+            ))}
+          </div>
 
-                <StatusBadge status={m.status} className="shrink-0" />
-
-                {/* View the public page (only meaningful once it has a slug). */}
-                <a href={matchUrl(m)} target="_blank" rel="noreferrer"
-                  className="shrink-0 text-slate-400 hover:text-slate-700 transition-colors p-1"
-                  title="Open public page">
-                  <ExternalLink className="w-4 h-4" />
-                </a>
-
-                {/* Edit / score — full control for platform admins, even when final. */}
-                <Link to={`/score/${m.id}`}
-                  className="shrink-0 flex items-center gap-1 text-[10px] font-bold uppercase tracking-widest text-emerald-600 hover:text-emerald-700 transition-colors">
-                  {isFinal ? 'Edit' : isLive ? 'Score' : 'Edit'}
-                  <ChevronRight className="w-4 h-4" />
-                </Link>
-
-                {/* Delete → recycle bin (restorable from Deleted matches). */}
-                <button onClick={() => handleDelete(m)}
-                  className="shrink-0 text-slate-300 hover:text-red-600 transition-colors p-1"
-                  title="Move to recycle bin">
-                  <Trash2 className="w-4 h-4" />
-                </button>
+          {tab === 'competitions' && (
+            compGroups.length === 0 ? emptyNote('No competition matches.') : (
+              <div className="space-y-2">
+                {compGroups.map(g => {
+                  const open = openComps.has(g.id)
+                  return (
+                    <div key={g.id} className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+                      <button onClick={() => toggleComp(g.id)}
+                        className="w-full flex items-center gap-2 px-4 py-3 hover:bg-slate-50 transition-colors">
+                        {open ? <ChevronDown className="w-4 h-4 text-slate-400 shrink-0" /> : <ChevronRight className="w-4 h-4 text-slate-400 shrink-0" />}
+                        <span className="flex-1 text-left text-sm font-semibold text-slate-900 truncate">{g.label}</span>
+                        <span className="text-xs text-slate-400 shrink-0">{g.items.length} match{g.items.length === 1 ? '' : 'es'}</span>
+                      </button>
+                      {open && (
+                        <div className="border-t border-slate-100 p-3 space-y-2 bg-slate-50/50">
+                          {g.items.map(m => <MatchRow key={m.id} m={m} onDelete={handleDelete} />)}
+                        </div>
+                      )}
+                    </div>
+                  )
+                })}
               </div>
             )
-          })}
-        </div>
+          )}
+
+          {tab === 'week' && (
+            weekList.length === 0 ? emptyNote('No matches in the next 7 days.')
+              : <div className="space-y-2">{weekList.map(m => <MatchRow key={m.id} m={m} onDelete={handleDelete} />)}</div>
+          )}
+
+          {tab === 'upcoming' && (
+            upcomingList.length === 0 ? emptyNote('No matches scheduled beyond the next 7 days.')
+              : <div className="space-y-2">{upcomingList.map(m => <MatchRow key={m.id} m={m} onDelete={handleDelete} />)}</div>
+          )}
+
+          {tab === 'orphaned' && (
+            <>
+              <p className="text-xs text-slate-500 mb-3">
+                Matches that belong to no competition and don’t resolve to a live organisation or team — usually stray or old test data. Review and move to the recycle bin.
+              </p>
+              {orphanList.length === 0 ? emptyNote('No orphaned matches — nothing to clean up.')
+                : <div className="space-y-2">{orphanList.map(m => <MatchRow key={m.id} m={m} onDelete={handleDelete} />)}</div>}
+            </>
+          )}
+        </>
       )}
     </div>
   )

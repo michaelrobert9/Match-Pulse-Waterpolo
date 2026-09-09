@@ -6,10 +6,15 @@ import { fetchDeletedMatches, restoreMatch, purgeMatch } from '../../lib/adminQu
 import { prefetchMatchTeams, resolveTeamSideSync } from '../../lib/teamIdentity'
 import { MatchTeamIdentity } from '../../components/TeamIdentity'
 
+// Matches auto-purge from the recycle bin this many days after deletion (a
+// daily Cloud Function does the permanent removal). Keep in sync with
+// functions/index.js RECYCLE_BIN_TTL_DAYS.
+const RECYCLE_BIN_TTL_DAYS = 90
+
 // Recycle bin — every soft-deleted match. Restore returns a match to all
 // listings and stats; Permanently delete removes it for good (and clears its
 // competition fixture-membership). Deleted matches never count toward standings
-// or records while they sit here.
+// or records while they sit here, and auto-purge after RECYCLE_BIN_TTL_DAYS.
 export default function DeletedMatches() {
   const [matches, setMatches] = useState([])
   const [loading, setLoading] = useState(true)
@@ -27,6 +32,14 @@ export default function DeletedMatches() {
     return d
       ? d.toLocaleString('en-ZA', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })
       : 'Date TBD'
+  }
+
+  // The date a soft-deleted match will be permanently auto-purged.
+  const purgeDate = deletedAt => {
+    const d = toDate(deletedAt)
+    if (!d) return null
+    const p = new Date(d); p.setDate(p.getDate() + RECYCLE_BIN_TTL_DAYS)
+    return p.toLocaleDateString('en-ZA', { day: 'numeric', month: 'short', year: 'numeric' })
   }
 
   async function handleRestore(m) {
@@ -91,6 +104,8 @@ export default function DeletedMatches() {
                   {(m.competitionName || m.competitionSlug) && <span className="truncate">{m.competitionName || m.competitionSlug}</span>}
                   {m.deletedAt && <span className="text-slate-300">·</span>}
                   {m.deletedAt && <span>deleted {fmtWhen(m.deletedAt)}</span>}
+                  {purgeDate(m.deletedAt) && <span className="text-slate-300">·</span>}
+                  {purgeDate(m.deletedAt) && <span className="text-amber-600">removes on {purgeDate(m.deletedAt)}</span>}
                 </div>
               </div>
 
