@@ -177,7 +177,17 @@ export default function CompetitionKnockout() {
                 const hId = isProvisionalHidden(home) ? null : (resolved[home?.slotId]?.teamId ?? null)
                 const aId = isProvisionalHidden(away) ? null : (resolved[away?.slotId]?.teamId ?? null)
                 const Row = ({ slot, teamId, side }) => {
-                  const won = played && winSide === side
+                  // The bracket slot position (`side`) is NOT necessarily the
+                  // underlying match's home/away — a slot can resolve to the
+                  // match's away team. Map the resolved team to its ACTUAL side
+                  // in the match so the score and winner styling follow the team,
+                  // not the bracket position (otherwise the score shows against
+                  // the wrong team).
+                  const matchSide = played && teamId && match
+                    ? (teamId === match.homeTeamId ? 'home'
+                      : teamId === match.awayTeamId ? 'away' : side)
+                    : side
+                  const won = played && winSide === matchSide
                   return (
                     <div className="flex items-center gap-2">
                       <span className={`text-sm truncate ${
@@ -187,7 +197,7 @@ export default function CompetitionKnockout() {
                       </span>
                       {played && (
                         <span className={`ml-auto font-mono font-black tabular-nums shrink-0 ${won ? 'text-slate-900' : 'text-slate-400'}`}>
-                          {side === 'home' ? (match.homeScore ?? 0) : (match.awayScore ?? 0)}
+                          {matchSide === 'home' ? (match.homeScore ?? 0) : (match.awayScore ?? 0)}
                         </span>
                       )}
                     </div>
