@@ -61,10 +61,16 @@
 
 /* Article layout */
 .mp-support .article-grid { display: grid; grid-template-columns: 1fr; gap: 32px; padding: 18px 0 72px; }
-@media (min-width: 900px) { .mp-support .article-grid { grid-template-columns: 220px 1fr; align-items: start; } }
+@media (min-width: 900px) {
+  .mp-support .article-grid { grid-template-columns: 220px 1fr; align-items: start; }
+  /* Sticky only on desktop, where the nav is a real left column. On mobile the
+     grid is a single column, so a sticky nav would stay pinned and the article
+     body would scroll over it — overlapping text. Keep it static there. */
+  .mp-support .sidenav { position: sticky; top: 88px; }
+}
 
 /* Section nav (sidebar) */
-.mp-support .sidenav { position: sticky; top: 88px; }
+.mp-support .sidenav { position: static; }
 .mp-support .sidenav .label { font-size: 11px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: var(--mp-slate); margin: 0 0 10px; }
 .mp-support .sidenav a {
   display: block; padding: 7px 10px; border-radius: 9px; font-size: 14px; color: var(--mp-slate);
