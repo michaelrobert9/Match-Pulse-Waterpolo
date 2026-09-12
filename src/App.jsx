@@ -29,6 +29,7 @@ import CompetitionPools from './pages/CompetitionPools'
 import CompetitionKnockout from './pages/CompetitionKnockout'
 import CompetitionFestivalStats from './pages/CompetitionFestivalStats'
 import TeamDetail from './pages/TeamDetail'
+import TeamResults from './pages/TeamResults'
 import Login from './pages/Login'
 import Signup from './pages/Signup'
 import Portal from './pages/Portal'
@@ -170,6 +171,7 @@ export default function App() {
           <Route path="/competition/:series/:ageGroup/:season/teams"        element={<CompetitionTeams />} />
           <Route path="/competition/:series/:ageGroup/:season/teams/:teamId" element={<CompetitionTeams />} />
           <Route path="/team/:slug"                     element={<TeamDetail />} />
+          <Route path="/team/:slug/results"             element={<TeamResults />} />
           {/* ID-based competition routes */}
           <Route path="/competitions/:id"               element={<CompetitionLanding />} />
           <Route path="/competitions/:id/overview"      element={<CompetitionOverview />} />
@@ -197,9 +199,13 @@ export default function App() {
               ranks below every static two-segment route (e.g. /schools/:slug,
               /competitions/:id) and only catches genuine org/team paths. */}
           <Route path="/schools/:orgSlug/:teamSlug"      element={<TeamDetail />} />
+          <Route path="/schools/:orgSlug/:teamSlug/results"      element={<TeamResults />} />
           <Route path="/clubs/:orgSlug/:teamSlug"        element={<TeamDetail />} />
+          <Route path="/clubs/:orgSlug/:teamSlug/results"        element={<TeamResults />} />
           <Route path="/associations/:orgSlug/:teamSlug" element={<TeamDetail />} />
+          <Route path="/associations/:orgSlug/:teamSlug/results" element={<TeamResults />} />
           <Route path="/:orgSlug/:teamSlug"             element={<TeamDetail />} />
+          <Route path="/:orgSlug/:teamSlug/results"     element={<TeamResults />} />
 
           <Route path="*"                               element={<NotFound />} />
         </Route>

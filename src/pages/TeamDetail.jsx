@@ -7,7 +7,8 @@ import {
 } from '../lib/queries'
 import { useAuth } from '../contexts/AuthContext'
 import { assignPlayer, removePlayer, updatePlayer } from '../lib/adminQueries'
-import { playerUrl, orgUrl, matchUrl } from '../lib/slugify'
+import { playerUrl, orgUrl, matchUrl, teamUrl } from '../lib/slugify'
+import { ChevronRight } from 'lucide-react'
 import { composeTeamDisplay } from '../lib/teamNaming'
 import { coloredTeamName } from '../lib/capColor'
 import { prefetchMatchTeams, resolveTeamProfileIdentity } from '../lib/teamIdentity'
@@ -201,10 +202,10 @@ export default function TeamDetail() {
     .sort((a, b) => toDate(a.scheduledAt) - toDate(b.scheduledAt))
     .slice(0, 5)
 
-  const results = matches
+  const finalMatches = matches
     .filter(m => m.status === 'final')
     .sort((a, b) => toDate(b.scheduledAt) - toDate(a.scheduledAt))
-    .slice(0, 5)
+  const results = finalMatches.slice(0, 5)
 
   const seasons = [...new Set(
     matches.filter(m => m.status === 'final').map(matchSeason).filter(Boolean)
@@ -286,9 +287,18 @@ export default function TeamDetail() {
         {results.length === 0 ? (
           <EmptyCard message="No results yet." sub="Completed matches will appear here." />
         ) : (
-          <div className="space-y-2">
-            {results.map(m => <ResultCard key={m.id} match={m} />)}
-          </div>
+          <>
+            <div className="space-y-2">
+              {results.map(m => <ResultCard key={m.id} match={m} />)}
+            </div>
+            {finalMatches.length > results.length && teamUrl(team, org) && (
+              <Link to={`${teamUrl(team, org)}/results`}
+                className="mt-3 flex items-center justify-center gap-1 bg-white rounded-xl border border-slate-200 px-4 py-3 text-sm font-semibold text-emerald-600 hover:border-emerald-300 hover:bg-emerald-50 transition-colors shadow-sm">
+                View all {finalMatches.length} results
+                <ChevronRight className="w-4 h-4" />
+              </Link>
+            )}
+          </>
         )}
       </section>
 
