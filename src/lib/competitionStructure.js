@@ -234,6 +234,29 @@ export function knockoutWinnerSide(match) {
   return null
 }
 
+// Map a knockout game's WINNING and LOSING bracket slots from its match result.
+// The bracket slot order (g.home / g.away) is NOT guaranteed to match the
+// underlying match's home/away — a slot can hold the match's away team — so the
+// winning SIDE (by score) must be mapped onto the slot that actually holds that
+// side's team. When the fixture is stamped with real team ids we map by team
+// identity; only for an unstamped holding fixture (no team ids yet) do we fall
+// back to slot position. Returns { win, lose } bracket slots (or nulls).
+function winnerLoserSlots(game, match, resolved) {
+  const side = knockoutWinnerSide(match)
+  if (!game || !side) return { win: null, lose: null }
+  const homeSlotTeam = game.home ? (resolved?.[game.home.slotId]?.teamId ?? null) : null
+  const awaySlotTeam = game.away ? (resolved?.[game.away.slotId]?.teamId ?? null) : null
+  const winnerTeamId = side === 'home' ? match?.homeTeamId : match?.awayTeamId
+  if (winnerTeamId && (winnerTeamId === homeSlotTeam || winnerTeamId === awaySlotTeam)) {
+    return winnerTeamId === homeSlotTeam
+      ? { win: game.home, lose: game.away }
+      : { win: game.away, lose: game.home }
+  }
+  // Unstamped holding fixture (or the stamped winner isn't one of the slot
+  // teams) — fall back to slot position, the best available mapping.
+  return side === 'home' ? { win: game.home, lose: game.away } : { win: game.away, lose: game.home }
+}
+
 // Final placings of a knockout, as RESOLVED team ids: { first, second, third|null }
 // or null while the final isn't decided. Winners are taken by SIDE (score) mapped
 // onto the resolved slot, so it works even when the fixtures aren't stamped.
@@ -269,11 +292,7 @@ export function bracketPodium({ knockout, resolved, matches, bronzeLabel }) {
 
   const matchOf = g => { const w = g && [g.home, g.away].find(s => s.matchId && matches[s.matchId]); return w ? matches[w.matchId] : null }
   const teamOf  = slot => (slot ? (resolved[slot.slotId]?.teamId ?? null) : null)
-  const winLose = g => {
-    const side = knockoutWinnerSide(matchOf(g))
-    if (!g || !side) return { win: null, lose: null }
-    return side === 'home' ? { win: g.home, lose: g.away } : { win: g.away, lose: g.home }
-  }
+  const winLose = g => winnerLoserSlots(g, matchOf(g), resolved)
 
   const fin = winLose(finalGame)
   const first = teamOf(fin.win)
@@ -317,9 +336,7 @@ export function bracketFinalStandings({ knockout, resolved, matches }) {
     const places = placesFor(g.label)
     if (!places) return null                 // not a pure ranking bracket
     const [lo, hi] = places
-    const side = knockoutWinnerSide(matchOf(g))
-    const winSlot  = side === 'home' ? g.home : side === 'away' ? g.away : null
-    const loseSlot = side === 'home' ? g.away : side === 'away' ? g.home : null
+    const { win: winSlot, lose: loseSlot } = winnerLoserSlots(g, matchOf(g), resolved)
     placeMap.set(lo, { place: lo, teamId: teamOf(winSlot) })
     if (hi !== lo) placeMap.set(hi, { place: hi, teamId: teamOf(loseSlot) })
   }
