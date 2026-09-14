@@ -4,15 +4,20 @@ import {
   downloadTemplate, parseFixtureFile, buildImportPlan, commitImportPlan, downloadRejected,
 } from '../lib/fixtureImport'
 
-// Bulk import fixtures/results from an .xlsx into ONE competition, with a
-// verify-before-commit preview and a saved report of anything not imported.
-export default function FixtureImportModal({ competition, onClose, onImported }) {
+// Bulk import fixtures/results from an .xlsx, with a verify-before-commit preview
+// and a saved report of anything not imported. Pass EITHER `competition` (import
+// into a competition) OR `org` (import everyday standalone matches for an org).
+export default function FixtureImportModal({ competition, org, onClose, onImported }) {
   const [step, setStep] = useState('intro')   // intro | preview | importing | done
   const [plan, setPlan] = useState(null)
   const [result, setResult] = useState(null)
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
   const inputRef = useRef(null)
+
+  const ctx = competition ? { mode: 'competition', competition } : { mode: 'standalone', org }
+  const targetName = competition ? competition.name : (org?.name || 'your organisation')
+  const isComp = !!competition
 
   async function handleFile(e) {
     const file = e.target.files?.[0]
@@ -22,7 +27,7 @@ export default function FixtureImportModal({ competition, onClose, onImported })
     try {
       const { rows } = await parseFixtureFile(file)
       if (!rows.length) { setError('No rows found in the spreadsheet. Use the template and fill in at least one row.'); setBusy(false); return }
-      const p = await buildImportPlan(rows, competition)
+      const p = await buildImportPlan(rows, ctx)
       setPlan(p); setStep('preview')
     } catch (err) {
       setError(err?.message || 'Could not read that file. Make sure it is an .xlsx from the template.')
@@ -32,7 +37,7 @@ export default function FixtureImportModal({ competition, onClose, onImported })
   async function runImport() {
     setStep('importing'); setBusy(true); setError('')
     try {
-      const r = await commitImportPlan(plan, competition)
+      const r = await commitImportPlan(plan, ctx)
       setResult(r); setStep('done')
     } catch (err) {
       setError(err?.message || 'Import failed.'); setStep('preview')
@@ -62,7 +67,8 @@ export default function FixtureImportModal({ competition, onClose, onImported })
           {step === 'intro' && (
             <div className="space-y-4">
               <p className="text-sm text-slate-600 leading-relaxed">
-                Upload a spreadsheet of fixtures for <span className="font-semibold">{competition.name}</span>.
+                Upload a spreadsheet of {isComp ? 'fixtures for' : 'matches for'} <span className="font-semibold">{targetName}</span>
+                {isComp ? '' : ' — match days, a season’s fixtures, or historic results'}.
                 Fill in both scores to import a completed result, or leave them blank for an upcoming fixture.
                 Every row is matched to existing organisations and teams — you'll get a chance to review before anything is created.
               </p>
@@ -77,9 +83,10 @@ export default function FixtureImportModal({ competition, onClose, onImported })
                 </button>
               </div>
               <ul className="text-[12px] text-slate-500 leading-relaxed list-disc pl-5 space-y-0.5">
-                <li>Columns: Date, Time, Home Organisation, Home Team, Away Organisation, Away Team, Home Score, Away Score, Venue, Pool.</li>
+                <li>Columns: Date, Time, Home Organisation, Home Team, Away Organisation, Away Team, Home Score, Away Score, Venue{isComp ? ', Pool' : ''}.</li>
                 <li>Organisation and team names must match MatchPulse exactly — anything that can't be matched is listed and skipped, never guessed.</li>
-                <li>Teams found on MatchPulse but not yet in this competition are added automatically.</li>
+                {isComp && <li>Teams found on MatchPulse but not yet in this competition are added automatically.</li>}
+                {!isComp && <li>Matches are imported as standalone (not part of any competition) — ideal for match days, season fixtures and historic results.</li>}
               </ul>
             </div>
           )}

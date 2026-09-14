@@ -1,17 +1,22 @@
-// Bulk fixture/result importer — parse an .xlsx of a season's fixtures (and
-// optional results), match every row to EXISTING organisations/teams, and let
-// the caller preview before committing. Nothing is created until commit, and any
-// row that can't be matched exactly is rejected (never guessed) and recorded.
+// Bulk fixture/result importer — parse an .xlsx of fixtures (and optional
+// results), match every row to EXISTING organisations/teams, and let the caller
+// preview before committing. Nothing is created until commit, and any row that
+// can't be matched exactly is rejected (never guessed) and recorded.
+//
+// Two modes, chosen by the context passed in:
+//   • competition — matches are created INTO a competition (with fixture
+//     membership + standings), on the competition's Matches tab.
+//   • standalone  — everyday matches NOT in a competition (match days, season
+//     fixtures, historic results), imported from an organisation. Each row
+//     becomes a dated standalone match.
 //
 // SheetJS (xlsx) is loaded dynamically so it stays out of the main bundle.
 //
-// Column layout (row 1 = headers, matched case-insensitively):
+// Columns (row 1 = headers, matched case-insensitively):
 //   Date | Time | Home Organisation | Home Team | Away Organisation |
 //   Away Team | Home Score | Away Score | Venue | Pool
-//
-// Both scores filled → imported as a completed RESULT (status 'final').
-// Both scores blank  → imported as an upcoming FIXTURE.
-// Exactly one score  → rejected (incomplete result).
+// Both scores filled → completed RESULT (status 'final'); both blank → upcoming
+// fixture; exactly one → rejected. (Pool applies to competition mode only.)
 
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore'
 import { db, auth } from '../firebase'
@@ -26,6 +31,16 @@ export const TEMPLATE_COLUMNS = [
 ]
 
 const norm = (s) => String(s ?? '').trim().toLowerCase().replace(/\s+/g, ' ')
+
+// Normalise a context into { standalone, competition, org }.
+function normCtx(ctx) {
+  if (ctx && (ctx.mode === 'standalone' || (!ctx.competition && ctx.org))) {
+    return { standalone: true, competition: null, org: ctx.org ?? null }
+  }
+  // Back-compat: a bare competition object, or { competition }.
+  const competition = ctx?.competition ?? (ctx && ctx.id ? ctx : null)
+  return { standalone: !competition, competition, org: ctx?.org ?? null }
+}
 
 // ── Template ──────────────────────────────────────────────────────────────────
 export async function downloadTemplate(filename = 'matchpulse-fixtures-template.xlsx') {
@@ -44,7 +59,6 @@ export async function downloadTemplate(filename = 'matchpulse-fixtures-template.
 }
 
 // ── Parse ─────────────────────────────────────────────────────────────────────
-// Returns { rows } where each row is the raw values keyed by our canonical names.
 export async function parseFixtureFile(file) {
   const XLSX = await import('xlsx')
   const buf = await file.arrayBuffer()
@@ -52,7 +66,6 @@ export async function parseFixtureFile(file) {
   const ws = wb.Sheets[wb.SheetNames[0]]
   if (!ws) throw new Error('The spreadsheet has no sheets.')
   const raw = XLSX.utils.sheet_to_json(ws, { defval: '', raw: true })
-  // Map each row's headers (case-insensitive) onto our canonical column names.
   const canonical = Object.fromEntries(TEMPLATE_COLUMNS.map(c => [norm(c), c]))
   const rows = raw.map((r) => {
     const out = {}
@@ -75,10 +88,8 @@ function parseDateTime(dateVal, timeVal) {
   const s = String(dateVal ?? '').trim()
   if (!s) return { error: 'Missing date' }
   let d = null
-  // YYYY-MM-DD or YYYY/MM/DD
   let m = s.match(/^(\d{4})[-/](\d{1,2})[-/](\d{1,2})$/)
   if (m) d = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]))
-  // DD/MM/YYYY or DD-MM-YYYY (SA convention)
   if (!d) { m = s.match(/^(\d{1,2})[-/](\d{1,2})[-/](\d{4})$/); if (m) d = new Date(Number(m[3]), Number(m[2]) - 1, Number(m[1])) }
   if (!d || isNaN(d)) return { error: `Unrecognised date "${s}" (use YYYY-MM-DD)` }
   applyTime(d, timeVal)
@@ -90,6 +101,10 @@ function applyTime(d, timeVal) {
   if (m) d.setHours(Number(m[1]), Number(m[2]), 0, 0)
   else d.setHours(0, 0, 0, 0)
 }
+function toDateStr(d) {
+  const y = d.getFullYear(), m = String(d.getMonth() + 1).padStart(2, '0'), day = String(d.getDate()).padStart(2, '0')
+  return `${y}-${m}-${day}`
+}
 function parseScore(v) {
   const s = String(v ?? '').trim()
   if (s === '') return { blank: true }
@@ -99,10 +114,8 @@ function parseScore(v) {
 }
 
 // ── Build the preview plan ──────────────────────────────────────────────────
-// Loads orgs + the referenced orgs' teams + the competition's pools, then
-// resolves every row. Pure matching is exact + normalised; ambiguous or not
-// found → the row is flagged, never guessed. Returns { rows: [...] }.
-export async function buildImportPlan(rawRows, competition) {
+export async function buildImportPlan(rawRows, ctx) {
+  const { standalone, competition } = normCtx(ctx)
   const orgs = await fetchOrganizations()
   const orgIndex = new Map()
   for (const o of orgs) {
@@ -112,7 +125,6 @@ export async function buildImportPlan(rawRows, competition) {
     }
   }
 
-  // Which orgs are referenced? Load each one's teams once.
   const referenced = new Set()
   for (const r of rawRows) {
     for (const key of [r['Home Organisation'], r['Away Organisation']]) {
@@ -131,9 +143,9 @@ export async function buildImportPlan(rawRows, competition) {
     teamsByOrg.set(orgId, idx)
   }))
 
-  // Pools (tournament) for optional Pool column.
+  // Pools apply to competition mode only.
   let poolIndex = null
-  if (rawRows.some(r => String(r.Pool ?? '').trim() !== '')) {
+  if (!standalone && rawRows.some(r => String(r.Pool ?? '').trim() !== '')) {
     const pools = await fetchCompetitionPools(competition.id).catch(() => [])
     poolIndex = new Map(pools.map(p => [norm(p.name), p.poolId]))
   }
@@ -165,36 +177,36 @@ export async function buildImportPlan(rawRows, competition) {
     else if (hs.blank !== as.blank) errors.push('A result needs BOTH scores (leave both blank for an upcoming fixture)')
     else if (!hs.blank) { isResult = true; homeScore = hs.value; awayScore = as.value }
 
-    let poolId = null
-    const poolName = String(r.Pool ?? '').trim()
-    if (poolName) {
-      poolId = poolIndex?.get(norm(poolName)) ?? null
-      if (!poolId) errors.push(`Pool "${poolName}" not found in this competition`)
+    let poolId = null, poolName = ''
+    if (!standalone) {
+      poolName = String(r.Pool ?? '').trim()
+      if (poolName) {
+        poolId = poolIndex?.get(norm(poolName)) ?? null
+        if (!poolId) errors.push(`Pool "${poolName}" not found in this competition`)
+      }
     }
 
     return {
-      rowNum: i + 2, // header is row 1
+      rowNum: i + 2,
       raw: r,
       ok: errors.length === 0,
       errors,
-      resolved: (home && away) ? {
-        home, away, scheduledAt, isResult, homeScore, awayScore, poolId, poolName,
-      } : null,
+      resolved: (home && away) ? { home, away, scheduledAt, isResult, homeScore, awayScore, poolId, poolName } : null,
     }
   })
   return { rows }
 }
 
 // ── Commit ────────────────────────────────────────────────────────────────────
-// Creates the ready rows (match doc + fixture membership + result), auto-adding
-// any matched team that isn't yet a competition member, then saves an import
-// report. Returns { imported, rejected, reportId }.
-export async function commitImportPlan(plan, competition) {
-  // Existing members, so we only add teams that aren't already in.
-  const existing = new Set((await fetchCompetitionTeams(competition.id).catch(() => [])).map(m => m.teamId))
+export async function commitImportPlan(plan, ctx) {
+  const { standalone, competition, org } = normCtx(ctx)
+
+  const existing = standalone
+    ? new Set()
+    : new Set((await fetchCompetitionTeams(competition.id).catch(() => [])).map(m => m.teamId))
 
   async function ensureMember(team, orgName) {
-    if (existing.has(team.id)) return
+    if (standalone || existing.has(team.id)) return
     await addTeamToCompetition(competition.id, team.id, {
       status: 'accepted',
       organizationId: team.organizationId ?? null,
@@ -226,16 +238,25 @@ export async function commitImportPlan(plan, competition) {
     }
     const { home, away, scheduledAt, isResult, homeScore, awayScore, poolId } = row.resolved
     try {
-      await ensureMember(home.team, home.orgName)
-      await ensureMember(away.team, away.orgName)
-      const ref = await createMatch(competition.id, teamObj(home.team, home.orgName), teamObj(away.team, away.orgName), {
-        scheduledAt: scheduledAt || null,
-        season: competition.season,
-        competitionSlug: competition.slug,
-      })
-      await addFixtureToCompetition(competition.id, {
-        id: ref.id, homeTeamId: home.team.id, awayTeamId: away.team.id,
-      }, { countsTowardStandings: true, ...(poolId ? { poolId } : {}) })
+      let ref
+      if (standalone) {
+        // Everyday (non-competition) match — dated and standalone.
+        ref = await createMatch(null, teamObj(home.team, home.orgName), teamObj(away.team, away.orgName), {
+          matchDate: scheduledAt ? toDateStr(scheduledAt) : null,
+          scheduledAt: scheduledAt || null,
+        })
+      } else {
+        await ensureMember(home.team, home.orgName)
+        await ensureMember(away.team, away.orgName)
+        ref = await createMatch(competition.id, teamObj(home.team, home.orgName), teamObj(away.team, away.orgName), {
+          scheduledAt: scheduledAt || null,
+          season: competition.season,
+          competitionSlug: competition.slug,
+        })
+        await addFixtureToCompetition(competition.id, {
+          id: ref.id, homeTeamId: home.team.id, awayTeamId: away.team.id,
+        }, { countsTowardStandings: true, ...(poolId ? { poolId } : {}) })
+      }
       if (isResult) await submitFixtureResult(ref.id, { homeScore, awayScore })
       imported.push({
         rowNum: row.rowNum, matchId: ref.id,
@@ -250,9 +271,13 @@ export async function commitImportPlan(plan, competition) {
 
   let reportId = null
   try {
-    const ref = await addDoc(collection(db, 'competitions', competition.id, 'importReports'), {
+    const reportCol = standalone
+      ? collection(db, 'organizations', org.id, 'importReports')
+      : collection(db, 'competitions', competition.id, 'importReports')
+    const ref = await addDoc(reportCol, {
       createdAt: serverTimestamp(),
       createdBy: auth?.currentUser?.uid ?? null,
+      scope: standalone ? 'standalone' : 'competition',
       totals: { imported: imported.length, rejected: rejected.length, rows: plan.rows.length },
       imported, rejected,
     })

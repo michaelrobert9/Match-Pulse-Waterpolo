@@ -8,6 +8,7 @@ import { roleLabel, grantLabel, grantOf } from '../../lib/capabilities'
 import { plansUrl } from '../../lib/mainSite'
 import InviteUserForm from '../../components/InviteUserForm'
 import ImageUpload from '../../components/ImageUpload'
+import FixtureImportModal from '../../components/FixtureImportModal'
 import { fetchOrganization } from '../../lib/queries'
 import {
   updateOrganization, deleteOrganization,
@@ -105,6 +106,7 @@ function UpcomingFixturesSection({ orgId, org, competitions, teams, matches, set
     .sort((a, b) => toDate(a.scheduledAt) - toDate(b.scheduledAt))
 
   const isSchool = org?.type === 'school'
+  const [showImport, setShowImport] = useState(false)
 
   if (loading) return <Section id="fixtures" title="Upcoming Matches"><Spinner /></Section>
 
@@ -116,13 +118,24 @@ function UpcomingFixturesSection({ orgId, org, competitions, teams, matches, set
       title={`Upcoming Matches (${upcoming.length})`}
       action={
         canAddNew && (
-          <Link to={`/match/new?org=${orgId}`}
-            className="text-[10px] font-bold uppercase tracking-widest text-emerald-600 hover:text-emerald-500 transition-colors">
-            + New
-          </Link>
+          <div className="flex items-center gap-3">
+            <button type="button" onClick={() => setShowImport(true)}
+              className="text-[10px] font-bold uppercase tracking-widest text-slate-500 hover:text-emerald-600 transition-colors">
+              Import
+            </button>
+            <Link to={`/match/new?org=${orgId}`}
+              className="text-[10px] font-bold uppercase tracking-widest text-emerald-600 hover:text-emerald-500 transition-colors">
+              + New
+            </Link>
+          </div>
         )
       }
     >
+      {showImport && (
+        <FixtureImportModal org={{ id: orgId, name: org?.name || '' }}
+          onClose={() => setShowImport(false)}
+          onImported={() => window.location.reload()} />
+      )}
       {isSchool && teams.length === 0 && (
         <div className="px-4 py-8 text-center">
           <p className="text-slate-500 text-sm">Add a team first, then create matches.</p>

@@ -442,6 +442,14 @@ service cloud.firestore {
         allow update: if false;
       }
 
+      // ── Bulk-import reports (standalone / everyday matches) ────────────────
+      match /importReports/{reportId} {
+        allow read:   if isOrgOwnerOrStaff(orgId);
+        allow create: if isOrgOwnerOrStaff(orgId);
+        allow update: if false;
+        allow delete: if isOrgOwnerOrStaff(orgId);
+      }
+
       // ── Staff subcollection ───────────────────────────────────────────────
       // This is the AUTHORITATIVE membership record — rules derive org access
       // from here, not from the mirrored users/{uid}.orgRoles field.
