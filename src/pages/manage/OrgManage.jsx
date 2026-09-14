@@ -1123,6 +1123,7 @@ function SettingsSection({ org, onSaved }) {
             value={bannerUrl}
             label="Card / banner image"
             onChange={url => setBannerUrl(url)}
+            orgId={org.id}
           />
 
           {/* Team-level management toggle — sport-local; gates per-team identity

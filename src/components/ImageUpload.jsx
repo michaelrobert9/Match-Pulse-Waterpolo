@@ -1,5 +1,8 @@
 import { useRef, useState } from 'react'
+import { Images } from 'lucide-react'
 import { IMAGE_SPECS, validateImageFile, uploadImageForEntity } from '../lib/imageUpload'
+import { registerOrgMedia } from '../lib/mediaLibrary'
+import MediaLibraryPicker from './MediaLibraryPicker'
 
 // Reusable image picker that uploads to the storage bucket and reports back the
 // resulting download URL. Two modes:
@@ -25,12 +28,14 @@ export default function ImageUpload({
   accentColor,
   disabled = false,
   className = '',
+  orgId = null,
 }) {
   const spec = IMAGE_SPECS[specKey]
   const inputRef = useRef(null)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const [preview, setPreview] = useState('')
+  const [pickerOpen, setPickerOpen] = useState(false)
 
   const shown = preview || value || ''
   const heading = label ?? spec.label
@@ -53,6 +58,7 @@ export default function ImageUpload({
     try {
       const url = await uploadImageForEntity(specKey, entityId, file)
       onChange?.(url)
+      if (orgId) registerOrgMedia(orgId, { url, name: file.name, contentType: file.type, size: file.size })
       setPreview('')
     } catch (err2) {
       setError(err2.message || 'Upload failed.')
@@ -94,6 +100,12 @@ export default function ImageUpload({
           )}
           {shown && !disabled && (
             <div className="absolute bottom-2 right-2 flex gap-2">
+              {orgId && (
+                <button type="button" onClick={() => setPickerOpen(true)} disabled={busy}
+                  className="bg-white/90 hover:bg-white border border-slate-200 rounded-lg px-2.5 py-1 text-[10px] font-bold uppercase tracking-widest text-slate-600 shadow-sm inline-flex items-center gap-1">
+                  <Images className="w-3 h-3" /> Library
+                </button>
+              )}
               <button type="button" onClick={openPicker} disabled={busy}
                 className="bg-white/90 hover:bg-white border border-slate-200 rounded-lg px-2.5 py-1 text-[10px] font-bold uppercase tracking-widest text-slate-600 shadow-sm">
                 {busy ? 'Uploading…' : 'Change'}
@@ -108,6 +120,9 @@ export default function ImageUpload({
         </div>
         <p className="text-[11px] text-slate-400 mt-1">{spec.recommend}</p>
         {error && <p className="text-[11px] text-red-600 mt-1">{error}</p>}
+        {pickerOpen && orgId && (
+          <MediaLibraryPicker orgId={orgId} onSelect={(url) => onChange?.(url)} onClose={() => setPickerOpen(false)} />
+        )}
       </div>
     )
   }
@@ -134,6 +149,12 @@ export default function ImageUpload({
               className="bg-white border border-slate-200 hover:border-emerald-400 rounded-lg px-3 py-2 text-[11px] font-bold uppercase tracking-widest text-slate-600 disabled:opacity-40 transition-colors">
               {busy ? 'Uploading…' : shown ? 'Change' : 'Upload'}
             </button>
+            {orgId && !busy && (
+              <button type="button" onClick={() => setPickerOpen(true)} disabled={disabled}
+                className="bg-white border border-slate-200 hover:border-emerald-400 rounded-lg px-3 py-2 text-[11px] font-bold uppercase tracking-widest text-slate-600 disabled:opacity-40 transition-colors inline-flex items-center gap-1">
+                <Images className="w-3 h-3" /> Library
+              </button>
+            )}
             {shown && !disabled && !busy && (
               <button type="button" onClick={clear}
                 className="rounded-lg px-2 py-2 text-[11px] font-bold uppercase tracking-widest text-red-500 hover:text-red-600 transition-colors">
@@ -146,6 +167,9 @@ export default function ImageUpload({
         {hiddenInput}
       </div>
       {error && <p className="text-[11px] text-red-600 mt-1">{error}</p>}
+      {pickerOpen && orgId && (
+        <MediaLibraryPicker orgId={orgId} onSelect={(url) => onChange?.(url)} onClose={() => setPickerOpen(false)} />
+      )}
     </div>
   )
 }
