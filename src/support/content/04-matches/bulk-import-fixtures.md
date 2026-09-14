@@ -1,10 +1,17 @@
 # Bulk import fixtures and results
 
-Instead of adding matches one at a time, you can upload a spreadsheet of a whole season's fixtures — and their results — in one go. It's on a competition's **Matches** tab, under the **Import** button.
+Instead of adding matches one at a time, you can upload a spreadsheet of a whole season's fixtures — and their results — in one go.
+
+You can import in **two** places:
+
+- **Into a competition** — on a competition's **Matches** tab, under **Import**. The matches belong to that competition and count toward its standings.
+- **Everyday matches for an organisation** — on your organisation's management page, in the **Upcoming Matches** section, under **Import**. Use this for match days, a season's fixtures, or historic results that aren't part of a competition — they're imported as standalone dated matches.
+
+Both use the same template and the same review-before-import step.
 
 ## How it works
 
-1. Open your competition, go to the **Matches** tab, and click **Import**.
+1. Open the **Import** button (a competition's **Matches** tab, or your organisation's **Upcoming Matches** section).
 2. Click **Download template** to get the spreadsheet layout, and fill in your fixtures.
 3. Click **Upload spreadsheet** and choose your filled-in file.
 4. MatchPulse **matches every row** to existing organisations and teams and shows you a preview — each row marked ready ✓ or "can't import" with the reason.
