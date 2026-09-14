@@ -55,6 +55,7 @@ If you're new, start with **Getting Started**. If you're looking for something s
 
 ## 7. Stats & Standings
 - [How standings are calculated](07-stats-standings/how-standings-work.md)
+- [How head-to-head tie-breakers work](07-stats-standings/how-head-to-head-works.md)
 - [Player and career stats](07-stats-standings/player-and-career-stats.md)
 - [Why a stat looks wrong](07-stats-standings/why-a-stat-looks-wrong.md)
 

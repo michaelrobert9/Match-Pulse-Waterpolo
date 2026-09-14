@@ -11,6 +11,7 @@ import CompetitionNav from '../components/CompetitionNav'
 import { useAuth } from '../contexts/AuthContext'
 import { competitionViewableBy } from '../lib/competitionRules'
 import StandingsTable from '../components/StandingsTable'
+import RankingRulesCard from '../components/RankingRulesCard'
 
 function Spinner() {
   return <div className="flex justify-center py-12"><div className="w-5 h-5 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin"/></div>
@@ -66,7 +67,9 @@ export default function CompetitionPools() {
       <div className="mt-4 px-4 sm:px-6 lg:px-8 space-y-6">
         {pools.length === 0 ? (
           <p className="text-center text-slate-500 text-sm py-12">No pools have been set up yet.</p>
-        ) : pools.map(pool => (
+        ) : <>
+          <RankingRulesCard competition={competition} />
+          {pools.map(pool => (
           <div key={pool.poolId}>
             <div className="flex items-center gap-2 mb-2">
               <h2 className="font-display font-bold text-slate-900 text-base">{pool.name}</h2>
@@ -85,6 +88,7 @@ export default function CompetitionPools() {
             ))}
           </div>
         ))}
+        </>}
       </div>
     </div>
   )
