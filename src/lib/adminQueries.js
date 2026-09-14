@@ -721,7 +721,7 @@ export async function createManagedCompetition({ seriesName, name, slugBase, sea
   // The slug is derived from slugBase ([gender] [age] [series]) when provided, so
   // the season — already present in the /competitions/:season/ URL segment — is
   // not repeated in the slug. Falls back to the full name for older callers.
-  const slug = await generateUniqueCompetitionSlug((slugBase || compName).replace(/\s+/g, ' ').trim())
+  const slug = await generateUniqueCompetitionSlug((slugBase || compName).replace(/\s+/g, ' ').trim(), season)
   return createCompetition({
     name: compName,
     slug,
@@ -792,15 +792,25 @@ async function generateUniqueTeamSlug(orgSlug, qualifier) {
   }
 }
 
-async function generateUniqueCompetitionSlug(name) {
+async function generateUniqueCompetitionSlug(name, season) {
   const base = slugify(name) || 'competition'
-  const existing = await getDocs(query(collection(db, 'competitions'), where('slug', '==', base)))
-  if (existing.empty) return base
+  // Slug uniqueness is scoped to the SEASON. The public URL is
+  // /competitions/{season}/{slug}, so the same competition name in a different
+  // year is NOT a collision and must not get a numeric suffix — only add -N when
+  // that slug is already taken within the same season. (Season stored as a
+  // string; matches fetchCompetitionBySlugSeason's lookup.)
+  const seasonStr = season != null && season !== '' ? String(season) : null
+  const isTaken = async (candidate) => {
+    const q = seasonStr
+      ? query(collection(db, 'competitions'), where('season', '==', seasonStr), where('slug', '==', candidate))
+      : query(collection(db, 'competitions'), where('slug', '==', candidate))
+    return !(await getDocs(q)).empty
+  }
+  if (!(await isTaken(base))) return base
   let n = 2
   while (true) {
     const candidate = `${base}-${n}`
-    const snap = await getDocs(query(collection(db, 'competitions'), where('slug', '==', candidate)))
-    if (snap.empty) return candidate
+    if (!(await isTaken(candidate))) return candidate
     n++
   }
 }
