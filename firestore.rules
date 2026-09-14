@@ -627,6 +627,14 @@ service cloud.firestore {
         allow delete: if canAdministerCompetition(competitionId);
       }
 
+      // ── Bulk-import reports ────────────────────────────────────────────────
+      match /importReports/{reportId} {
+        allow read:   if canAdministerCompetition(competitionId);
+        allow create: if canAdministerCompetition(competitionId);
+        allow update: if false;
+        allow delete: if canAdministerCompetition(competitionId);
+      }
+
       // ── Single-use invites (doc id == opaque token) ───────────────────────
       // Readable by the competition admin or the invited team's org. The team
       // org may consume an invite (status fields only); issue/revoke is admin.

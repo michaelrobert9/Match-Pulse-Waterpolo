@@ -11,7 +11,7 @@ import MediaLibraryPicker from '../../../components/MediaLibraryPicker'
 import {
   ChevronLeft, Plus, X, Trash2, Check, AlertTriangle, ExternalLink,
   Users, Calendar, Layers, Trophy, BarChart2, ClipboardCheck,
-  SlidersHorizontal, Info, Search, RefreshCw, CheckCircle2, Clock, Pencil, Loader2, RotateCcw, Images,
+  SlidersHorizontal, Info, Search, RefreshCw, CheckCircle2, Clock, Pencil, Loader2, RotateCcw, Images, FileSpreadsheet,
 } from 'lucide-react'
 import {
   updateCompetition, deleteCompetition,
@@ -42,6 +42,7 @@ import CompetitionStatusBadge from '../../../components/CompetitionStatusBadge'
 import CompetitionStructureSection from './CompetitionStructureSection'
 import FormatSelector from '../../../components/FormatSelector'
 import VenuePicker from '../../../components/VenuePicker'
+import FixtureImportModal from '../../../components/FixtureImportModal'
 import { composeVenuePitch } from '../../../lib/venues'
 import { DEFAULT_PERIODS, DEFAULT_PERIOD_MINUTES, DEFAULT_BREAK_MINUTES, competitionMatchFormat } from '../../../lib/matchClock'
 import { composeTeamDisplay } from '../../../lib/teamNaming'
@@ -2192,6 +2193,7 @@ function FixturesTab({ competition, teams, fixtures, setFixtures }) {
   const [filter, setFilter]       = useState(type === 'league' ? 'upcoming' : 'all')
   const [showNew, setShowNew]     = useState(false)
   const [showGen, setShowGen]     = useState(false)
+  const [showImport, setShowImport] = useState(false)
   const [genPoolId, setGenPoolId] = useState('')
   const [genDbl, setGenDbl]       = useState(false)
   // New fixtures default to the competition's configured match format (falling
@@ -2398,8 +2400,20 @@ function FixturesTab({ competition, teams, fixtures, setFixtures }) {
             }`}>
             {showNew ? 'Cancel' : <><Plus className="w-3.5 h-3.5" /> New match</>}
           </button>
+          {type !== 'festival' && (
+            <button onClick={() => { setShowImport(true); setShowNew(false); setShowGen(false) }}
+              className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest px-3 py-1.5 rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50 transition-colors">
+              <FileSpreadsheet className="w-3.5 h-3.5" /> Import
+            </button>
+          )}
         </div>
       </div>
+
+      {showImport && (
+        <FixtureImportModal competition={competition}
+          onClose={() => setShowImport(false)}
+          onImported={() => window.location.reload()} />
+      )}
 
       {genDone !== null && !showGen && (
         <div className="bg-emerald-50 border border-emerald-200 rounded-lg px-3 py-2 text-sm text-emerald-700 flex items-center gap-2">
