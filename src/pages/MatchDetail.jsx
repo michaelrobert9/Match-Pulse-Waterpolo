@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { ChevronLeft, Star, AlertTriangle, ClipboardCheck } from 'lucide-react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
+import RedirectOrNotFound from '../components/RedirectOrNotFound'
 import { useAuth } from '../contexts/AuthContext'
 import {
   fetchMatch, fetchTeamLineup, subscribeMatch,
@@ -18,7 +19,7 @@ import FixtureBanner from '../components/FixtureBanner'
 import { MatchTeamIdentity, MatchTeamCrest } from '../components/TeamIdentity'
 import { resolveTeamSideSync } from '../lib/teamIdentity'
 import PersonAvatar from '../components/PersonAvatar'
-import { playerUrl, matchUrl } from '../lib/slugify'
+import { playerUrl, matchUrl, competitionUrl } from '../lib/slugify'
 import { pomForSide, pomColor, pomBgTint, isLineupEntryPOM } from '../lib/pom'
 import { teamAccent } from '../lib/teamAccent'
 import { gameMinuteLabel, periodRemainingMs, formatCountdown } from '../lib/matchClock'
@@ -389,7 +390,7 @@ export default function MatchDetail() {
   }, [match])
 
   if (loading) return <Spinner />
-  if (!match) return <div className="px-4 py-12 text-center text-slate-500 text-sm">Match not found.</div>
+  if (!match) return <RedirectOrNotFound message="Match not found." />
 
   const isLive   = match.status === 'live'
   const isPaused = match.status === 'paused'
@@ -674,6 +675,14 @@ export default function MatchDetail() {
 
         {/* Meta — date, venue, share */}
         <div className="border-t border-slate-200 px-5 py-5 flex flex-col items-center gap-2 text-center">
+          {match.competitionId && (match.competitionName || match.competitionSlug) && (
+            <Link
+              to={competitionUrl({ slug: match.competitionSlug, season: match.competitionSeason, competitionPath: match.competitionPath, id: match.competitionId })}
+              className="text-sm font-semibold text-emerald-600 hover:text-emerald-500 leading-snug"
+            >
+              {match.competitionName || match.competitionSlug}
+            </Link>
+          )}
           <div className="text-[15px] text-slate-600 leading-snug">{fmtMatchDate(match.scheduledAt)}</div>
           <VenueLabel pitch={match.pitch} venueId={match.venueId} venueSlug={match.venueSlug}
             className="block text-[15px] text-slate-400 leading-snug" />

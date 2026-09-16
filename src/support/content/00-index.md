@@ -34,6 +34,7 @@ If you're new, start with **Getting Started**. If you're looking for something s
 ## 4. Matches
 - [Add a match](04-matches/add-a-match.md)
 - [Generate a full match list](04-matches/generate-matches.md)
+- [Bulk import fixtures and results](04-matches/bulk-import-fixtures.md)
 - [Edit a match](04-matches/edit-a-match.md)
 - [The match lifecycle explained](04-matches/match-lifecycle.md)
 - [Walkovers, withdrawals and abandonments](04-matches/non-standard-outcomes.md)

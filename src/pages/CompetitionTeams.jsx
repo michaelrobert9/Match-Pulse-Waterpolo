@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
+import RedirectOrNotFound from '../components/RedirectOrNotFound'
 import { ChevronLeft, Plus, X, Search } from 'lucide-react'
 import {
   fetchCompetition, fetchCompetitionByPath, fetchCompetitionBySlugSeason,
@@ -258,7 +259,7 @@ export default function CompetitionTeams() {
 
   if (loading) return <Spinner />
   if (!competition || !competitionViewableBy(competition, auth))
-    return <div className="px-4 py-12 text-center text-slate-500 text-sm">Competition not found.</div>
+    return <RedirectOrNotFound message="Competition not found." />
 
   const base = competitionUrl(competition)
 

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Star, Trophy } from 'lucide-react'
 import { Link, useParams } from 'react-router-dom'
+import RedirectOrNotFound from '../components/RedirectOrNotFound'
 import {
   fetchCompetition, fetchCompetitionTeams, fetchOrganization,
   fetchCompetitionFixtures, fetchCompetitionTopScorers, fetchCompetitionTopPOTM, toDate,
@@ -97,7 +98,7 @@ export default function CompetitionOverview() {
 
   if (loading) return <Spinner />
   if (!competition || !competitionViewableBy(competition, auth))
-    return <div className="px-4 py-12 text-center text-slate-500 text-sm">Competition not found.</div>
+    return <RedirectOrNotFound message="Competition not found." />
 
   const isFestival = competition.type === 'festival'
   const color = competition.primaryColor || '#059669'

@@ -6,10 +6,12 @@ import {
 } from 'firebase/firestore'
 import { db, identityDb, storage } from '../../../firebase'
 import { ref as storageRef, uploadBytes, getDownloadURL } from 'firebase/storage'
+import { registerOrgMedia } from '../../../lib/mediaLibrary'
+import MediaLibraryPicker from '../../../components/MediaLibraryPicker'
 import {
   ChevronLeft, Plus, X, Trash2, Check, AlertTriangle, ExternalLink,
   Users, Calendar, Layers, Trophy, BarChart2, ClipboardCheck,
-  SlidersHorizontal, Info, Search, RefreshCw, CheckCircle2, Clock, Pencil, Loader2, RotateCcw,
+  SlidersHorizontal, Info, Search, RefreshCw, CheckCircle2, Clock, Pencil, Loader2, RotateCcw, Images, FileSpreadsheet,
 } from 'lucide-react'
 import {
   updateCompetition, deleteCompetition,
@@ -40,6 +42,8 @@ import CompetitionStatusBadge from '../../../components/CompetitionStatusBadge'
 import CompetitionStructureSection from './CompetitionStructureSection'
 import FormatSelector from '../../../components/FormatSelector'
 import VenuePicker from '../../../components/VenuePicker'
+import FixtureImportModal from '../../../components/FixtureImportModal'
+import CompetitionUrlEditor from '../../../components/CompetitionUrlEditor'
 import { composeVenuePitch } from '../../../lib/venues'
 import { DEFAULT_PERIODS, DEFAULT_PERIOD_MINUTES, DEFAULT_BREAK_MINUTES, competitionMatchFormat } from '../../../lib/matchClock'
 import { composeTeamDisplay } from '../../../lib/teamNaming'
@@ -716,6 +720,7 @@ function BasicCard({ competition, onSaved }) {
     bannerUrl:    competition.bannerUrl    ?? '',
   })
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }))
+  const [libFor, setLibFor] = useState(null)
 
   async function uploadImage(file, key, path) {
     if (!file) return
@@ -735,6 +740,7 @@ function BasicCard({ competition, onSaved }) {
       await uploadBytes(r, file)
       const url = await getDownloadURL(r)
       set(key, url)
+      if (competition.ownerOrgId) registerOrgMedia(competition.ownerOrgId, { url, name: file.name, contentType: file.type, size: file.size })
     } catch (err) {
       setUploadError(err?.code === 'storage/unauthorized'
         ? 'Upload was blocked — make sure you are still signed in, then try again.'
@@ -855,6 +861,12 @@ function BasicCard({ competition, onSaved }) {
                   {uploading ? 'Uploading…' : 'Upload image'}
                   <input type="file" accept="image/*" className="hidden" disabled={uploading} onChange={handleLogoUpload} />
                 </label>
+                {competition.ownerOrgId && (
+                  <button type="button" onClick={() => setLibFor('logoUrl')}
+                    className="inline-flex items-center justify-center gap-1.5 text-[11px] font-bold uppercase tracking-wider rounded-lg px-3 py-2 bg-white border border-slate-200 hover:border-emerald-400 text-slate-600">
+                    <Images className="w-3.5 h-3.5" /> Choose from library
+                  </button>
+                )}
                 <Input
                   value={form.logoUrl}
                   onChange={e => set('logoUrl', e.target.value)}
@@ -875,6 +887,12 @@ function BasicCard({ competition, onSaved }) {
                 {uploading ? 'Uploading…' : 'Upload image'}
                 <input type="file" accept="image/*" className="hidden" disabled={uploading} onChange={handleBannerUpload} />
               </label>
+              {competition.ownerOrgId && (
+                <button type="button" onClick={() => setLibFor('bannerUrl')}
+                  className="inline-flex items-center justify-center gap-1.5 text-[11px] font-bold uppercase tracking-wider rounded-lg px-3 py-2 bg-white border border-slate-200 hover:border-emerald-400 text-slate-600 shrink-0">
+                  <Images className="w-3.5 h-3.5" /> Library
+                </button>
+              )}
               <Input
                 value={form.bannerUrl}
                 onChange={e => set('bannerUrl', e.target.value)}
@@ -884,6 +902,12 @@ function BasicCard({ competition, onSaved }) {
             <p className="text-[11px] text-slate-400 mt-1.5">Wide image shown on the competition page and cards — 1200 × 400 px works best (up to 5 MB).</p>
           </div>
           {uploadError && <p className="text-red-600 text-xs">{uploadError}</p>}
+          {libFor && competition.ownerOrgId && (
+            <MediaLibraryPicker orgId={competition.ownerOrgId}
+              onSelect={(url) => set(libFor, url)}
+              onClose={() => setLibFor(null)} />
+          )}
+          <CompetitionUrlEditor competition={competition} onChanged={(slug) => onSaved?.({ ...competition, slug })} />
           <SaveRow saving={saving || uploading} disabled={!form.name.trim()} onSave={save} />
         </div>
       )}
@@ -2171,6 +2195,7 @@ function FixturesTab({ competition, teams, fixtures, setFixtures }) {
   const [filter, setFilter]       = useState(type === 'league' ? 'upcoming' : 'all')
   const [showNew, setShowNew]     = useState(false)
   const [showGen, setShowGen]     = useState(false)
+  const [showImport, setShowImport] = useState(false)
   const [genPoolId, setGenPoolId] = useState('')
   const [genDbl, setGenDbl]       = useState(false)
   // New fixtures default to the competition's configured match format (falling
@@ -2377,8 +2402,20 @@ function FixturesTab({ competition, teams, fixtures, setFixtures }) {
             }`}>
             {showNew ? 'Cancel' : <><Plus className="w-3.5 h-3.5" /> New match</>}
           </button>
+          {type !== 'festival' && (
+            <button onClick={() => { setShowImport(true); setShowNew(false); setShowGen(false) }}
+              className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest px-3 py-1.5 rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50 transition-colors">
+              <FileSpreadsheet className="w-3.5 h-3.5" /> Import
+            </button>
+          )}
         </div>
       </div>
+
+      {showImport && (
+        <FixtureImportModal competition={competition}
+          onClose={() => setShowImport(false)}
+          onImported={() => window.location.reload()} />
+      )}
 
       {genDone !== null && !showGen && (
         <div className="bg-emerald-50 border border-emerald-200 rounded-lg px-3 py-2 text-sm text-emerald-700 flex items-center gap-2">

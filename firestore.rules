@@ -429,6 +429,27 @@ service cloud.firestore {
       // Only platform admins may delete an organisation.
       allow delete: if isPlatformAdmin();
 
+      // ── Media library subcollection ───────────────────────────────────────
+      // Per-organisation registry of uploaded images so a logo/crest/banner can
+      // be re-selected instead of re-uploaded. The blobs themselves are public
+      // (storage.rules); this registry is readable by any signed-in user and
+      // written by the org's owner/admins (or a platform admin). Entries are
+      // immutable once created — you add or remove, never edit.
+      match /media/{mediaId} {
+        allow read:   if isSignedIn();
+        allow create: if isOrgOwnerOrStaff(orgId);
+        allow delete: if isOrgOwnerOrStaff(orgId);
+        allow update: if false;
+      }
+
+      // ── Bulk-import reports (standalone / everyday matches) ────────────────
+      match /importReports/{reportId} {
+        allow read:   if isOrgOwnerOrStaff(orgId);
+        allow create: if isOrgOwnerOrStaff(orgId);
+        allow update: if false;
+        allow delete: if isOrgOwnerOrStaff(orgId);
+      }
+
       // ── Staff subcollection ───────────────────────────────────────────────
       // This is the AUTHORITATIVE membership record — rules derive org access
       // from here, not from the mirrored users/{uid}.orgRoles field.
@@ -611,6 +632,14 @@ service cloud.firestore {
                    .hasOnly(['status', 'acceptedBy', 'acceptedAt',
                              'squad', 'staff', 'squadUpdatedAt', 'squadUpdatedBy']));
 
+        allow delete: if canAdministerCompetition(competitionId);
+      }
+
+      // ── Bulk-import reports ────────────────────────────────────────────────
+      match /importReports/{reportId} {
+        allow read:   if canAdministerCompetition(competitionId);
+        allow create: if canAdministerCompetition(competitionId);
+        allow update: if false;
         allow delete: if canAdministerCompetition(competitionId);
       }
 
