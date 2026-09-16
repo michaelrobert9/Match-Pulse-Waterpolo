@@ -69,6 +69,7 @@ export default function TeamResults() {
   const [matches, setMatches] = useState([])
   const [loading, setLoading] = useState(true)
   const [notFound, setNotFound] = useState(false)
+  const [activeSeason, setActiveSeason] = useState('all')
 
   useEffect(() => {
     let alive = true
@@ -135,6 +136,13 @@ export default function TeamResults() {
 
   const backTo = teamUrl(team, org) || '/'
 
+  // Season tabs: "All" plus one per season (newest first). Picking a season
+  // shows just that season's results; "All" keeps the full grouped history.
+  const tabs = ['all', ...seasonOrder]
+  const current = tabs.includes(activeSeason) ? activeSeason : 'all'
+  const shownSeasons = current === 'all' ? seasonOrder : [current]
+  const shownCount = current === 'all' ? results.length : (bySeason.get(current)?.length ?? 0)
+
   return (
     <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-6 pb-12 space-y-6">
       <div>
@@ -143,7 +151,8 @@ export default function TeamResults() {
         </Link>
         <h1 className="font-display font-bold text-slate-900 text-2xl leading-tight">All Results</h1>
         <p className="text-slate-500 text-sm mt-1">
-          {results.length} completed {results.length === 1 ? 'match' : 'matches'}
+          {shownCount} completed {shownCount === 1 ? 'match' : 'matches'}
+          {current !== 'all' && <span className="text-slate-400"> · {current}</span>}
         </p>
       </div>
 
@@ -153,14 +162,37 @@ export default function TeamResults() {
           <p className="text-slate-400 text-xs mt-1">Completed matches will appear here.</p>
         </div>
       ) : (
-        seasonOrder.map(season => (
-          <section key={season}>
-            <h2 className="text-[10px] font-bold uppercase tracking-widest text-slate-500 mb-3">{season}</h2>
-            <div className="space-y-2">
-              {bySeason.get(season).map(m => <ResultCard key={m.id} match={m} />)}
+        <>
+          {seasonOrder.length > 1 && (
+            <div className="-mx-4 sm:mx-0 px-4 sm:px-0 overflow-x-auto">
+              <div className="flex items-center gap-2 w-max">
+                {tabs.map(t => (
+                  <button
+                    key={t}
+                    type="button"
+                    onClick={() => setActiveSeason(t)}
+                    className={`shrink-0 rounded-full px-3.5 py-1.5 text-sm font-semibold transition-colors ${
+                      current === t
+                        ? 'bg-emerald-600 text-white'
+                        : 'bg-white text-slate-600 border border-slate-200 hover:border-slate-300'
+                    }`}
+                  >
+                    {t === 'all' ? 'All' : t}
+                  </button>
+                ))}
+              </div>
             </div>
-          </section>
-        ))
+          )}
+
+          {shownSeasons.map(season => (
+            <section key={season}>
+              <h2 className="text-[10px] font-bold uppercase tracking-widest text-slate-500 mb-3">{season}</h2>
+              <div className="space-y-2">
+                {bySeason.get(season).map(m => <ResultCard key={m.id} match={m} />)}
+              </div>
+            </section>
+          ))}
+        </>
       )}
     </div>
   )
