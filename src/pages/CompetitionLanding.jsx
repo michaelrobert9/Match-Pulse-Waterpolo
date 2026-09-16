@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useParams, Navigate } from 'react-router-dom'
 import {
-  fetchCompetition, fetchCompetitionByPath, fetchCompetitionBySlugSeason,
+  fetchCompetition, fetchCompetitionByPath, fetchCompetitionBySlugSeason, fetchRedirect,
 } from '../lib/queries'
 import { competitionStatus } from '../lib/competitionRules'
 import { competitionUrl } from '../lib/slugify'
@@ -24,9 +24,14 @@ export default function CompetitionLanding() {
       ? fetchCompetitionBySlugSeason(competitionSlug, season)
       : series ? fetchCompetitionByPath(`${series}/${ageGroup}/${season}`)
       : fetchCompetition(id)
-    p.then(comp => {
+    p.then(async comp => {
       if (!alive) return
-      if (!comp) { setDest(null); return }
+      if (!comp) {
+        // The slug may have been changed — follow a redirect from the old URL.
+        const to = await fetchRedirect(window.location.pathname).catch(() => null)
+        if (alive) setDest(to || null)
+        return
+      }
       const base = competitionUrl(comp)
       const done = competitionStatus(comp) === 'completed'
       setDest(`${base}/${done ? 'overview' : 'matches'}`)

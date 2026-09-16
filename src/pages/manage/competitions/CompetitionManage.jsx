@@ -43,6 +43,7 @@ import CompetitionStructureSection from './CompetitionStructureSection'
 import FormatSelector from '../../../components/FormatSelector'
 import VenuePicker from '../../../components/VenuePicker'
 import FixtureImportModal from '../../../components/FixtureImportModal'
+import CompetitionUrlEditor from '../../../components/CompetitionUrlEditor'
 import { composeVenuePitch } from '../../../lib/venues'
 import { DEFAULT_PERIODS, DEFAULT_PERIOD_MINUTES, DEFAULT_BREAK_MINUTES, competitionMatchFormat } from '../../../lib/matchClock'
 import { composeTeamDisplay } from '../../../lib/teamNaming'
@@ -906,6 +907,7 @@ function BasicCard({ competition, onSaved }) {
               onSelect={(url) => set(libFor, url)}
               onClose={() => setLibFor(null)} />
           )}
+          <CompetitionUrlEditor competition={competition} onChanged={(slug) => onSaved?.({ ...competition, slug })} />
           <SaveRow saving={saving || uploading} disabled={!form.name.trim()} onSave={save} />
         </div>
       )}

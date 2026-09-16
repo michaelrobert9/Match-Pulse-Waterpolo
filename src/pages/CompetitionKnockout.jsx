@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useParams, Link } from 'react-router-dom'
+import RedirectOrNotFound from '../components/RedirectOrNotFound'
 import {
   fetchCompetition, fetchCompetitionByPath, fetchCompetitionBySlugSeason,
   fetchCompetitionMembers, fetchCompetitionFixtureMembers, fetchMatch,
@@ -108,7 +109,7 @@ export default function CompetitionKnockout() {
 
   if (loading) return <Spinner />
   if (!competition || !competitionViewableBy(competition, auth))
-    return <div className="px-4 py-12 text-center text-slate-500 text-sm">Competition not found.</div>
+    return <RedirectOrNotFound message="Competition not found." />
 
   // Competition administrators still see provisional (pre-verification) knockout
   // positions so they can plan; the public sees only the seedings until pools are

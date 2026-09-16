@@ -1682,6 +1682,59 @@ function shiftScheduledToDate(scheduledAt, newDate) {
 // Write a batch of path redirects so links shared before a move keep resolving
 // (NotFound.jsx resolves them). Scoped to /match/ paths and stamped with the
 // owning org so the (broadened) rule can authorise a non-admin owner's write.
+export async function changeCompetitionSlug(competitionId, newSlugRaw) {
+  const snap = await getDoc(doc(db, 'competitions', competitionId))
+  if (!snap.exists()) throw new Error('Competition not found.')
+  const comp = snap.data()
+  const season = comp.season != null && comp.season !== '' ? String(comp.season) : null
+  const oldSlug = comp.slug || null
+  const newSlug = slugify(newSlugRaw || '')
+  if (!newSlug) throw new Error('Enter a valid URL — use letters, numbers and hyphens.')
+  if (newSlug === oldSlug) return { slug: oldSlug, oldSlug, matchesRestamped: 0, unchanged: true }
+
+  // Uniqueness within the season (a different year is not a clash).
+  const clashQ = season
+    ? query(collection(db, 'competitions'), where('season', '==', season), where('slug', '==', newSlug))
+    : query(collection(db, 'competitions'), where('slug', '==', newSlug))
+  const clash = await getDocs(clashQ)
+  if (clash.docs.some(d => d.id !== competitionId)) {
+    throw new Error('That URL is already used by another competition in this season.')
+  }
+
+  // 1) Update the competition's own slug.
+  await updateDoc(doc(db, 'competitions', competitionId), { slug: newSlug, updatedAt: serverTimestamp() })
+
+  // 2) Re-stamp every competition match's slug + path, collecting redirects.
+  const redirects = []
+  if (oldSlug && season) {
+    for (const sub of ['', '/overview', '/standings', '/matches', '/pools', '/knockout', '/stats', '/teams']) {
+      redirects.push({ from: `/competitions/${season}/${oldSlug}${sub}`, to: `/competitions/${season}/${newSlug}${sub}` })
+    }
+  }
+  let matchesRestamped = 0
+  if (season) {
+    const mSnap = await getDocs(query(collection(db, 'matches'), where('competitionId', '==', competitionId)))
+    const docs = mSnap.docs.filter(d => d.data().matchSlug)
+    for (let i = 0; i < docs.length; i += 400) {
+      const batch = writeBatch(db)
+      for (const d of docs.slice(i, i + 400)) {
+        const m = d.data()
+        const newPath = competitionMatchPath(season, newSlug, m.matchSlug)
+        if (m.path && m.path !== newPath) redirects.push({ from: m.path, to: newPath })
+        batch.update(d.ref, { competitionSlug: newSlug, competitionSeason: season, path: newPath })
+        matchesRestamped++
+      }
+      await batch.commit()
+    }
+  }
+
+  // 3) Redirects from the old URLs (best-effort — never fail the rename).
+  await writePathRedirects(redirects, comp.ownerOrgId ?? null, competitionId).catch(() => {})
+
+  return { slug: newSlug, oldSlug, matchesRestamped }
+}
+
+
 async function writePathRedirects(pairs, ownerOrgId, competitionId = null) {
   const clean = pairs.filter(p => p.from && p.to && p.from !== p.to)
   if (!clean.length) return

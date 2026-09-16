@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useParams } from 'react-router-dom'
+import RedirectOrNotFound from '../components/RedirectOrNotFound'
 import { Info } from 'lucide-react'
 import { collection, query, where, onSnapshot } from 'firebase/firestore'
 import { db } from '../firebase'
@@ -69,7 +70,7 @@ export default function CompetitionFestivalStats() {
 
   if (loading) return <Spinner />
   if (!competition || !competitionViewableBy(competition, auth))
-    return <div className="px-4 py-12 text-center text-slate-500 text-sm">Competition not found.</div>
+    return <RedirectOrNotFound message="Competition not found." />
 
   const enabled = competition.rules?.statsTable?.enabled === true
 

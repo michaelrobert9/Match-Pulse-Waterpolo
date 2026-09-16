@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { ChevronLeft, Star, AlertTriangle, ClipboardCheck } from 'lucide-react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
+import RedirectOrNotFound from '../components/RedirectOrNotFound'
 import { useAuth } from '../contexts/AuthContext'
 import {
   fetchMatch, fetchTeamLineup, subscribeMatch,
@@ -389,7 +390,7 @@ export default function MatchDetail() {
   }, [match])
 
   if (loading) return <Spinner />
-  if (!match) return <div className="px-4 py-12 text-center text-slate-500 text-sm">Match not found.</div>
+  if (!match) return <RedirectOrNotFound message="Match not found." />
 
   const isLive   = match.status === 'live'
   const isPaused = match.status === 'paused'

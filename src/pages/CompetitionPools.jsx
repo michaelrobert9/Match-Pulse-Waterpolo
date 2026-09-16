@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useParams } from 'react-router-dom'
+import RedirectOrNotFound from '../components/RedirectOrNotFound'
 import { ShieldCheck, AlertTriangle } from 'lucide-react'
 import {
   fetchCompetition, fetchCompetitionByPath, fetchCompetitionBySlugSeason,
@@ -59,7 +60,7 @@ export default function CompetitionPools() {
 
   if (loading) return <Spinner />
   if (!competition || !competitionViewableBy(competition, auth))
-    return <div className="px-4 py-12 text-center text-slate-500 text-sm">Competition not found.</div>
+    return <RedirectOrNotFound message="Competition not found." />
 
   return (
     <div className="max-w-4xl mx-auto pb-8">
