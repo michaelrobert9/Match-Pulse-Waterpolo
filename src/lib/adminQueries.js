@@ -6,7 +6,7 @@ import {
 import { httpsCallable } from 'firebase/functions'
 import { sendEmailVerification } from 'firebase/auth'
 import { db, identityDb, auth, functions, SPORT_KEY } from '../firebase'
-import { slugify, matchSlug as buildMatchSlug } from './slugify'
+import { slugify, deRomanizeSquad, matchSlug as buildMatchSlug } from './slugify'
 import { matchPath, competitionMatchPath, dedupeSlug } from './matchPaths'
 import { redirectKey } from './queries'
 import { periodLabels, DEFAULT_PERIODS, DEFAULT_PERIOD_MINUTES, DEFAULT_BREAK_MINUTES } from './matchClock'
@@ -780,7 +780,7 @@ export async function fetchAllCompetitions() {
 }
 
 async function generateUniqueTeamSlug(orgSlug, qualifier) {
-  const base = `${slugify(orgSlug)}-${slugify(String(qualifier ?? 'team'))}`
+  const base = `${slugify(orgSlug)}-${slugify(deRomanizeSquad(String(qualifier ?? 'team')))}`
   const existing = await getDocs(query(collection(db, 'teams'), where('slug', '==', base)))
   if (existing.empty) return base
   let n = 2

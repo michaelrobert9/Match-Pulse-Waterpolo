@@ -9,6 +9,13 @@ export function slugify(str) {
     .replace(/^-|-$/g, '')
 }
 
+// Team designations must never use Roman numerals in a URL. A "1st XI",
+// "2nd XV" or "1st VII" is a "1st Team" — replace any standalone squad-size
+// Roman-numeral token (V…XV) with the word "Team" before a team is slugified.
+export function deRomanizeSquad(text) {
+  return String(text ?? '').replace(/\b(?:xviii|xv|xiv|xiii|xii|xi|x|ix|viii|vii|vi|v)\b/gi, 'Team')
+}
+
 export function matchSlug(homeTeamName, awayTeamName) {
   return `${slugify(homeTeamName)}-vs-${slugify(awayTeamName)}`
 }
