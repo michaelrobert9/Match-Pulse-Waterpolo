@@ -6,7 +6,7 @@ import {
 import { httpsCallable } from 'firebase/functions'
 import { sendEmailVerification } from 'firebase/auth'
 import { db, identityDb, auth, functions, SPORT_KEY } from '../firebase'
-import { slugify, matchSlug as buildMatchSlug } from './slugify'
+import { slugify, deRomanizeSquad, matchSlug as buildMatchSlug, teamUrl, teamPathSegment } from './slugify'
 import { matchPath, competitionMatchPath, dedupeSlug } from './matchPaths'
 import { redirectKey } from './queries'
 import { periodLabels, DEFAULT_PERIODS, DEFAULT_PERIOD_MINUTES, DEFAULT_BREAK_MINUTES } from './matchClock'
@@ -226,6 +226,55 @@ export async function backfillPlayerUrls() {
     reslugged++
   }
   return { total: snap.size, reslugged, unchanged }
+}
+
+// Maintenance: strip squad-size Roman numerals from existing team slugs
+// ("…-1st-xi" → "…-1st-team") and leave redirects from the old team URLs so
+// shared links still resolve. Only touches teams whose slug carries a
+// Roman-numeral token; every other team is left exactly as-is. Display names
+// are never changed — this is a URL cleanup only. Idempotent.
+export async function backfillTeamUrls() {
+  const [teamSnap, orgSnap] = await Promise.all([
+    getDocs(collection(db, 'teams')),
+    getDocs(collection(db, 'organizations')),
+  ])
+  const orgById = {}
+  for (const o of orgSnap.docs) orgById[o.id] = { id: o.id, ...o.data() }
+  const taken = new Set(teamSnap.docs.map(d => d.data().slug).filter(Boolean))
+  let reslugged = 0, unchanged = 0
+  for (const d of teamSnap.docs) {
+    const t = d.data()
+    const oldSlug = t.slug ?? null
+    if (!oldSlug) { unchanged++; continue }
+    let newSlug = slugify(deRomanizeSquad(oldSlug))
+    if (!newSlug || newSlug === oldSlug) { unchanged++; continue }
+    // The corrected slug may already belong to another team — keep it unique.
+    if (taken.has(newSlug)) {
+      let n = 2
+      while (taken.has(`${newSlug}-${n}`)) n++
+      newSlug = `${newSlug}-${n}`
+    }
+    taken.delete(oldSlug); taken.add(newSlug)
+    await updateDoc(d.ref, { slug: newSlug, updatedAt: serverTimestamp() })
+    reslugged++
+    // Redirect every old team-URL shape (all type bases, bare, and legacy) to
+    // the new canonical URL. Best-effort — the rename still stands if it fails.
+    const org     = orgById[t.organizationId] || null
+    const orgSlug = org?.slug || (org?.name && slugify(org.name)) || t.orgSlug || null
+    const newUrl  = teamUrl({ ...t, slug: newSlug }, org)
+    if (orgSlug && newUrl) {
+      const oldSeg = teamPathSegment(oldSlug, orgSlug)
+      const froms = [
+        `/schools/${orgSlug}/${oldSeg}`,
+        `/clubs/${orgSlug}/${oldSeg}`,
+        `/associations/${orgSlug}/${oldSeg}`,
+        `/${orgSlug}/${oldSeg}`,
+        `/team/${oldSlug}`,
+      ]
+      await writePathRedirects(froms.map(from => ({ from, to: newUrl })), t.organizationId ?? null).catch(() => {})
+    }
+  }
+  return { total: teamSnap.size, reslugged, unchanged }
 }
 
 export async function createPerson(data) {
@@ -780,7 +829,7 @@ export async function fetchAllCompetitions() {
 }
 
 async function generateUniqueTeamSlug(orgSlug, qualifier) {
-  const base = `${slugify(orgSlug)}-${slugify(String(qualifier ?? 'team'))}`
+  const base = `${slugify(orgSlug)}-${slugify(deRomanizeSquad(String(qualifier ?? 'team')))}`
   const existing = await getDocs(query(collection(db, 'teams'), where('slug', '==', base)))
   if (existing.empty) return base
   let n = 2

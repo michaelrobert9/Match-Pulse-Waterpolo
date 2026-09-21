@@ -6,7 +6,7 @@ import { fetchSeoSettings, saveSeoSettings, DEFAULT_SEO } from '../../lib/seoSet
 import { slugify, matchSlug as buildMatchSlug } from '../../lib/slugify'
 import { composeTeamDisplay } from '../../lib/teamNaming'
 import { matchPath, competitionMatchPath } from '../../lib/matchPaths'
-import { writeMatchRedirect, seedFixturesFromTeamSheet, backfillTeamSearchNames, backfillRepresentativeOrgsFromSlices, backfillPlayerUrls } from '../../lib/adminQueries'
+import { writeMatchRedirect, seedFixturesFromTeamSheet, backfillTeamSearchNames, backfillRepresentativeOrgsFromSlices, backfillPlayerUrls, backfillTeamUrls } from '../../lib/adminQueries'
 import { useAuth } from '../../contexts/AuthContext'
 
 function Field({ label, hint, children }) {
@@ -778,6 +778,51 @@ function BackfillPlayerUrls() {
   )
 }
 
+// Strips squad-size Roman numerals from existing team URLs (e.g. a "1st XI"
+// team stored as "…-1st-xi" becomes "…-1st-team") and writes redirects from the
+// old team URLs. Team names on the page are unchanged — only the URL. Idempotent.
+function BackfillTeamUrls() {
+  const [state, setState] = useState('idle')
+  const [log,   setLog]   = useState('')
+
+  async function run() {
+    setState('running'); setLog('')
+    try {
+      const res = await backfillTeamUrls()
+      setLog(`Done — cleaned ${res.reslugged} team URL(s) of Roman numerals, ${res.unchanged} already correct (of ${res.total}). Old links redirect.`)
+      setState('done')
+    } catch (err) {
+      setLog(`Error: ${err.message}`)
+      setState('error')
+    }
+  }
+
+  return (
+    <Section icon={Wrench} title="Team URL Roman-numeral cleanup">
+      <p className="text-sm text-slate-600">
+        Team URLs must never use Roman numerals — a “1st XI” or “2nd XV” team
+        should read <code>…-1st-team</code>. This re-slugs every existing team whose
+        URL still carries a Roman-numeral squad size and writes a redirect for each,
+        so old links still resolve. The team’s displayed name is left unchanged.
+        Safe to run more than once.
+      </p>
+      {log && (
+        <div className="bg-slate-900 text-slate-100 rounded-xl px-4 py-3 font-mono text-xs leading-relaxed whitespace-pre-wrap">
+          {log}
+        </div>
+      )}
+      <button
+        type="button"
+        onClick={run}
+        disabled={state === 'running'}
+        className="bg-slate-700 hover:bg-slate-600 disabled:opacity-50 text-white font-bold text-sm uppercase tracking-wider rounded-xl px-5 py-2.5 transition-colors"
+      >
+        {state === 'running' ? 'Running…' : state === 'done' ? 'Run again' : 'Clean up team URLs'}
+      </button>
+    </Section>
+  )
+}
+
 // Rebuilds every user's orgRoles mirror from the authoritative staff records on
 // each organisation. Repairs memberships dropped by the historical orgRoles
 // overwrite bug (a school/club no longer appearing on a user's Manage page).
@@ -1145,6 +1190,7 @@ export default function SeoSettings() {
         <BackfillTeamSearchNames />
         <BackfillRepresentativeOrgs />
         <BackfillPlayerUrls />
+        <BackfillTeamUrls />
 
         {/* Save bar */}
         <div className="flex items-center justify-between gap-4 pt-2">
