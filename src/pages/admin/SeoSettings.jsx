@@ -789,7 +789,7 @@ function BackfillTeamUrls() {
     setState('running'); setLog('')
     try {
       const res = await backfillTeamUrls()
-      setLog(`Done — cleaned ${res.reslugged} team URL(s) of Roman numerals, ${res.unchanged} already correct (of ${res.total}). Old links redirect.`)
+      setLog(`Done — cleaned Roman numerals from ${res.renamed} team name(s) and ${res.reslugged} team URL(s), ${res.unchanged} already correct (of ${res.total}). Old links redirect.`)
       setState('done')
     } catch (err) {
       setLog(`Error: ${err.message}`)
@@ -798,13 +798,14 @@ function BackfillTeamUrls() {
   }
 
   return (
-    <Section icon={Wrench} title="Team URL Roman-numeral cleanup">
+    <Section icon={Wrench} title="Team Roman-numeral cleanup">
       <p className="text-sm text-slate-600">
-        Team URLs must never use Roman numerals — a “1st XI” or “2nd XV” team
-        should read <code>…-1st-team</code>. This re-slugs every existing team whose
-        URL still carries a Roman-numeral squad size and writes a redirect for each,
-        so old links still resolve. The team’s displayed name is left unchanged.
-        Safe to run more than once.
+        Team names and URLs must never use Roman numerals — a “1st XI” or “2nd XV”
+        team reads “1st Team” / “2nd Team” and <code>…-1st-team</code>. This cleans
+        every existing team’s displayed name and URL, and writes a redirect for each
+        changed URL so old links still resolve. Only the team’s own designation is
+        changed — an organisation legitimately named with a numeral (e.g. “King
+        Edward VII”) keeps its name. Safe to run more than once.
       </p>
       {log && (
         <div className="bg-slate-900 text-slate-100 rounded-xl px-4 py-3 font-mono text-xs leading-relaxed whitespace-pre-wrap">

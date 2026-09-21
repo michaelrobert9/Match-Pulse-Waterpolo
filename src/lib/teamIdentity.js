@@ -13,6 +13,7 @@
 
 import { getTeam, getOrg, peekTeam, peekOrg, prefetchTeams, prefetchOrgs } from './teamCache'
 import { composeTeamDisplay } from './teamNaming'
+import { deRomanizeSquad } from './slugify'
 import { coloredTeamName } from './capColor'
 
 // Compose an identity from a (possibly null) team doc, its (possibly null) org
@@ -79,7 +80,8 @@ export function resolveTeamProfileIdentity(team, org) {
     coloredTeamName({ ...(team ?? {}), orgGenderProfile: org?.genderProfile })
     || team?.displayName || team?.name || ''
   return {
-    name:  (mgmtOn && team?.name)    ? team.name    : canonicalName,
+    // Team designations never show Roman numerals ("1st XI" → "1st Team").
+    name:  deRomanizeSquad((mgmtOn && team?.name) ? team.name : canonicalName),
     image: (mgmtOn && team?.logoUrl) ? team.logoUrl : (org?.logoUrl ?? null),
     bio:   (mgmtOn && team?.bio)     ? team.bio     : (org?.bio ?? null),
   }
