@@ -6,6 +6,7 @@ import {
   fetchOrganization, fetchMatchesForTeam, fetchAllPeople, toDate,
 } from '../lib/queries'
 import { useAuth } from '../contexts/AuthContext'
+import RedirectOrNotFound from '../components/RedirectOrNotFound'
 import { assignPlayer, removePlayer, updatePlayer } from '../lib/adminQueries'
 import { playerUrl, orgUrl, matchUrl, teamUrl } from '../lib/slugify'
 import { ChevronRight } from 'lucide-react'
@@ -186,12 +187,7 @@ export default function TeamDetail() {
 
   if (loading) return <Spinner />
 
-  if (notFound || !team) return (
-    <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-20 text-center">
-      <p className="text-slate-500 text-sm mb-4">Team not found.</p>
-      <Link to="/" className="text-emerald-600 text-sm hover:underline">← Back home</Link>
-    </div>
-  )
+  if (notFound || !team) return <RedirectOrNotFound message="Team not found." />
 
   const color     = team.primaryColor   || org?.primaryColor   || '#334155'
   const secondary = team.secondaryColor || org?.secondaryColor || color
