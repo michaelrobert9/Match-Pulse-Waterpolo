@@ -16,6 +16,24 @@ export function deRomanizeSquad(text) {
   return String(text ?? '').replace(/\b(?:xviii|xv|xiv|xiii|xii|xi|x|ix|viii|vii|vi|v)\b/gi, 'Team')
 }
 
+// Human-readable Title Case from a slug — a fallback for when a stored display
+// name is missing and we would otherwise show the raw hyphenated slug. Age
+// groups read as "U13"/"U16A"; ordinals stay lower ("1st"); everything else is
+// Title Case. Never emits Roman numerals (see deRomanizeSquad).
+export function titleFromSlug(slug) {
+  return deRomanizeSquad(
+    String(slug ?? '')
+      .split('-')
+      .filter(Boolean)
+      .map(w =>
+        /^u\d{1,2}[a-z]?$/i.test(w) ? 'U' + w.slice(1).toUpperCase()
+        : /^\d+(st|nd|rd|th)$/i.test(w) ? w.toLowerCase()
+        : w.charAt(0).toUpperCase() + w.slice(1),
+      )
+      .join(' '),
+  ).replace(/\s+/g, ' ').trim()
+}
+
 export function matchSlug(homeTeamName, awayTeamName) {
   return `${slugify(homeTeamName)}-vs-${slugify(awayTeamName)}`
 }
