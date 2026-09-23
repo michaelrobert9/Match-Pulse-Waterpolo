@@ -30,7 +30,7 @@
 // CANONICAL — this file is shared byte-identical across netball, hockey, rugby
 // and water polo. Keep it self-contained apart from the local slugify import.
 
-import { slugify } from './slugify'
+import { slugify, deRomanizeSquad } from './slugify'
 
 // ── School gender ─────────────────────────────────────────────────────────────
 export const SCHOOL_GENDER_PROFILES = [
@@ -184,7 +184,11 @@ export function clubTeamName(division, levelFields) {
 // and show the name alone; a division part with no name renders alone too.
 export function composeTeamDisplay(namePortion, teamLabel) {
   const name  = (namePortion ?? '').trim()
-  const label = (teamLabel ?? '').trim()
+  // The team designation must never show Roman numerals — "1st XI" reads
+  // "1st Team". Only the team-label portion is normalised; the name portion is
+  // left untouched so an organisation legitimately named with a numeral (e.g.
+  // "King Edward VII School") keeps its name.
+  const label = deRomanizeSquad((teamLabel ?? '').trim())
   if (!name)  return label
   if (!label) return name
   return `${name} – ${label}`

@@ -228,11 +228,12 @@ export async function backfillPlayerUrls() {
   return { total: snap.size, reslugged, unchanged }
 }
 
-// Maintenance: strip squad-size Roman numerals from existing team slugs
-// ("…-1st-xi" → "…-1st-team") and leave redirects from the old team URLs so
-// shared links still resolve. Only touches teams whose slug carries a
-// Roman-numeral token; every other team is left exactly as-is. Display names
-// are never changed — this is a URL cleanup only. Idempotent.
+// Maintenance: strip squad-size Roman numerals from existing teams — both the
+// displayed NAME ("1st XI" → "1st Team") and the URL ("…-1st-xi" → "…-1st-team")
+// — and leave redirects from the old team URLs so shared links still resolve.
+// Only the team's own designation is normalised: the organisation name is never
+// touched, so a school legitimately named with a numeral (e.g. "King Edward VII
+// School") keeps its name in both the label and the URL prefix. Idempotent.
 export async function backfillTeamUrls() {
   const [teamSnap, orgSnap] = await Promise.all([
     getDocs(collection(db, 'teams')),
@@ -241,40 +242,75 @@ export async function backfillTeamUrls() {
   const orgById = {}
   for (const o of orgSnap.docs) orgById[o.id] = { id: o.id, ...o.data() }
   const taken = new Set(teamSnap.docs.map(d => d.data().slug).filter(Boolean))
-  let reslugged = 0, unchanged = 0
+  let reslugged = 0, renamed = 0, unchanged = 0
   for (const d of teamSnap.docs) {
     const t = d.data()
-    const oldSlug = t.slug ?? null
-    if (!oldSlug) { unchanged++; continue }
-    let newSlug = slugify(deRomanizeSquad(oldSlug))
-    if (!newSlug || newSlug === oldSlug) { unchanged++; continue }
-    // The corrected slug may already belong to another team — keep it unique.
-    if (taken.has(newSlug)) {
-      let n = 2
-      while (taken.has(`${newSlug}-${n}`)) n++
-      newSlug = `${newSlug}-${n}`
+    const patch = {}
+
+    // 1) Displayed name — the stored displayName is the team designation only
+    // (the org name is not part of it), so it is safe to de-romanise wholesale.
+    const oldName = t.displayName ?? ''
+    const newName = deRomanizeSquad(oldName).replace(/\s+/g, ' ').trim()
+    if (newName && newName !== oldName) {
+      patch.displayName = newName
+      // Keep searchName org-led; rebuild it from the org name + cleaned name so
+      // the org portion (which may legitimately carry a numeral) is preserved.
+      patch.searchName = [t.orgName, newName].filter(Boolean).join(' ').toLowerCase()
+      renamed++
     }
-    taken.delete(oldSlug); taken.add(newSlug)
-    await updateDoc(d.ref, { slug: newSlug, updatedAt: serverTimestamp() })
-    reslugged++
-    // Redirect every old team-URL shape (all type bases, bare, and legacy) to
-    // the new canonical URL. Best-effort — the rename still stands if it fails.
+    // The free-text per-team name (associations / leagues) is also a team name.
+    if (t.teamName) {
+      const nt = deRomanizeSquad(t.teamName).replace(/\s+/g, ' ').trim()
+      if (nt && nt !== t.teamName) patch.teamName = nt
+    }
+
+    // 2) URL — de-romanise ONLY the team segment after the org-slug prefix, so
+    // the org portion of the slug is never mangled.
+    const oldSlug = t.slug ?? null
     const org     = orgById[t.organizationId] || null
     const orgSlug = org?.slug || (org?.name && slugify(org.name)) || t.orgSlug || null
-    const newUrl  = teamUrl({ ...t, slug: newSlug }, org)
-    if (orgSlug && newUrl) {
-      const oldSeg = teamPathSegment(oldSlug, orgSlug)
-      const froms = [
-        `/schools/${orgSlug}/${oldSeg}`,
-        `/clubs/${orgSlug}/${oldSeg}`,
-        `/associations/${orgSlug}/${oldSeg}`,
-        `/${orgSlug}/${oldSeg}`,
-        `/team/${oldSlug}`,
-      ]
-      await writePathRedirects(froms.map(from => ({ from, to: newUrl })), t.organizationId ?? null).catch(() => {})
+    let newSlug = oldSlug
+    if (oldSlug && orgSlug) {
+      const pfx = slugify(orgSlug)
+      if (oldSlug === pfx || oldSlug.startsWith(`${pfx}-`)) {
+        const seg    = oldSlug === pfx ? '' : oldSlug.slice(pfx.length + 1)
+        const newSeg = slugify(deRomanizeSquad(seg))
+        if (newSeg && newSeg !== seg) {
+          let cand = `${pfx}-${newSeg}`
+          if (taken.has(cand)) { let n = 2; while (taken.has(`${cand}-${n}`)) n++; cand = `${cand}-${n}` }
+          newSlug = cand
+        }
+      }
+    }
+    if (newSlug !== oldSlug) {
+      taken.delete(oldSlug); taken.add(newSlug)
+      patch.slug = newSlug
+      reslugged++
+    }
+
+    if (Object.keys(patch).length === 0) { unchanged++; continue }
+    patch.updatedAt = serverTimestamp()
+    await updateDoc(d.ref, patch)
+
+    // Redirect every old team-URL shape (all type bases, bare, and legacy) to
+    // the new canonical URL. Best-effort — the rename still stands if it fails.
+    if (patch.slug && orgSlug) {
+      const pfx    = slugify(orgSlug)
+      const newUrl = teamUrl({ ...t, slug: newSlug }, org)
+      const oldSeg = teamPathSegment(oldSlug, pfx)
+      if (newUrl) {
+        const froms = [
+          `/schools/${pfx}/${oldSeg}`,
+          `/clubs/${pfx}/${oldSeg}`,
+          `/associations/${pfx}/${oldSeg}`,
+          `/${pfx}/${oldSeg}`,
+          `/team/${oldSlug}`,
+        ]
+        await writePathRedirects(froms.map(from => ({ from, to: newUrl })), t.organizationId ?? null).catch(() => {})
+      }
     }
   }
-  return { total: teamSnap.size, reslugged, unchanged }
+  return { total: teamSnap.size, reslugged, renamed, unchanged }
 }
 
 export async function createPerson(data) {
