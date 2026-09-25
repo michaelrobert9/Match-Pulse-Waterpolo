@@ -939,7 +939,11 @@ export async function createTeam(orgData, displayName, options = {}) {
     teamName = null, teamColor = null,
   } = options
   const orgSlug = orgData.slug || slugify(orgData.name)
-  const name = displayName || orgData.name
+  // The stored displayName is the team's LABEL (its designation, org name not
+  // included). An association/league team may be identified only by its own name
+  // (teamName) with no structured label — then the label is empty and must not
+  // fall back to the org name, or the display would double it up.
+  const name = displayName || (teamName?.trim() ? '' : orgData.name)
   // Structured naming fields are the source of truth: gender (school) OR
   // division (club/association), plus ageGroup + teamLevel (a letter for age
   // sides, an ordinal for senior sides). `teamLabel` and `structuralKey` are
@@ -965,7 +969,7 @@ export async function createTeam(orgData, displayName, options = {}) {
     // registered team is findable by its school or club name (the natural query
     // when adding a match) — the team's structural label ("U14A") alone is not
     // enough, since the org name was moved out of displayName by the naming model.
-    searchName:     [orgData.name, name].filter(Boolean).join(' ').toLowerCase(),
+    searchName:     [orgData.name, name, teamName].filter(Boolean).join(' ').toLowerCase(),
     // Firestore rejects `undefined`; orgs need not carry a shortCode/primary
     // colour, so coalesce every optional org-derived field to null (or a
     // sensible default) rather than passing undefined straight through.
@@ -1086,13 +1090,18 @@ export async function updateTeam(id, data) {
       orgGenderProfile: patch.orgGenderProfile,
     }
     const name = coloredTeamName(fields)
+    // Keep searchName org-led (see createTeam) so a rename never regresses the
+    // team to being unsearchable by its school/club name.
+    const on = orgName || (curData?.orgName ?? null)
+    const existingTeamName = ('teamName' in patch) ? patch.teamName : (curData?.teamName ?? null)
     if (name) {
       patch.displayName = name
-      // Keep searchName org-led (see createTeam) so a rename never regresses the
-      // team to being unsearchable by its school/club name. orgName is stripped
-      // from the patch, so recover it from the passed data or the stored doc.
-      const on = orgName || (curData?.orgName ?? null)
-      patch.searchName = [on, name].filter(Boolean).join(' ').toLowerCase()
+      patch.searchName  = [on, name, existingTeamName].filter(Boolean).join(' ').toLowerCase()
+    } else if (existingTeamName) {
+      // Association/league team identified only by its own name — no structured
+      // label, so clear the stored label rather than leaving a stale one.
+      patch.displayName = ''
+      patch.searchName  = [on, existingTeamName].filter(Boolean).join(' ').toLowerCase()
     }
     patch.teamLabel     = levelLabel(fields) || null
     patch.structuralKey = coloredStructuralKey(fields) || null

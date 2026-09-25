@@ -312,9 +312,12 @@ function TeamsSection({ orgId, org, competitions, teams, setTeams, defaultOpen, 
   // Full-card preview: [team name → org match name → org name] – [label]
   const previewFull = composeTeamDisplay(
     (isAssoc && newTeamName.trim()) || org?.matchName || org?.name, previewName)
-  const canAdd = !genderUnset
-    && levelComplete(level)
-    && (isSchool ? !!effectiveSchoolGender : !!axis)
+  // Associations identify a team by its NAME — gender, age group and letter are
+  // all optional there, so the only requirement is a team name. Schools and
+  // clubs keep the structured requirement (gender + a complete level).
+  const canAdd = isAssoc
+    ? !!newTeamName.trim()
+    : (!genderUnset && levelComplete(level) && (isSchool ? !!effectiveSchoolGender : !!axis))
 
   function resetCreate() {
     setAxis('')
@@ -327,9 +330,13 @@ function TeamsSection({ orgId, org, competitions, teams, setTeams, defaultOpen, 
     e.preventDefault()
     if (!canAdd) return
     const name   = previewName
-    const isDupe = teams.some(t =>
-      (coloredTeamName({ ...t, orgGenderProfile: profile }) || t.displayName).toLowerCase() === name.toLowerCase()
-    )
+    // Compare full display names (org/team-name + label), so association teams
+    // that differ only by their team name are not treated as duplicates.
+    const composedNew = (previewFull || previewName || '').trim().toLowerCase()
+    const isDupe = !!composedNew && teams.some(t => {
+      const label = coloredTeamName({ ...t, orgGenderProfile: profile }) || t.displayName || ''
+      return composeTeamDisplay(t.teamName || org?.matchName || org?.name, label).trim().toLowerCase() === composedNew
+    })
     if (isDupe) return
     setSaving(true)
     setAddError('')
@@ -397,12 +404,15 @@ function TeamsSection({ orgId, org, competitions, teams, setTeams, defaultOpen, 
   const editPreview = editId
     ? coloredTeamName({ ...editFields, orgGenderProfile: profile })
     : ''
-  const canSaveEdit = levelComplete(editLevel)
-    && (isSchool ? !!editGenderEffective : !!editAxis)
+  // Associations only need a team name; gender/age/letter stay optional on edit
+  // too. Schools and clubs keep the structured requirement.
+  const canSaveEdit = isAssoc
+    ? !!editTeamName.trim()
+    : (levelComplete(editLevel) && (isSchool ? !!editGenderEffective : !!editAxis))
 
   async function handleEdit(team) {
     if (!canSaveEdit) return
-    const name = coloredTeamName({ ...editFields, orgGenderProfile: profile }) || team.displayName
+    const name = coloredTeamName({ ...editFields, orgGenderProfile: profile }) || team.displayName || ''
 
     const structuralChanged =
       (editFields.gender    ?? null) !== (team.gender    ?? null) ||
@@ -457,7 +467,7 @@ function TeamsSection({ orgId, org, competitions, teams, setTeams, defaultOpen, 
               ageGroup: editFields.ageGroup ?? null, teamLevel: editFields.teamLevel ?? null,
               teamColor: editFields.teamColor ?? null,
               teamLabel: levelLabel(editFields) || null,
-              displayName: name, searchName: name.toLowerCase(),
+              displayName: name, searchName: (name || '').toLowerCase(),
             } : {}),
             ...(teamNameChanged ? { teamName: teamNameNext } : {}),
             ...(identityChanged ? identityPatch : {}),
@@ -545,23 +555,29 @@ function TeamsSection({ orgId, org, competitions, teams, setTeams, defaultOpen, 
                     placeholder="e.g. Durban Panthers"
                     className="w-full bg-white border border-slate-200 rounded-lg px-3 py-2.5 text-slate-900 text-sm focus:outline-none focus:border-emerald-500 transition-colors" />
                   <p className="text-[11px] text-slate-500 mt-1">
-                    Shown instead of the organisation on match cards. Leave blank to use the organisation name.
+                    The team name is all that's required — gender and age group below are optional.
                   </p>
                 </div>
               )}
               <div>
-                <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-2">Gender</p>
+                <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-2">
+                  Gender{isAssoc && <span className="text-slate-400 font-medium normal-case tracking-normal"> (optional)</span>}
+                </p>
                 <div className="grid grid-cols-3 gap-1.5">
                   {TEAM_GENDERS.map(g => (
-                    <button type="button" key={g.value} onClick={() => setAxis(g.value)} className={chipCls(axis === g.value)}>
+                    <button type="button" key={g.value}
+                      onClick={() => setAxis(isAssoc && axis === g.value ? '' : g.value)}
+                      className={chipCls(axis === g.value)}>
                       {g.label}
                     </button>
                   ))}
                 </div>
               </div>
-              {axis && (
+              {(axis || isAssoc) && (
                 <div>
-                  <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-2">Team</p>
+                  <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-2">
+                    Team{isAssoc && <span className="text-slate-400 font-medium normal-case tracking-normal"> (optional)</span>}
+                  </p>
                   <LevelPicker orgType={orgType} value={level} onChange={setLevel} />
                 </div>
               )}
@@ -569,16 +585,18 @@ function TeamsSection({ orgId, org, competitions, teams, setTeams, defaultOpen, 
             </div>
           )}
 
-          {previewName && (
+          {(previewFull || previewName) && (
             <div className="text-xs text-slate-400">
               Preview: <span className="text-slate-900 font-semibold">{previewFull || previewName}</span>
             </div>
           )}
 
           {(() => {
-            const isDupe = previewName && teams.some(t =>
-              (coloredTeamName({ ...t, orgGenderProfile: profile }) || t.displayName).toLowerCase() === previewName.toLowerCase()
-            )
+            const composedNew = (previewFull || previewName || '').trim().toLowerCase()
+            const isDupe = !!composedNew && teams.some(t => {
+              const label = coloredTeamName({ ...t, orgGenderProfile: profile }) || t.displayName || ''
+              return composeTeamDisplay(t.teamName || org?.matchName || org?.name, label).trim().toLowerCase() === composedNew
+            })
             return (
               <>
                 {isDupe && (
