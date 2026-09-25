@@ -638,6 +638,23 @@ export async function fetchCompetitionMembers(competitionId) {
       if (mn) m.displaySnapshot = { ...(m.displaySnapshot ?? {}), matchName: mn }
     }
   }
+  // Enrich with each team's own LIVE custom name (associations/leagues name their
+  // teams — "Durban Panthers"). This name leads the competition label ahead of
+  // the organisation, matching the public match cards. Best-effort, batched.
+  const teamIds = [...new Set(members.map(m => m.teamId).filter(Boolean))]
+  if (teamIds.length) {
+    const customByTeam = {}
+    await Promise.all(teamIds.map(async tid => {
+      try {
+        const t = await getDoc(doc(db, 'teams', tid))
+        if (t.exists() && t.data().teamName) customByTeam[tid] = t.data().teamName
+      } catch { /* best-effort — a named (non-org) entrant has no team doc */ }
+    }))
+    for (const m of members) {
+      const cn = m.teamId ? customByTeam[m.teamId] : null
+      if (cn) m.displaySnapshot = { ...(m.displaySnapshot ?? {}), customName: cn }
+    }
+  }
   return members
 }
 

@@ -199,9 +199,10 @@ export function composeTeamDisplay(namePortion, teamLabel) {
 // (non-org) entrants have no orgName and render as just the team name. Guards
 // against doubling when the team name already starts with the org name.
 export function competitionTeamLabel(snapshot) {
-  // Prefer the organisation's MATCH name (the short name people actually use);
-  // fall back to its full name only when no match name is present.
-  const org  = (snapshot?.matchName ?? snapshot?.orgName ?? '').trim()
+  // The name portion leads with the team's OWN custom name when it has one (an
+  // association/league team — "Durban Panthers"), then the organisation's MATCH
+  // name (the short name people use), then its full name.
+  const org  = (snapshot?.customName ?? snapshot?.matchName ?? snapshot?.orgName ?? '').trim()
   const team = (snapshot?.teamName ?? '').trim()
   if (team.toLowerCase().startsWith(org.toLowerCase()) && org) return team
   return composeTeamDisplay(org, team)

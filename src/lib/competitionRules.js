@@ -188,6 +188,10 @@ export const DEFAULT_TIE_BREAKERS = [
   { key: 'manualDecision',      label: 'Manual administrator decision',  direction: null,   scope: 'all_fixtures' },
 ]
 
+// The governing body whose recommended standings order the defaults above follow.
+// Surfaced in the tie-breaker editor's "reset to recommended order" action.
+export const GOVERNING_BODY = 'World Aquatics'
+
 // A walkover awards the opposing team a default scoreline; the conceding team
 // records a loss. World Aquatics records a defaulted/forfeited water polo match
 // as 5-0 to the team present. Values are configurable per competition.

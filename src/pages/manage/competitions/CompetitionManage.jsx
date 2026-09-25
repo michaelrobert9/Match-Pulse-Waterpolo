@@ -33,7 +33,7 @@ import { userDisplayName, userInitial } from '../../../lib/names'
 import { useAuth } from '../../../contexts/AuthContext'
 import { matchSlug as buildMatchSlug } from '../../../lib/slugify'
 import { fetchCompetitionPools, fetchCompetitionKnockout, fetchCompetitionFixtureMembers, fetchAwaitingResultMatchesForCompetition, fetchCompetitionAuditLog, toDate } from '../../../lib/queries'
-import { POINTS_PRESETS, competitionLifecycle, BONUS_RULE_TYPES, DEFAULT_BONUS_POINTS } from '../../../lib/competitionRules'
+import { POINTS_PRESETS, competitionLifecycle, BONUS_RULE_TYPES, DEFAULT_BONUS_POINTS, DEFAULT_TIE_BREAKERS, GOVERNING_BODY } from '../../../lib/competitionRules'
 import { POM_DEFAULT_COLOR } from '../../../lib/pom'
 import TeamSheetEditor from '../../../components/TeamSheetEditor'
 import { isScheduled } from '../../../lib/fixtureStatus'
@@ -1227,6 +1227,11 @@ function TieBreakersCard({ competition, onSaved }) {
               </li>
             ))}
           </ol>
+          <button type="button"
+            onClick={() => setOrder(DEFAULT_TIE_BREAKERS.map(t => ({ ...t })))}
+            className="text-[11px] font-bold uppercase tracking-widest text-emerald-600 hover:text-emerald-500">
+            ↺ Reset to {GOVERNING_BODY} recommended order
+          </button>
           <label className="flex items-start gap-2 cursor-pointer">
             <input type="checkbox" checked={confirmed} onChange={e => setConfirmed(e.target.checked)}
               className="accent-amber-600 w-4 h-4 mt-0.5" />
@@ -2028,14 +2033,16 @@ function TeamsTab({ competition, teams, setTeams }) {
         organizationId: org.id,
         status:         'admin_approved',
         displaySnapshot: {
-          teamName:     team.displayName || org.name,
+          teamName:     team.displayName || '',
+          customName:   team.teamName || null,
           orgName:      org.name,
           primaryColor: team.primaryColor || org.primaryColor || null,
         },
       })
       setTeams(prev => [...prev, {
         id: team.id, organizationId: org.id, orgName: org.name,
-        displayName: team.displayName || org.name,
+        displayName: team.displayName || '',
+        teamName: team.teamName || null,
         primaryColor: team.primaryColor || org.primaryColor,
         memberStatus: 'admin_approved',
       }])
@@ -2324,9 +2331,10 @@ function FixturesTab({ competition, teams, fixtures, setFixtures }) {
   }
 
   function resolveTeamName(teamId, orgName, teamName) {
-    if (orgName) return `${orgName} ${teamName}`
-    const team = teams.find(t => t.id === teamId)
-    return team?.orgName ? `${team.orgName} ${teamName}` : (teamName ?? '')
+    const team = (teams || []).find(t => t.id === teamId)
+    const namePortion = team?.teamName || orgName || team?.orgName || ''
+    const label = teamName ?? team?.displayName ?? ''
+    return composeTeamDisplay(namePortion, label) || namePortion || label || ''
   }
 
   // ── Grouping per competition type ──
@@ -2710,9 +2718,10 @@ function AwaitingResultSection({ competition }) {
 
 function ResultsTab({ competition, fixtures, teams }) {
   const resolveName = (teamId, orgName, teamName) => {
-    if (orgName) return `${orgName} ${teamName}`
     const team = (teams || []).find(t => t.id === teamId)
-    return team?.orgName ? `${team.orgName} ${teamName}` : (teamName ?? '')
+    const namePortion = team?.teamName || orgName || team?.orgName || ''
+    const label = teamName ?? team?.displayName ?? ''
+    return composeTeamDisplay(namePortion, label) || namePortion || label || ''
   }
   const played = fixtures
     .filter(f => !isScheduled(f))
