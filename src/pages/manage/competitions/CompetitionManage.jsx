@@ -33,7 +33,7 @@ import { userDisplayName, userInitial } from '../../../lib/names'
 import { useAuth } from '../../../contexts/AuthContext'
 import { matchSlug as buildMatchSlug } from '../../../lib/slugify'
 import { fetchCompetitionPools, fetchCompetitionKnockout, fetchCompetitionFixtureMembers, fetchAwaitingResultMatchesForCompetition, fetchCompetitionAuditLog, toDate } from '../../../lib/queries'
-import { POINTS_PRESETS, competitionLifecycle, BONUS_RULE_TYPES, DEFAULT_BONUS_POINTS } from '../../../lib/competitionRules'
+import { POINTS_PRESETS, competitionLifecycle, BONUS_RULE_TYPES, DEFAULT_BONUS_POINTS, DEFAULT_TIE_BREAKERS, GOVERNING_BODY } from '../../../lib/competitionRules'
 import { POM_DEFAULT_COLOR } from '../../../lib/pom'
 import TeamSheetEditor from '../../../components/TeamSheetEditor'
 import { isScheduled } from '../../../lib/fixtureStatus'
@@ -1227,6 +1227,11 @@ function TieBreakersCard({ competition, onSaved }) {
               </li>
             ))}
           </ol>
+          <button type="button"
+            onClick={() => setOrder(DEFAULT_TIE_BREAKERS.map(t => ({ ...t })))}
+            className="text-[11px] font-bold uppercase tracking-widest text-emerald-600 hover:text-emerald-500">
+            ↺ Reset to {GOVERNING_BODY} recommended order
+          </button>
           <label className="flex items-start gap-2 cursor-pointer">
             <input type="checkbox" checked={confirmed} onChange={e => setConfirmed(e.target.checked)}
               className="accent-amber-600 w-4 h-4 mt-0.5" />
