@@ -2028,14 +2028,16 @@ function TeamsTab({ competition, teams, setTeams }) {
         organizationId: org.id,
         status:         'admin_approved',
         displaySnapshot: {
-          teamName:     team.displayName || org.name,
+          teamName:     team.displayName || '',
+          customName:   team.teamName || null,
           orgName:      org.name,
           primaryColor: team.primaryColor || org.primaryColor || null,
         },
       })
       setTeams(prev => [...prev, {
         id: team.id, organizationId: org.id, orgName: org.name,
-        displayName: team.displayName || org.name,
+        displayName: team.displayName || '',
+        teamName: team.teamName || null,
         primaryColor: team.primaryColor || org.primaryColor,
         memberStatus: 'admin_approved',
       }])
@@ -2324,9 +2326,10 @@ function FixturesTab({ competition, teams, fixtures, setFixtures }) {
   }
 
   function resolveTeamName(teamId, orgName, teamName) {
-    if (orgName) return `${orgName} ${teamName}`
-    const team = teams.find(t => t.id === teamId)
-    return team?.orgName ? `${team.orgName} ${teamName}` : (teamName ?? '')
+    const team = (teams || []).find(t => t.id === teamId)
+    const namePortion = team?.teamName || orgName || team?.orgName || ''
+    const label = teamName ?? team?.displayName ?? ''
+    return composeTeamDisplay(namePortion, label) || namePortion || label || ''
   }
 
   // ── Grouping per competition type ──
@@ -2710,9 +2713,10 @@ function AwaitingResultSection({ competition }) {
 
 function ResultsTab({ competition, fixtures, teams }) {
   const resolveName = (teamId, orgName, teamName) => {
-    if (orgName) return `${orgName} ${teamName}`
     const team = (teams || []).find(t => t.id === teamId)
-    return team?.orgName ? `${team.orgName} ${teamName}` : (teamName ?? '')
+    const namePortion = team?.teamName || orgName || team?.orgName || ''
+    const label = teamName ?? team?.displayName ?? ''
+    return composeTeamDisplay(namePortion, label) || namePortion || label || ''
   }
   const played = fixtures
     .filter(f => !isScheduled(f))

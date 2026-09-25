@@ -389,7 +389,9 @@ function TeamsSection({ orgId, org, competitions, teams, setTeams, defaultOpen, 
     setEditColor(team.teamColor ?? '')
     // Identity overrides — stored values are kept even when the toggle is off
     // (hide-not-clear), so they reappear here when editing with the toggle on.
-    setEditName(team.name ?? '')
+    // Default the display-name override to the team's own name (association/league
+    // teams), so the given name carries through rather than starting blank.
+    setEditName(team.name ?? team.teamName ?? '')
     setEditImage(team.logoUrl ?? '')
     setEditBio(team.bio ?? '')
   }

@@ -781,29 +781,9 @@ function PoolCard({
         </div>
       )}
 
-      {/* Auto-generate fixtures */}
-      {!pool.verified && !pool.finalized && (
-        <div className="mb-3">
-          <MicroLabel>Generate matches</MicroLabel>
-          {poolMatchList.length > 0 ? (
-            <div className="flex items-start gap-1.5 text-[12px] text-slate-500 bg-slate-50 border border-slate-100 rounded-lg px-3 py-2">
-              <Info className="w-3.5 h-3.5 shrink-0 mt-0.5 text-slate-400" />
-              <span>Matches already generated. Add cross-pool or extra matches manually if needed.</span>
-            </div>
-          ) : (
-            <div className="space-y-2">
-              <div className="flex items-start gap-1.5 text-[12px] text-slate-600 bg-blue-50 border border-blue-100 rounded-lg px-3 py-2">
-                <Info className="w-3.5 h-3.5 shrink-0 mt-0.5 text-blue-400" />
-                <span>Auto-generation creates one match between each pair of teams in the pool. For cross-pool matches or extra matches against the same team, create them manually.</span>
-              </div>
-              <button onClick={() => onGenerateFixtures(pool.poolId)} disabled={busy}
-                className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-widest text-white bg-emerald-600 hover:bg-emerald-500 rounded-md px-3 py-2 disabled:opacity-40 transition-colors">
-                <Calendar className="w-3.5 h-3.5" /> Generate matches
-              </button>
-            </div>
-          )}
-        </div>
-      )}
+      {/* Matches are generated on the Matches tab (Generate matches), not here —
+          the Structure tab only assigns teams to pools. Existing matches can be
+          grouped into this pool below. */}
 
       {/* Group fixtures into this pool */}
       {groupableFixtures.length > 0 && !pool.verified && (
