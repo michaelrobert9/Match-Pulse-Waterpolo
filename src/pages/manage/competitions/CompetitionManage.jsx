@@ -34,6 +34,7 @@ import { useAuth } from '../../../contexts/AuthContext'
 import { matchSlug as buildMatchSlug } from '../../../lib/slugify'
 import { fetchCompetitionPools, fetchCompetitionKnockout, fetchCompetitionFixtureMembers, fetchAwaitingResultMatchesForCompetition, fetchCompetitionAuditLog, toDate } from '../../../lib/queries'
 import { POINTS_PRESETS, competitionLifecycle, BONUS_RULE_TYPES, DEFAULT_BONUS_POINTS, DEFAULT_TIE_BREAKERS, GOVERNING_BODY } from '../../../lib/competitionRules'
+import { clubMayEnterCompetition } from '../../../lib/associations'
 import { POM_DEFAULT_COLOR } from '../../../lib/pom'
 import TeamSheetEditor from '../../../components/TeamSheetEditor'
 import { isScheduled } from '../../../lib/fixtureStatus'
@@ -2098,7 +2099,9 @@ function TeamsTab({ competition, teams, setTeams }) {
                 <select value={selectedOrgId} onChange={e => setSelectedOrgId(e.target.value)} required
                   className="w-full bg-white border border-slate-200 rounded-lg px-3 py-2.5 text-slate-900 text-sm focus:outline-none focus:border-emerald-500">
                   <option value="">Select school or club…</option>
-                  {orgs.map(o => <option key={o.id} value={o.id}>{o.name}</option>)}
+                  {orgs
+                    .filter(o => clubMayEnterCompetition(o, competition.ownerOrgId))
+                    .map(o => <option key={o.id} value={o.id}>{o.name}</option>)}
                 </select>
               </div>
               {selectedOrgId && (

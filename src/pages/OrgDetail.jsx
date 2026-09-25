@@ -3,9 +3,11 @@ import { ChevronRight } from 'lucide-react'
 import { Link, useParams } from 'react-router-dom'
 import {
   fetchOrganizationBySlug, fetchTeamsForOrganization,
-  fetchMatchesForOrg, toDate,
+  fetchMatchesForOrg, fetchOrganizationsByType, toDate,
 } from '../lib/queries'
-import { teamUrl, matchUrl } from '../lib/slugify'
+import { fetchCompetitionsForOrg } from '../lib/adminQueries'
+import { isFranchiseAssociation, isFederationAssociation } from '../lib/associations'
+import { teamUrl, matchUrl, competitionUrl, orgUrl } from '../lib/slugify'
 import { SPORT_KEY } from '../firebase'
 import { prefetchMatchTeams, resolveTeamProfileIdentity } from '../lib/teamIdentity'
 import { MatchTeamIdentity } from '../components/TeamIdentity'
@@ -141,6 +143,8 @@ export default function OrgDetail({ type }) {
   const [loading,  setLoading]  = useState(true)
   const [notFound, setNotFound] = useState(false)
   const [upcomingExpanded, setUpcomingExpanded] = useState(false)
+  const [clubs,        setClubs]        = useState([])   // franchise clubs (private association)
+  const [competitions, setCompetitions] = useState([])   // competitions this association runs
 
   useEffect(() => {
     let alive = true
@@ -157,6 +161,19 @@ export default function OrgDetail({ type }) {
         ])
         prefetchMatchTeams(m)
         if (alive) { setTeams(t); setMatches(m) }
+        // Associations also surface the competitions they run, and a private
+        // (franchise) association surfaces its franchise clubs.
+        if (found.type === 'association') {
+          const [comps, allClubs] = await Promise.all([
+            fetchCompetitionsForOrg(found.id).catch(() => []),
+            isFranchiseAssociation(found) ? fetchOrganizationsByType('club').catch(() => []) : Promise.resolve([]),
+          ])
+          if (alive) {
+            setCompetitions(comps || [])
+            setClubs((allClubs || []).filter(o => o.franchiseOf === found.id))
+          }
+        }
+
       })
       .catch(() => { if (alive) setNotFound(true) })
       .finally(() => { if (alive) setLoading(false) })
@@ -179,6 +196,9 @@ export default function OrgDetail({ type }) {
 
   const color     = org.primaryColor   || '#334155'
   const secondary = org.secondaryColor || color
+  const isFranchise  = isFranchiseAssociation(org)
+  const isFederation = isFederationAssociation(org)
+  const visibleComps = (competitions || []).filter(c => c.status !== 'draft')
 
   // Collapse match days FIRST, then keep only the ones still to come. A collapsed
   // group is "upcoming" until any child is played or live; a standalone match is
@@ -243,7 +263,51 @@ export default function OrgDetail({ type }) {
         </div>
       </div>
 
+{/* Franchise clubs — a private association's clubs (it owns no teams itself) */}
+      {isFranchise && (
+        <section>
+          <SectionHeader title="Clubs" />
+          {clubs.length === 0 ? (
+            <EmptyCard message={`No clubs yet for ${org.name}.`} sub="Clubs will appear here once they are set up." />
+          ) : (
+            <div className="space-y-2">
+              {clubs.map(c => (
+                <Link key={c.id} to={orgUrl(c)}
+                  className="flex items-center gap-3 bg-white rounded-2xl border border-slate-200 shadow-sm px-4 py-3 hover:border-slate-300 transition-colors">
+                  <div className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0 overflow-hidden"
+                    style={{ backgroundColor: (c.primaryColor || '#334155') + '20', border: `2px solid ${c.primaryColor || '#334155'}` }}>
+                    {c.logoUrl
+                      ? <img src={c.logoUrl} alt={c.name} className="w-full h-full object-cover" />
+                      : <span className="text-[11px] font-bold font-mono" style={{ color: c.primaryColor || '#334155' }}>{monogram(c.name)}</span>}
+                  </div>
+                  <span className="text-slate-900 text-sm font-semibold flex-1 truncate">{c.name}</span>
+                  <ChevronRight className="w-4 h-4 text-slate-300 shrink-0" />
+                </Link>
+              ))}
+            </div>
+          )}
+        </section>
+      )}
+
+      {/* Competitions this association runs */}
+      {org.type === 'association' && visibleComps.length > 0 && (
+        <section>
+          <SectionHeader title={isFederation ? 'Leagues & Competitions' : 'Competitions'} />
+          <div className="space-y-2">
+            {visibleComps.map(c => (
+              <Link key={c.id} to={competitionUrl(c)}
+                className="flex items-center gap-3 bg-white rounded-2xl border border-slate-200 shadow-sm px-4 py-3 hover:border-slate-300 transition-colors">
+                <span className="text-slate-900 text-sm font-semibold flex-1 truncate">{c.name}</span>
+                {c.season && <span className="text-[11px] text-slate-400 shrink-0">{c.season}</span>}
+                <ChevronRight className="w-4 h-4 text-slate-300 shrink-0" />
+              </Link>
+            ))}
+          </div>
+        </section>
+      )}
+
       {/* Upcoming Fixtures — standalone matches and match-day rows together */}
+      {!isFranchise && (<>
       <section>
         <SectionHeader title="Upcoming Matches" />
         {upcomingSorted.length === 0 ? (
@@ -284,6 +348,7 @@ export default function OrgDetail({ type }) {
           </div>
         )}
       </section>
+      </>)}
 
     </div>
   )

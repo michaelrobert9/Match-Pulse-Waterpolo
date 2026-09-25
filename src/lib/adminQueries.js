@@ -17,6 +17,7 @@ import { assertCanAdministerCompetition } from './competitionAuth'
 import { schedulePoolFixtures } from './scheduler'
 import { PLAYER_CONSENT_VERSION } from './consent'
 import { composeVenuePitch } from './venues'
+import { clubMayEnterCompetition, orgOwnsTeams } from './associations'
 import { resolveSideLineup } from './lineupResolve'
 
 function uid() { return auth?.currentUser?.uid ?? null }
@@ -933,6 +934,13 @@ async function generateUniqueMatchSlugGlobal(base) {
 }
 
 export async function createTeam(orgData, displayName, options = {}) {
+  // Private (franchise) associations never own teams — their teams live in their
+  // franchise clubs. Federations, schools and clubs own teams as normal.
+  if (!orgOwnsTeams(orgData)) {
+    const e = new Error('A private (franchise) association does not own teams — create a franchise club instead.')
+    e.code = 'team/association-no-teams'
+    throw e
+  }
   const {
     competitionId = null, season = null,
     ageGroup = null, gender = null, division = null, teamLevel = null,
@@ -2990,6 +2998,22 @@ export async function fetchCompetitionTeams(competitionId) {
 }
 
 export async function addTeamToCompetition(competitionId, teamId, teamData = {}) {
+  // Franchise exclusivity: a franchise club may only enter its owning
+  // association's competitions (defence in depth — the UI already filters).
+  const orgId = teamData.organizationId ?? null
+  if (orgId) {
+    const [compSnap, orgSnap] = await Promise.all([
+      getDoc(doc(db, 'competitions', competitionId)),
+      getDoc(doc(db, 'organizations', orgId)),
+    ])
+    const ownerOrgId = compSnap.exists() ? (compSnap.data().ownerOrgId ?? null) : null
+    const org = orgSnap.exists() ? orgSnap.data() : null
+    if (org && !clubMayEnterCompetition(org, ownerOrgId)) {
+      const e = new Error("This franchise club can only play in its own association's competitions.")
+      e.code = 'team/franchise-exclusive'
+      throw e
+    }
+  }
   await setDoc(doc(db, 'competitions', competitionId, 'teams', teamId), {
     ...teamData,
     addedAt: serverTimestamp(),

@@ -9,7 +9,8 @@ import { plansUrl } from '../../lib/mainSite'
 import InviteUserForm from '../../components/InviteUserForm'
 import ImageUpload from '../../components/ImageUpload'
 import FixtureImportModal from '../../components/FixtureImportModal'
-import { fetchOrganization } from '../../lib/queries'
+import { fetchOrganization, fetchOrganizationsByType } from '../../lib/queries'
+import { isFranchiseAssociation } from '../../lib/associations'
 import {
   updateOrganization, deleteOrganization,
   createCompetition, fetchCompetitionsForOrg, addFixtureToCompetition,
@@ -33,6 +34,7 @@ import StatusBadge from '../../components/StatusBadge'
 import CompetitionStatusBadge from '../../components/CompetitionStatusBadge'
 import OpponentSelector from '../../components/OpponentSelector'
 import FormatSelector from '../../components/FormatSelector'
+import OrgCrest from '../../components/OrgCrest'
 import VenuePicker from '../../components/VenuePicker'
 import { MatchTeamIdentity, MatchVersus } from '../../components/TeamIdentity'
 import { prefetchMatchTeams } from '../../lib/teamIdentity'
@@ -252,6 +254,51 @@ function CapColorPicker({ value, onChange }) {
         ))}
         <button type="button" onClick={() => onChange('')} className={chipCls(value === '')}>None</button>
       </div>
+    </div>
+  )
+}
+
+// A private (franchise) association owns no teams of its own — it owns franchise
+// clubs (each a real club org, exclusive to this association). This read-only
+// roster lists them; clubs are created and their ownership handed over via the
+// platform admin tools.
+function FranchiseClubsSection({ orgId }) {
+  const [clubs, setClubs] = useState(null)
+  useEffect(() => {
+    let alive = true
+    fetchOrganizationsByType('club')
+      .then(list => { if (alive) setClubs((list || []).filter(o => o.franchiseOf === orgId)) })
+      .catch(() => { if (alive) setClubs([]) })
+    return () => { alive = false }
+  }, [orgId])
+
+  return (
+    <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+      <div className="px-4 py-3 border-b border-slate-200">
+        <h2 className="font-display font-bold text-slate-900">Franchise clubs</h2>
+        <p className="text-[11px] text-slate-500 mt-0.5">
+          Clubs that belong to this association. Each club owns its own teams and plays only in this association's competitions.
+        </p>
+      </div>
+      {clubs === null ? (
+        <div className="px-4 py-8 flex justify-center"><div className="w-5 h-5 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin" /></div>
+      ) : clubs.length === 0 ? (
+        <div className="px-4 py-8 text-center">
+          <p className="text-slate-500 text-sm">No franchise clubs yet.</p>
+          <p className="text-slate-400 text-xs mt-1">Clubs are created and handed to their owners from the platform admin tools.</p>
+        </div>
+      ) : (
+        <div className="divide-y divide-slate-100">
+          {clubs.map(c => (
+            <Link key={c.id} to={`/clubs/${c.slug}`}
+              className="flex items-center gap-3 px-4 py-3 hover:bg-slate-50 transition-colors">
+              <OrgCrest org={c} size={32} />
+              <span className="text-slate-900 text-sm font-semibold flex-1 truncate">{c.name}</span>
+              <ChevronRight className="w-4 h-4 text-slate-300 shrink-0" />
+            </Link>
+          ))}
+        </div>
+      )}
     </div>
   )
 }
@@ -1425,11 +1472,15 @@ export default function OrgManage() {
           </div>
           <RecentResultsSection matches={matches} setMatches={setMatches} loading={loading} />
           <div ref={teamRef}>
-            <TeamsSection
-              orgId={id} org={org}
-              competitions={competitions} teams={teams} setTeams={setTeams}
-              defaultOpen={openTeam} canManage={canManage}
-            />
+            {isFranchiseAssociation(org) ? (
+              <FranchiseClubsSection orgId={id} />
+            ) : (
+              <TeamsSection
+                orgId={id} org={org}
+                competitions={competitions} teams={teams} setTeams={setTeams}
+                defaultOpen={openTeam} canManage={canManage}
+              />
+            )}
           </div>
           <StaffSection orgId={id} org={org} isPlatformAdmin={isPlatformAdmin}
             uid={uid} teams={teams} inviterGrant={grant} teamMgmtOn={teamMgmtOn}
